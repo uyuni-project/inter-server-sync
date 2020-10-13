@@ -20,6 +20,7 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer db.Close()
 	tables := schemareader.ReadTables(db)
 
 	fmt.Printf("graph schema {\n")

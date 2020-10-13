@@ -15,6 +15,7 @@ func readTableNames(db *sql.DB) []string {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer rows.Close()
 
 	result := make([]string, 0)
 	for rows.Next() {
@@ -39,6 +40,7 @@ func readColumnNames(db *sql.DB, tableName string) []string {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer rows.Close()
 
 	result := make([]string, 0)
 	for rows.Next() {
@@ -66,6 +68,7 @@ func readPKColumnNames(db *sql.DB, tableName string) []string {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer rows.Close()
 
 	result := make([]string, 0)
 	for rows.Next() {
@@ -92,6 +95,7 @@ func readUniqueIndexNames(db *sql.DB, tableName string) []string {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer rows.Close()
 
 	result := make([]string, 0)
 	for rows.Next() {
@@ -117,6 +121,7 @@ func readIndexColumns(db *sql.DB, indexName string) []string {
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer rows.Close()
 
 	result := make([]string, 0)
 	for rows.Next() {

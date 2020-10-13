@@ -47,6 +47,15 @@ func main() {
 				fmt.Printf("\"%s-%s\" -- \"%s\";\n", table.Name, indexColumn, index.Name)
 			}
 		}
+
+		for i, reference := range table.References {
+			fmt.Printf("\"%s-%s-%d\" [label=\"\" shape=diamond];\n", table.Name, reference.TableName, i)
+
+			for column, foreignColumn := range reference.ColumnMapping {
+				fmt.Printf("\"%s-%s-%d\" -- \"%s-%s\";\n", table.Name, reference.TableName, i, table.Name, column)
+				fmt.Printf("\"%s-%s-%d\" -- \"%s-%s\";\n", table.Name, reference.TableName, i, reference.TableName, foreignColumn)
+			}
+		}
 	}
 
 	fmt.Printf("}")

@@ -23,7 +23,7 @@ func main() {
 	tables := schemareader.ReadTables(db)
 
 	fmt.Printf("graph schema {\n")
-	fmt.Printf("  layout=circo;")
+	fmt.Printf("  layout=fdp;")
 	fmt.Printf("  mindist=0.3;")
 
 	for _, table := range tables {
@@ -37,6 +37,14 @@ func main() {
 			}
 			fmt.Printf("\"%s-%s\" [label=\"\" xlabel=\"%s\" style=filled fillcolor=\"%s\"];\n", table.Name, column, column, color)
 			fmt.Printf("\"%s\" -- \"%s-%s\";\n", table.Name, table.Name, column)
+		}
+
+		for _, index := range table.UniqueIndexes {
+			fmt.Printf("\"%s\" [shape=doublecircle];\n", index.Name)
+
+			for _, indexColumn := range index.Columns {
+				fmt.Printf("\"%s-%s\" -- \"%s\";\n", table.Name, indexColumn, index.Name)
+			}
 		}
 	}
 

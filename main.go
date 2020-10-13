@@ -11,33 +11,72 @@ import (
 // cd spacewalk/java; make -f Makefile.docker dockerrun_pg
 const connectionString = "user='spacewalk' password='spacewalk' dbname='susemanager' host='localhost' port='5432' sslmode=disable"
 
-func main() {
-	db, err := sql.Open("postgres", connectionString)
-	if err != nil {
-		log.Fatal(err)
-	}
+// Table represents a DB table to dump
+type Table struct {
+	name    string
+	columns []string
+}
 
-	sql := `SELECT table_name, column_name
-		FROM information_schema.columns
-		WHERE table_schema = 'public'
-			AND table_name IN (
-				SELECT table_name
-					FROM information_schema.tables
-					WHERE table_type = 'BASE TABLE'
-			)
-		ORDER BY table_name, ordinal_position;`
+func readTables(db *sql.DB) []string {
+	sql := `SELECT table_name
+		FROM information_schema.tables
+		WHERE table_type = 'BASE TABLE';`
 
 	rows, err := db.Query(sql)
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	result := make([]string, 0)
 	for rows.Next() {
 		var tableName string
-		var cloumnName string
-		err := rows.Scan(&tableName, &cloumnName)
+		err := rows.Scan(&tableName)
 		if err != nil {
 			log.Fatal(err)
 		}
-		fmt.Printf("%s, %s\n", tableName, cloumnName)
+		result = append(result, tableName)
+	}
+
+	return result
+}
+
+func readColumns(db *sql.DB, tableName string) []string {
+	sql := `SELECT column_name
+		FROM information_schema.columns
+		WHERE table_schema = 'public' AND table_name = $1
+		ORDER BY ordinal_position;`
+
+	rows, err := db.Query(sql, tableName)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	result := make([]string, 0)
+	for rows.Next() {
+		var columnName string
+		err := rows.Scan(&columnName)
+		if err != nil {
+			log.Fatal(err)
+		}
+		result = append(result, columnName)
+	}
+
+	return result
+}
+
+func main() {
+	db, err := sql.Open("postgres", connectionString)
+	if err != nil {
+		log.Fatal(err)
+	}
+	tables := readTables(db)
+
+	for _, table := range tables {
+		fmt.Println(table)
+		columns := readColumns(db, table)
+
+		for _, column := range columns {
+			fmt.Printf("  - %s\n", column)
+		}
 	}
 }

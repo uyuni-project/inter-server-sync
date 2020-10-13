@@ -17,7 +17,7 @@ type Table struct {
 	columns []string
 }
 
-func readTables(db *sql.DB) []string {
+func readTableNames(db *sql.DB) []string {
 	sql := `SELECT table_name
 		FROM information_schema.tables
 		WHERE table_type = 'BASE TABLE';`
@@ -40,7 +40,7 @@ func readTables(db *sql.DB) []string {
 	return result
 }
 
-func readColumns(db *sql.DB, tableName string) []string {
+func readColumnNames(db *sql.DB, tableName string) []string {
 	sql := `SELECT column_name
 		FROM information_schema.columns
 		WHERE table_schema = 'public' AND table_name = $1
@@ -64,6 +64,18 @@ func readColumns(db *sql.DB, tableName string) []string {
 	return result
 }
 
+func readTables(db *sql.DB) []Table {
+	tableNames := readTableNames(db)
+
+	result := make([]Table, 0)
+	for _, tableName := range tableNames {
+		columns := readColumnNames(db, tableName)
+
+		result = append(result, Table{name: tableName, columns: columns})
+	}
+	return result
+}
+
 func main() {
 	db, err := sql.Open("postgres", connectionString)
 	if err != nil {
@@ -72,10 +84,9 @@ func main() {
 	tables := readTables(db)
 
 	for _, table := range tables {
-		fmt.Println(table)
-		columns := readColumns(db, table)
+		fmt.Println(table.name)
 
-		for _, column := range columns {
+		for _, column := range table.columns {
 			fmt.Printf("  - %s\n", column)
 		}
 	}

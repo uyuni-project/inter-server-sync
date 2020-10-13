@@ -12,6 +12,8 @@ import (
 // cd spacewalk/java; make -f Makefile.docker dockerrun_pg
 const connectionString = "user='spacewalk' password='spacewalk' dbname='susemanager' host='localhost' port='5432' sslmode=disable"
 
+// psql --host=localhost --port=5432 --username=spacewalk susemanager
+
 // go run . | dot -Tx11
 func main() {
 	db, err := sql.Open("postgres", connectionString)

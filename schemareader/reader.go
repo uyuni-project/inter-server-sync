@@ -8,7 +8,8 @@ import (
 func readTableNames(db *sql.DB) []string {
 	sql := `SELECT table_name
 		FROM information_schema.tables
-		WHERE table_type = 'BASE TABLE';`
+		WHERE table_schema = 'public'
+			AND table_type = 'BASE TABLE';`
 
 	rows, err := db.Query(sql)
 	if err != nil {

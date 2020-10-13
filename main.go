@@ -30,7 +30,12 @@ func main() {
 		fmt.Printf("\"%s\" [shape=box];\n", table.Name)
 
 		for _, column := range table.Columns {
-			fmt.Printf("\"%s-%s\" [label=\"\" xlabel=\"%s\"];\n", table.Name, column, column)
+			_, primary := table.PKColumns[column]
+			color := "transparent"
+			if primary {
+				color = "gainsboro"
+			}
+			fmt.Printf("\"%s-%s\" [label=\"\" xlabel=\"%s\" style=filled fillcolor=\"%s\"];\n", table.Name, column, column, color)
 			fmt.Printf("\"%s\" -- \"%s-%s\";\n", table.Name, table.Name, column)
 		}
 	}

@@ -12,6 +12,7 @@ import (
 // cd spacewalk/java; make -f Makefile.docker dockerrun_pg
 const connectionString = "user='spacewalk' password='spacewalk' dbname='susemanager' host='localhost' port='5432' sslmode=disable"
 
+// go run . | dot -Tx11
 func main() {
 	db, err := sql.Open("postgres", connectionString)
 	if err != nil {
@@ -19,11 +20,18 @@ func main() {
 	}
 	tables := schemareader.ReadTables(db)
 
+	fmt.Printf("graph schema {\n")
+	fmt.Printf("  layout=circo;")
+	fmt.Printf("  mindist=0.3;")
+
 	for _, table := range tables {
-		fmt.Println(table.Name)
+		fmt.Printf("\"%s\" [shape=box];\n", table.Name)
 
 		for _, column := range table.Columns {
-			fmt.Printf("  - %s\n", column)
+			fmt.Printf("\"%s-%s\" [label=\"\" xlabel=\"%s\"];\n", table.Name, column, column)
+			fmt.Printf("\"%s\" -- \"%s-%s\";\n", table.Name, table.Name, column)
 		}
 	}
+
+	fmt.Printf("}")
 }

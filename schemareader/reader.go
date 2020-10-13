@@ -5,7 +5,65 @@ import (
 	"log"
 )
 
-func readTableNames(db *sql.DB) []string {
+
+func tablesLoadStatic() []string {
+	return [] string{
+		"rhnchannel",
+		"rhnchannelarch",
+		"rhnchannelerrata",
+		"rhnchannelfamily",
+		"rhnchannelfamilymembers",
+		//"rhnchannelpackage",
+		//"rhnchannelpackagearchcompat",
+		//"rhnchanneltrust",
+		//"rhncontentsource",
+		//"rhncontentsourcessl",
+		//"rhncpuarch",
+		//"rhncve",
+		//"rhndistchannelmap",
+		//"rhnerrata",
+		//"rhnerratabuglist",
+		//"rhnerratacve",
+		//"rhnerratafile",
+		//"rhnerratafilechannel",
+		//"rhnerratafilepackage",
+		//"rhnerratafilepackagesource",
+		//"rhnerratakeyword",
+		//"rhnerratapackage",
+		//"rhnkickstartabletree",
+		//"rhnksinstalltype",
+		//"rhnkstreefile",
+		//"rhnkstreetype",
+		//"rhnpackage",
+		//"rhnpackagearch",
+		//"rhnpackagebreaks",
+		//"rhnpackagechangelogdata",
+		//"rhnpackagechangelogrec",
+		//"rhnpackageconflicts",
+		//"rhnpackageenhances",
+		//"rhnpackagefile",
+		//"rhnpackageobsoletes",
+		//"rhnpackagepredepends",
+		//"rhnpackageprovides",
+		//"rhnpackagerecommends",
+		//"rhnpackagerequires",
+		//"rhnpackagesource",
+		//"rhnpackagesuggests",
+		//"rhnpackagesupplements",
+		//"rhnproductname",
+		//"rhnreleasechannelmap",
+		//"rhnserverarch",
+		//"rhnserverchannelarchcompat",
+		//"rhnserverpackagearchcompat",
+		//"rhnserverservergrouparchcompat",
+		//"suseeula",
+		//"susepackageeula",
+		//"susepackageproductfile",
+		//"suseproductfile",
+	}
+}
+
+func tablesLoadAll(db *sql.DB) []string {
 	sql := `SELECT table_name
 		FROM information_schema.tables
 		WHERE table_schema = 'public'
@@ -26,8 +84,16 @@ func readTableNames(db *sql.DB) []string {
 		}
 		result = append(result, tableName)
 	}
-
 	return result
+}
+
+func readTableNames(db *sql.DB, source string) []string {
+	switch source {
+	case "static":
+		return tablesLoadStatic()
+	default:
+		return tablesLoadAll(db)
+	}
 }
 
 func readColumnNames(db *sql.DB, tableName string) []string {
@@ -213,8 +279,8 @@ func readReferenceConstraints(db *sql.DB, tableName string, referenceConstraintN
 }
 
 // ReadTables inspects the DB and returns a list of tables
-func ReadTables(db *sql.DB) []Table {
-	tableNames := readTableNames(db)
+func ReadTables(db *sql.DB, tablesSource string) []Table {
+	tableNames := readTableNames(db, tablesSource)
 
 	result := make([]Table, 0)
 	for _, tableName := range tableNames {
@@ -236,8 +302,8 @@ func ReadTables(db *sql.DB) []Table {
 		constraintNames := readReferenceConstraintNames(db, tableName)
 		references := make([]Reference, 0)
 		for _, constraintName := range constraintNames {
-			columnMap := readReferenceConstraints(db, tableName, constraintName)
 			referencedTable := readReferencedTable(db, tableName, constraintName)
+			columnMap := readReferenceConstraints(db, tableName, constraintName)
 			references = append(references, Reference{TableName: referencedTable, ColumnMapping: columnMap})
 		}
 

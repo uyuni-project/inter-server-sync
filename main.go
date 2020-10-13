@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
 
 	_ "github.com/lib/pq"
 	"github.com/moio/mgr-dump/schemareader"
@@ -21,7 +22,8 @@ func main() {
 		log.Fatal(err)
 	}
 	defer db.Close()
-	tables := schemareader.ReadTables(db)
+	tableListSource := os.Args[1]
+	tables := schemareader.ReadTables(db, tableListSource)
 
 	fmt.Printf("graph schema {\n")
 	fmt.Printf("  layout=fdp;")

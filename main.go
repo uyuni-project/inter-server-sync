@@ -50,8 +50,8 @@ func main() {
 
 		for _, index := range table.UniqueIndexes {
 			label := "unique"
-			if table.MainUniqueIndex != nil {
-				if strings.Compare(index.Name, table.MainUniqueIndex.Name) == 0 {
+			if len(table.MainUniqueIndexName) > 0 {
+				if strings.Compare(index.Name, table.MainUniqueIndexName) == 0 {
 					label = "unique main"
 				}
 			}

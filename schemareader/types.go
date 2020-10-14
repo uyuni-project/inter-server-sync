@@ -6,10 +6,10 @@ type Table struct {
 	Columns       []string
 	PKColumns     map[string]bool
 	PKSequence    string
-	UniqueIndexes []UniqueIndex
+	UniqueIndexes map[string]UniqueIndex
 	// a unique index is main when it is the preferred "natural" key
-	MainUniqueIndex *UniqueIndex
-	References      []Reference
+	MainUniqueIndexName string
+	References          []Reference
 }
 
 // UniqueIndex represents an index among columns of a Table

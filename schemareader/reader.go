@@ -210,15 +210,15 @@ func readReferenceConstraints(db *sql.DB, tableName string, referenceConstraintN
 	return result
 }
 
-func findIndex(indexes []UniqueIndex, columnName string) int {
-	for i, index := range indexes {
+func findIndex(indexes map[string]UniqueIndex, columnName string) string {
+	for name, index := range indexes {
 		for _, column := range index.Columns {
 			if strings.Compare(column, columnName) == 0 {
-				return i
+				return name
 			}
 		}
 	}
-	return -1
+	return ""
 }
 
 func readPKSequence(db *sql.DB, tableName string) string {
@@ -277,25 +277,21 @@ func ReadTables(db *sql.DB) []Table {
 		pkSequence := readPKSequence(db, tableName)
 
 		indexNames := readUniqueIndexNames(db, tableName)
-		indexes := make([]UniqueIndex, 0)
+		indexes := make(map[string]UniqueIndex)
 		for _, indexName := range indexNames {
 			indexColumns := readIndexColumns(db, indexName)
-			indexes = append(indexes, UniqueIndex{Name: indexName, Columns: indexColumns})
+			indexes[indexName] = UniqueIndex{Name: indexName, Columns: indexColumns}
 		}
 
-		var mainUniqueIndex *UniqueIndex
+		mainUniqueIndexName := ""
 		if len(indexNames) == 1 {
-			mainUniqueIndex = &indexes[0]
+			mainUniqueIndexName = indexNames[0]
 		} else if len(indexNames) > 1 {
-			labelIndex := findIndex(indexes, "label")
-			if labelIndex >= 0 {
-				mainUniqueIndex = &indexes[labelIndex]
-			} else {
-				nameIndex := findIndex(indexes, "name")
-				if nameIndex >= 0 {
-					mainUniqueIndex = &indexes[nameIndex]
-				} else {
-					mainUniqueIndex = &indexes[0]
+			mainUniqueIndexName = findIndex(indexes, "label")
+			if len(mainUniqueIndexName) == 0 {
+				mainUniqueIndexName = findIndex(indexes, "name")
+				if len(mainUniqueIndexName) == 0 {
+					mainUniqueIndexName = indexNames[0]
 				}
 			}
 		}
@@ -308,21 +304,20 @@ func ReadTables(db *sql.DB) []Table {
 			references = append(references, Reference{TableName: referencedTable, ColumnMapping: columnMap})
 		}
 
-		result = append(result, Table{Name: tableName, Columns: columns, PKColumns: pkColumnMap, PKSequence: pkSequence, UniqueIndexes: indexes, MainUniqueIndex: mainUniqueIndex, References: references})
+		result = append(result, Table{Name: tableName, Columns: columns, PKColumns: pkColumnMap, PKSequence: pkSequence, UniqueIndexes: indexes, MainUniqueIndexName: mainUniqueIndexName, References: references})
 	}
 
 	// main indexes might not cover columns which are populated with sequences
 	for i, table := range result {
-		if table.MainUniqueIndex != nil {
-			if len(table.MainUniqueIndex.Columns) >= 1 {
-				column := table.MainUniqueIndex.Columns[0]
+		if len(table.MainUniqueIndexName) > 0 {
+			for _, column := range table.UniqueIndexes[table.MainUniqueIndexName].Columns {
 				for _, reference := range table.References {
 					referencedColumn := reference.ColumnMapping[column]
 					if strings.Compare(referencedColumn, "id") == 0 {
 						for _, referencedTable := range result {
 							if strings.Compare(referencedTable.Name, reference.TableName) == 0 {
 								if strings.Compare(referencedTable.PKSequence, "") != 0 {
-									result[i].MainUniqueIndex = nil
+									result[i].MainUniqueIndexName = ""
 								}
 							}
 						}

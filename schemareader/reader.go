@@ -221,6 +221,45 @@ func findIndex(indexes []UniqueIndex, columnName string) int {
 	return -1
 }
 
+func readPKSequence(db *sql.DB, tableName string) string {
+	sql := `WITH sequences AS (
+		SELECT sequence_name
+			FROM information_schema.sequences
+			WHERE sequence_schema = 'public'
+		),
+		id_constraints AS (
+			SELECT
+				tc.constraint_name,
+				tc.table_name,
+				kcu.column_name
+			FROM
+				information_schema.table_constraints AS tc
+				JOIN information_schema.key_column_usage AS kcu
+					ON tc.constraint_name = kcu.constraint_name
+			WHERE tc.constraint_schema = 'public'
+				AND constraint_type = 'PRIMARY KEY'
+				AND kcu.ordinal_position = 1
+				AND column_name = 'id'
+				AND tc.table_name = $1
+		)
+		SELECT sequence_name
+			FROM id_constraints
+			JOIN sequences
+				ON replace(regexp_replace(constraint_name, '(_id)?_pk(ey)?', ''), '_', '') = replace(regexp_replace(sequence_name, '(_id)?_seq', ''), '_', '')`
+
+	rows, err := db.Query(sql, tableName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	var name string
+	rows.Next()
+	rows.Scan(&name)
+
+	return name
+}
+
 // ReadTables inspects the DB and returns a list of tables
 func ReadTables(db *sql.DB) []Table {
 	tableNames := readTableNames(db)
@@ -234,6 +273,8 @@ func ReadTables(db *sql.DB) []Table {
 		for _, column := range pkColumns {
 			pkColumnMap[column] = true
 		}
+
+		pkSequence := readPKSequence(db, tableName)
 
 		indexNames := readUniqueIndexNames(db, tableName)
 		indexes := make([]UniqueIndex, 0)
@@ -266,7 +307,7 @@ func ReadTables(db *sql.DB) []Table {
 			references = append(references, Reference{TableName: referencedTable, ColumnMapping: columnMap})
 		}
 
-		result = append(result, Table{Name: tableName, Columns: columns, PKColumns: pkColumnMap, UniqueIndexes: indexes, References: references})
+		result = append(result, Table{Name: tableName, Columns: columns, PKColumns: pkColumnMap, PKSequence: pkSequence, UniqueIndexes: indexes, References: references})
 	}
 	return result
 }

@@ -5,6 +5,7 @@ type Table struct {
 	Name          string
 	Columns       []string
 	PKColumns     map[string]bool
+	PKSequence    string
 	UniqueIndexes []UniqueIndex
 	References    []Reference
 }

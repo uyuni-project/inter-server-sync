@@ -42,6 +42,11 @@ func main() {
 			fmt.Printf("\"%s\" -- \"%s-%s\";\n", table.Name, table.Name, column)
 		}
 
+		if len(table.PKSequence) > 0 {
+			fmt.Printf("\"%s-id-%s\" [label=\"%s\" shape=note];\n", table.Name, table.PKSequence, table.PKSequence)
+			fmt.Printf("\"%s-id\" -- \"%s-id-%s\";\n", table.Name, table.Name, table.PKSequence)
+		}
+
 		for _, index := range table.UniqueIndexes {
 			color := "transparent"
 			if index.Main {

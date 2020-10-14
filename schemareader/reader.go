@@ -6,28 +6,25 @@ import (
 )
 
 func readTableNames(db *sql.DB) []string {
-	sql := `SELECT table_name
-		FROM information_schema.tables
-		WHERE table_schema = 'public'
-			AND table_type = 'BASE TABLE';`
+	return []string{
+		"rhnchannel",
+		"rhnchannelarch",
+		"rhnchannelerrata",
+		"rhnchannelfamily",
+		"rhnchannelfamilymembers",
+		"rhnerrata",
+		"rhnchannelproduct",
+		"suseproducts",
+		"rhnproductname",
 
-	rows, err := db.Query(sql)
-	if err != nil {
-		log.Fatal(err)
+		// dictionaries
+		"rhnpackagearch",
+		"rhnerrataseverity",
+		"rhnchecksumtype",
+		"rhnarchtype",
+
+		// to be added later: rhnpackage, rhnchannelpackage, rhnerratapackage
 	}
-	defer rows.Close()
-
-	result := make([]string, 0)
-	for rows.Next() {
-		var tableName string
-		err := rows.Scan(&tableName)
-		if err != nil {
-			log.Fatal(err)
-		}
-		result = append(result, tableName)
-	}
-
-	return result
 }
 
 func readColumnNames(db *sql.DB, tableName string) []string {

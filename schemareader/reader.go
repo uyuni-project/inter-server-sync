@@ -280,21 +280,22 @@ func ReadTables(db *sql.DB) []Table {
 		indexes := make([]UniqueIndex, 0)
 		for _, indexName := range indexNames {
 			indexColumns := readIndexColumns(db, indexName)
-			indexes = append(indexes, UniqueIndex{Name: indexName, Columns: indexColumns, Main: false})
+			indexes = append(indexes, UniqueIndex{Name: indexName, Columns: indexColumns})
 		}
 
+		var mainUniqueIndex *UniqueIndex
 		if len(indexNames) == 1 {
-			indexes[0].Main = true
+			mainUniqueIndex = &indexes[0]
 		} else if len(indexNames) > 1 {
 			labelIndex := findIndex(indexes, "label")
 			if labelIndex >= 0 {
-				indexes[labelIndex].Main = true
+				mainUniqueIndex = &indexes[labelIndex]
 			} else {
 				nameIndex := findIndex(indexes, "name")
 				if nameIndex >= 0 {
-					indexes[nameIndex].Main = true
+					mainUniqueIndex = &indexes[nameIndex]
 				} else {
-					indexes[0].Main = true
+					mainUniqueIndex = &indexes[0]
 				}
 			}
 		}
@@ -307,7 +308,29 @@ func ReadTables(db *sql.DB) []Table {
 			references = append(references, Reference{TableName: referencedTable, ColumnMapping: columnMap})
 		}
 
-		result = append(result, Table{Name: tableName, Columns: columns, PKColumns: pkColumnMap, PKSequence: pkSequence, UniqueIndexes: indexes, References: references})
+		result = append(result, Table{Name: tableName, Columns: columns, PKColumns: pkColumnMap, PKSequence: pkSequence, UniqueIndexes: indexes, MainUniqueIndex: mainUniqueIndex, References: references})
 	}
+
+	// main indexes might not cover columns which are populated with sequences
+	for i, table := range result {
+		if table.MainUniqueIndex != nil {
+			if len(table.MainUniqueIndex.Columns) >= 1 {
+				column := table.MainUniqueIndex.Columns[0]
+				for _, reference := range table.References {
+					referencedColumn := reference.ColumnMapping[column]
+					if strings.Compare(referencedColumn, "id") == 0 {
+						for _, referencedTable := range result {
+							if strings.Compare(referencedTable.Name, reference.TableName) == 0 {
+								if strings.Compare(referencedTable.PKSequence, "") != 0 {
+									result[i].MainUniqueIndex = nil
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
 	return result
 }

@@ -7,14 +7,15 @@ type Table struct {
 	PKColumns     map[string]bool
 	PKSequence    string
 	UniqueIndexes []UniqueIndex
-	References    []Reference
+	// a unique index is main when it is the preferred "natural" key
+	MainUniqueIndex *UniqueIndex
+	References      []Reference
 }
 
 // UniqueIndex represents an index among columns of a Table
 type UniqueIndex struct {
 	Name    string
 	Columns []string
-	Main    bool
 }
 
 // Reference represents a foreign key relationship to a Table

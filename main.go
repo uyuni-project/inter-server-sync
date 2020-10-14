@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"strings"
 
 	_ "github.com/lib/pq"
 	"github.com/moio/mgr-dump/schemareader"
@@ -49,8 +50,10 @@ func main() {
 
 		for _, index := range table.UniqueIndexes {
 			label := "unique"
-			if index.Main {
-				label = "unique main"
+			if table.MainUniqueIndex != nil {
+				if strings.Compare(index.Name, table.MainUniqueIndex.Name) == 0 {
+					label = "unique main"
+				}
 			}
 			fmt.Printf("\"%s\" [label=\"%s\" shape=tab];\n", index.Name, label)
 

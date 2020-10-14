@@ -2,9 +2,11 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	"log"
 
 	_ "github.com/lib/pq"
+	"github.com/moio/mgr-dump/dumper"
 	"github.com/moio/mgr-dump/schemareader"
 )
 
@@ -21,5 +23,7 @@ func main() {
 	defer db.Close()
 	tables := schemareader.ReadTables(db)
 
-	schemareader.DumpToGraphviz(tables)
+	// schemareader.DumpToGraphviz(tables)
+
+	fmt.Println(dumper.Dump(db, tables))
 }

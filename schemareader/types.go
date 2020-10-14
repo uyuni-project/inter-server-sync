@@ -13,6 +13,7 @@ type Table struct {
 type UniqueIndex struct {
 	Name    string
 	Columns []string
+	Main    bool
 }
 
 // Reference represents a foreign key relationship to a Table

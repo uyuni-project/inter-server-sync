@@ -3,6 +3,7 @@ package schemareader
 import (
 	"database/sql"
 	"log"
+	"strings"
 )
 
 func readTableNames(db *sql.DB) []string {
@@ -209,6 +210,17 @@ func readReferenceConstraints(db *sql.DB, tableName string, referenceConstraintN
 	return result
 }
 
+func findIndex(indexes []UniqueIndex, columnName string) int {
+	for i, index := range indexes {
+		for _, column := range index.Columns {
+			if strings.Compare(column, columnName) == 0 {
+				return i
+			}
+		}
+	}
+	return -1
+}
+
 // ReadTables inspects the DB and returns a list of tables
 func ReadTables(db *sql.DB) []Table {
 	tableNames := readTableNames(db)
@@ -227,7 +239,23 @@ func ReadTables(db *sql.DB) []Table {
 		indexes := make([]UniqueIndex, 0)
 		for _, indexName := range indexNames {
 			indexColumns := readIndexColumns(db, indexName)
-			indexes = append(indexes, UniqueIndex{Name: indexName, Columns: indexColumns})
+			indexes = append(indexes, UniqueIndex{Name: indexName, Columns: indexColumns, Main: false})
+		}
+
+		if len(indexNames) == 1 {
+			indexes[0].Main = true
+		} else if len(indexNames) > 1 {
+			labelIndex := findIndex(indexes, "label")
+			if labelIndex >= 0 {
+				indexes[labelIndex].Main = true
+			} else {
+				nameIndex := findIndex(indexes, "name")
+				if nameIndex >= 0 {
+					indexes[nameIndex].Main = true
+				} else {
+					indexes[0].Main = true
+				}
+			}
 		}
 
 		constraintNames := readReferenceConstraintNames(db, tableName)

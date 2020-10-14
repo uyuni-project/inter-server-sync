@@ -43,7 +43,11 @@ func main() {
 		}
 
 		for _, index := range table.UniqueIndexes {
-			fmt.Printf("\"%s\" [label=\"\" shape=doublecircle];\n", index.Name)
+			color := "transparent"
+			if index.Main {
+				color = "green"
+			}
+			fmt.Printf("\"%s\" [label=\"\" shape=doublecircle style=filled fillcolor=\"%s\"];\n", index.Name, color)
 
 			for _, indexColumn := range index.Columns {
 				fmt.Printf("\"%s-%s\" -- \"%s\";\n", table.Name, indexColumn, index.Name)

@@ -44,18 +44,18 @@ func main() {
 
 		if len(table.PKSequence) > 0 {
 			fmt.Printf("\"%s-id-%s\" [label=\"%s\" shape=note];\n", table.Name, table.PKSequence, table.PKSequence)
-			fmt.Printf("\"%s-id\" -- \"%s-id-%s\";\n", table.Name, table.Name, table.PKSequence)
+			fmt.Printf("\"%s-id\" -- \"%s-id-%s\" [style=dashed];\n", table.Name, table.Name, table.PKSequence)
 		}
 
 		for _, index := range table.UniqueIndexes {
-			color := "transparent"
+			label := "unique"
 			if index.Main {
-				color = "green"
+				label = "unique main"
 			}
-			fmt.Printf("\"%s\" [label=\"\" shape=doublecircle style=filled fillcolor=\"%s\"];\n", index.Name, color)
+			fmt.Printf("\"%s\" [label=\"%s\" shape=tab];\n", index.Name, label)
 
 			for _, indexColumn := range index.Columns {
-				fmt.Printf("\"%s-%s\" -- \"%s\";\n", table.Name, indexColumn, index.Name)
+				fmt.Printf("\"%s-%s\" -- \"%s\" [style=dashed];\n", table.Name, indexColumn, index.Name)
 			}
 		}
 

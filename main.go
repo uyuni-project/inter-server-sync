@@ -25,7 +25,9 @@ func main() {
 
 	fmt.Printf("graph schema {\n")
 	fmt.Printf("  layout=fdp;")
-	fmt.Printf("  mindist=0.3;")
+	fmt.Printf("  K=0.15;")
+	fmt.Printf("  maxiter=1000;")
+	fmt.Printf("  start=0;")
 
 	for _, table := range tables {
 		fmt.Printf("\"%s\" [shape=box];\n", table.Name)
@@ -41,7 +43,7 @@ func main() {
 		}
 
 		for _, index := range table.UniqueIndexes {
-			fmt.Printf("\"%s\" [shape=doublecircle];\n", index.Name)
+			fmt.Printf("\"%s\" [label=\"\" shape=doublecircle];\n", index.Name)
 
 			for _, indexColumn := range index.Columns {
 				fmt.Printf("\"%s-%s\" -- \"%s\";\n", table.Name, indexColumn, index.Name)

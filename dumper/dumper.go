@@ -19,29 +19,58 @@ type rowDataStructure struct {
 }
 
 // Dump creates a SQL representation of data in the schema
-func Dump(db *sql.DB, tables []schemareader.Table) string {
+func Dump(db *sql.DB, tables []schemareader.Table) []string {
 	tableMap := make(map[string]schemareader.Table)
 	for _, table := range tables {
 		tableMap[table.Name] = table
 	}
+	result := make([]string, 0)
 
-	table := tables[0]
+	for i, table := range tables {
+		tableName := table.Name
+		columnNames := strings.Join(table.Columns, ", ")
+		values := dumpValues(db, table, tables)
+		values = substitutePrimaryKeys(db, table, tableMap, values)
+		values = substituteForeignKeys(db, table, tableMap, values)
+		formattedValues := formatValues(values)
+		constraint := strings.Join(table.UniqueIndexes[table.MainUniqueIndexName].Columns, ", ")
+		columnAssignment := formatColumnAssignment(table)
 
-	tableName := table.Name
-	columnNames := strings.Join(table.Columns, ", ")
-	values := dumpValues(db, table, tables)
-	values = substituteForeignKeys(db, table, tableMap, values)
-	formattedValues := formatValues(values)
-	constraint := table.MainUniqueIndexName
-	columnAssignment := formatColumnAssignment(table)
-
-	return fmt.Sprintf(`INSERT INTO %s (
+		result = append(result, fmt.Sprintf(`INSERT INTO %s (
 		%s
 	)
 	VALUES
 		%s
-	ON CONFLICT ON CONSTRAINT %s DO UPDATE
-		SET %s;`, tableName, columnNames, formattedValues, constraint, columnAssignment)
+	ON CONFLICT (%s) DO UPDATE
+		SET %s;`, tableName, columnNames, formattedValues, constraint, columnAssignment))
+
+		if i == 0 {
+			break
+		}
+	}
+	return result
+}
+
+func substitutePrimaryKeys(db *sql.DB, table schemareader.Table, tables map[string]schemareader.Table, rows [][]rowDataStructure) [][]rowDataStructure {
+	result := make([][]rowDataStructure, 0)
+	for _, row := range rows {
+		rowResult := make([]rowDataStructure, 0)
+		pkSequence := false
+		if len(table.PKSequence) > 0 {
+			pkSequence = true
+		}
+		for _, column := range row {
+			if pkSequence && strings.Compare(column.columnName, "id") == 0 {
+				column.columnType = "SQL"
+				column.value = fmt.Sprintf("SELECT nextval('%s')", table.PKSequence)
+				rowResult = append(rowResult, column)
+			} else {
+				rowResult = append(rowResult, column)
+			}
+		}
+		result = append(result, rowResult)
+	}
+	return result
 }
 
 func substituteForeignKeys(db *sql.DB, table schemareader.Table, tables map[string]schemareader.Table, rows [][]rowDataStructure) [][]rowDataStructure {

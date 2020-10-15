@@ -111,25 +111,28 @@ func substituteForeignKeys(db *sql.DB, table schemareader.Table, tables map[stri
 
 			rows := executeQueryWithResults(db, sql, scanParameters...)
 
-			// for each localColumns
-			//foreignColumns.names -> rows.results
-			whereParameters = make([]string, 0)
-			for _, foreignColumn := range foreignMainUniqueColumns {
-				// produce the where clause
-				for _, c := range rows[0] {
-					if strings.Compare(c.columnName, foreignColumn) == 0 {
-						whereParameters = append(whereParameters, fmt.Sprintf("%s = %s",
-							foreignColumn, formatValue(c)))
-						break
+			// we will only change for a sub query if we were able to find the target value
+			// other wise we keep the pre existing value.
+			// this can happen when the column for the reference is null. Example rhnchanel->org_id
+			if len(rows) > 0 {
+				whereParameters = make([]string, 0)
+				for _, foreignColumn := range foreignMainUniqueColumns {
+					// produce the where clause
+					for _, c := range rows[0] {
+						if strings.Compare(c.columnName, foreignColumn) == 0 {
+							whereParameters = append(whereParameters, fmt.Sprintf("%s = %s",
+								foreignColumn, formatValue(c)))
+							break
+						}
 					}
+
 				}
+				for localColumn, foreignColumn := range reference.ColumnMapping {
+					updatSql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s`, foreignColumn, reference.TableName, strings.Join(whereParameters, " and "))
 
-			}
-			for localColumn, foreignColumn := range reference.ColumnMapping {
-				updatSql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s`, foreignColumn, reference.TableName, strings.Join(whereParameters, " and "))
-
-				rowResult[columnIndexes[localColumn]].value = updatSql
-				rowResult[columnIndexes[localColumn]].columnType = "SQL"
+					rowResult[columnIndexes[localColumn]].value = updatSql
+					rowResult[columnIndexes[localColumn]].columnType = "SQL"
+				}
 			}
 
 		}
@@ -165,6 +168,9 @@ func formatValues(values [][]rowDataStructure) string {
 }
 
 func formatValue(col rowDataStructure) string {
+	if col.value == nil {
+		return "null"
+	}
 	val := ""
 	switch col.columnType {
 	case "NUMERIC":
@@ -235,9 +241,9 @@ func executeQueryWithResults(db *sql.DB, sql string, scanParameters ...interface
 				// second deref to get reflect.Value representing the T value
 				// and call Interface to get T value from the reflect.Value
 				rowResult[i] = rv.Elem().Interface()
-				rowComputedValues = append(rowComputedValues, rowDataStructure{columnType: columnTypes[i].DatabaseTypeName(),
-					value: rowResult[i], columnName: columnTypes[i].Name()})
 			}
+			rowComputedValues = append(rowComputedValues, rowDataStructure{columnType: columnTypes[i].DatabaseTypeName(),
+				value: rowResult[i], columnName: columnTypes[i].Name()})
 		}
 
 		computedValues = append(computedValues, rowComputedValues)

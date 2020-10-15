@@ -8,14 +8,15 @@ import (
 
 func readTableNames(db *sql.DB) []string {
 	return []string{
-		"rhnproductname",
 		"rhnchannel",
+		"rhnproductname",
+		"rhnchannelproduct",
+
 		"rhnchannelarch",
 		"rhnchannelerrata",
 		"rhnchannelfamily",
 		"rhnchannelfamilymembers",
 		"rhnerrata",
-		"rhnchannelproduct",
 		"suseproducts",
 
 		// dictionaries

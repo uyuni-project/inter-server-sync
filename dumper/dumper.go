@@ -13,9 +13,10 @@ import (
 )
 
 type rowDataStructure struct {
-	columnName string
-	columnType string
-	value      interface{} // we probably should not save this here, and maybe we should just save a string...
+	columnName   string
+	columnType   string
+	initialValue interface{} // we probably should not save this here, and maybe we should just save a string...
+	value        interface{} // we probably should not save this here, and maybe we should just save a string...
 }
 
 // Dump creates a SQL representation of data in the schema
@@ -27,7 +28,7 @@ func Dump(db *sql.DB, tables []schemareader.Table) []string {
 	result := make([]string, 0)
 
 	for i, table := range tables {
-		if i >= 9 {
+		if i >= 12 {
 			break
 		}
 		tableName := table.Name
@@ -35,17 +36,37 @@ func Dump(db *sql.DB, tables []schemareader.Table) []string {
 		values := dumpValues(db, table, tables)
 		values = substitutePrimaryKeys(db, table, tableMap, values)
 		values = substituteForeignKeys(db, table, tableMap, values)
-		constraint := strings.Join(table.UniqueIndexes[table.MainUniqueIndexName].Columns, ", ")
+		constraint := formatConstraint(table)
 		columnAssignment := formatColumnAssignment(table)
 
 		for _, value := range values {
+			valueFiltered := filterRowData(value, table)
 			result = append(result, fmt.Sprintf(`INSERT INTO %s (%s)	VALUES %s  ON CONFLICT (%s) DO UPDATE SET %s;`,
-				tableName, columnNames, formatValue(value), constraint, columnAssignment))
+				tableName, columnNames, formatValue(valueFiltered), constraint, columnAssignment))
 
 		}
 	}
 
 	return result
+}
+
+func filterRowData(value []rowDataStructure, table schemareader.Table) []rowDataStructure {
+	if strings.Compare(table.Name, "rhnerrata") == 0 {
+		for i, row := range value {
+			if strings.Compare(row.columnName, "severity_id") == 0 {
+				value[i].value = value[i].initialValue
+			}
+		}
+	}
+	return value
+}
+
+func formatConstraint(table schemareader.Table) string {
+	switch table.Name {
+	case "rhnerrataseverity":
+		return "id"
+	}
+	return strings.Join(table.UniqueIndexes[table.MainUniqueIndexName].Columns, ", ")
 }
 
 func substitutePrimaryKeys(db *sql.DB, table schemareader.Table, tables map[string]schemareader.Table, rows [][]rowDataStructure) [][]rowDataStructure {
@@ -234,7 +255,7 @@ func executeQueryWithResults(db *sql.DB, sql string, scanParameters ...interface
 				rowResult[i] = rv.Elem().Interface()
 			}
 			rowComputedValues = append(rowComputedValues, rowDataStructure{columnType: columnTypes[i].DatabaseTypeName(),
-				value: rowResult[i], columnName: columnTypes[i].Name()})
+				initialValue: rowResult[i], value: rowResult[i], columnName: columnTypes[i].Name()})
 		}
 
 		computedValues = append(computedValues, rowComputedValues)

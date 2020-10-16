@@ -15,15 +15,15 @@ func readTableNames() []string {
 		"rhnchecksumtype",
 		"rhnpackagearch",
 		"web_customer",
+		"rhnchannelarch",
+		"rhnerrataseverity", // this table is static (even the id's). Should we copy it?
 
 		// data to transfer
 		"rhnchannel",
 		"rhnchannelfamily",
 		"rhnchannelfamilymembers",
-
-		"rhnerrataseverity",
 		"rhnerrata",
-		"rhnchannelarch",
+
 		"rhnchannelerrata",
 		"suseproducts",
 

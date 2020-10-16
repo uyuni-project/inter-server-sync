@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func readTableNames(db *sql.DB) []string {
+func readTableNames() []string {
 	return []string{
 		// dictionaries
 		"rhnproductname",
@@ -163,7 +163,7 @@ func readReferenceConstraintNames(db *sql.DB, tableName string) []string {
 	return result
 }
 
-func readReferencedTable(db *sql.DB, tableName string, referenceConstraintName string) string {
+func readReferencedTable(db *sql.DB, referenceConstraintName string) string {
 	sql := `SELECT DISTINCT ccu.table_name
 	FROM information_schema.constraint_column_usage AS ccu
 	WHERE ccu.constraint_name = $1;`
@@ -263,9 +263,9 @@ func readPKSequence(db *sql.DB, tableName string) string {
 	return name
 }
 
-// ReadTables inspects the DB and returns a list of tables
-func ReadTables(db *sql.DB) []Table {
-	tableNames := readTableNames(db)
+// ReadTablesSchema inspects the DB and returns a list of tables
+func ReadTablesSchema(db *sql.DB) []Table {
+	tableNames := readTableNames()
 
 	result := make([]Table, 0)
 	for _, tableName := range tableNames {
@@ -303,14 +303,17 @@ func ReadTables(db *sql.DB) []Table {
 		references := make([]Reference, 0)
 		for _, constraintName := range constraintNames {
 			columnMap := readReferenceConstraints(db, tableName, constraintName)
-			referencedTable := readReferencedTable(db, tableName, constraintName)
+			referencedTable := readReferencedTable(db, constraintName)
 			references = append(references, Reference{TableName: referencedTable, ColumnMapping: columnMap})
 		}
 
 		table := Table{Name: tableName, Columns: columns, PKColumns: pkColumnMap, PKSequence: pkSequence, UniqueIndexes: indexes, MainUniqueIndexName: mainUniqueIndexName, References: references}
-		table = applyManualEnhancements(table)
+		table = applyTableFilters(table)
 		result = append(result, table)
 	}
+
+	// if we need to apply a schema filter it should be place on a special method
+	// for example the next code
 
 	// main indexes might not cover columns which are populated with sequences
 	// RICARDO: I commented this code block. Didn't remove it because I'm not sure if we should or not keep it
@@ -335,13 +338,4 @@ func ReadTables(db *sql.DB) []Table {
 	//}
 
 	return result
-}
-
-func applyManualEnhancements(table Table) Table {
-	if strings.Compare(table.Name, "rhnchecksumtype") == 0 && len(table.PKSequence) == 0 {
-		table.PKSequence = "rhn_checksum_id_seq"
-	} else if strings.Compare(table.Name, "rhnpackagearch") == 0 && len(table.PKSequence) == 0 {
-		table.PKSequence = "rhn_package_arch_id_seq"
-	}
-	return table
 }

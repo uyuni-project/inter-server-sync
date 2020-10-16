@@ -23,7 +23,7 @@ func main() {
 		log.Fatal(err)
 	}
 	defer db.Close()
-	tables := schemareader.ReadTables(db)
+	tables := schemareader.ReadTablesSchema(db)
 
 	if len(os.Args) > 1 && strings.Compare(os.Args[1], "dot") == 0 {
 		schemareader.DumpToGraphviz(tables)

@@ -27,6 +27,9 @@ func Dump(db *sql.DB, tables []schemareader.Table) []string {
 	result := make([]string, 0)
 
 	for i, table := range tables {
+		if i >= 9 {
+			break
+		}
 		tableName := table.Name
 		columnNames := strings.Join(table.Columns, ", ")
 		values := dumpValues(db, table, tables)
@@ -44,9 +47,6 @@ func Dump(db *sql.DB, tables []schemareader.Table) []string {
 	ON CONFLICT (%s) DO UPDATE
 		SET %s;`, tableName, columnNames, formattedValues, constraint, columnAssignment))
 
-		if i == 0 {
-			break
-		}
 	}
 	return result
 }
@@ -164,7 +164,7 @@ func formatValues(values [][]rowDataStructure) string {
 		}
 		result = append(result, "("+strings.Join(listData, ",")+")")
 	}
-	return strings.Join(result, ",")
+	return strings.Join(result, ",\n")
 }
 
 func formatValue(col rowDataStructure) string {

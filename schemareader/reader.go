@@ -8,22 +8,24 @@ import (
 
 func readTableNames(db *sql.DB) []string {
 	return []string{
-		"rhnchannel",
+		// dictionaries
 		"rhnproductname",
 		"rhnchannelproduct",
+		"rhnarchtype",
+		"rhnchecksumtype",
+		"rhnpackagearch",
+		"web_customer",
 
-		"rhnchannelarch",
-		"rhnchannelerrata",
+		// data to transfer
+		"rhnchannel",
 		"rhnchannelfamily",
 		"rhnchannelfamilymembers",
-		"rhnerrata",
-		"suseproducts",
 
-		// dictionaries
-		"rhnpackagearch",
 		"rhnerrataseverity",
-		"rhnchecksumtype",
-		"rhnarchtype",
+		"rhnerrata",
+		"rhnchannelarch",
+		"rhnchannelerrata",
+		"suseproducts",
 
 		// to be added later: rhnpackage, rhnchannelpackage, rhnerratapackage
 	}
@@ -305,28 +307,41 @@ func ReadTables(db *sql.DB) []Table {
 			references = append(references, Reference{TableName: referencedTable, ColumnMapping: columnMap})
 		}
 
-		result = append(result, Table{Name: tableName, Columns: columns, PKColumns: pkColumnMap, PKSequence: pkSequence, UniqueIndexes: indexes, MainUniqueIndexName: mainUniqueIndexName, References: references})
+		table := Table{Name: tableName, Columns: columns, PKColumns: pkColumnMap, PKSequence: pkSequence, UniqueIndexes: indexes, MainUniqueIndexName: mainUniqueIndexName, References: references}
+		table = applyManualEnhancements(table)
+		result = append(result, table)
 	}
 
 	// main indexes might not cover columns which are populated with sequences
-	for i, table := range result {
-		if len(table.MainUniqueIndexName) > 0 {
-			for _, column := range table.UniqueIndexes[table.MainUniqueIndexName].Columns {
-				for _, reference := range table.References {
-					referencedColumn := reference.ColumnMapping[column]
-					if strings.Compare(referencedColumn, "id") == 0 {
-						for _, referencedTable := range result {
-							if strings.Compare(referencedTable.Name, reference.TableName) == 0 {
-								if strings.Compare(referencedTable.PKSequence, "") != 0 {
-									result[i].MainUniqueIndexName = ""
-								}
-							}
-						}
-					}
-				}
-			}
-		}
-	}
+	// RICARDO: I commented this code block. Didn't remove it because I'm not sure if we should or not keep it
+	// If a table have a unique index referencing a primary key it should be safe since the primary key cannot change.
+	//for i, table := range result {
+	//	if len(table.MainUniqueIndexName) > 0 {
+	//		for _, column := range table.UniqueIndexes[table.MainUniqueIndexName].Columns {
+	//			for _, reference := range table.References {
+	//				referencedColumn := reference.ColumnMapping[column]
+	//				if strings.Compare(referencedColumn, "id") == 0 {
+	//					for _, referencedTable := range result {
+	//						if strings.Compare(referencedTable.Name, reference.TableName) == 0 {
+	//							if strings.Compare(referencedTable.PKSequence, "") != 0 {
+	//								result[i].MainUniqueIndexName = ""
+	//							}
+	//						}
+	//					}
+	//				}
+	//			}
+	//		}
+	//	}
+	//}
 
 	return result
+}
+
+func applyManualEnhancements(table Table) Table {
+	if strings.Compare(table.Name, "rhnchecksumtype") == 0 && len(table.PKSequence) == 0 {
+		table.PKSequence = "rhn_checksum_id_seq"
+	} else if strings.Compare(table.Name, "rhnpackagearch") == 0 && len(table.PKSequence) == 0 {
+		table.PKSequence = "rhn_package_arch_id_seq"
+	}
+	return table
 }

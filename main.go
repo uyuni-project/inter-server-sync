@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
+	"os"
+	"strings"
 
 	_ "github.com/lib/pq"
 	"github.com/moio/mgr-dump/dumper"
@@ -23,7 +25,12 @@ func main() {
 	defer db.Close()
 	tables := schemareader.ReadTables(db)
 
-	// schemareader.DumpToGraphviz(tables)
+	if len(os.Args) > 1 && strings.Compare(os.Args[1], "dot") == 0 {
+		schemareader.DumpToGraphviz(tables)
+	} else {
+		for _, query := range dumper.Dump(db, tables) {
+			fmt.Println(query + "\n")
+		}
+	}
 
-	fmt.Println(dumper.Dump(db, tables))
 }

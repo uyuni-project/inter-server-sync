@@ -35,19 +35,16 @@ func Dump(db *sql.DB, tables []schemareader.Table) []string {
 		values := dumpValues(db, table, tables)
 		values = substitutePrimaryKeys(db, table, tableMap, values)
 		values = substituteForeignKeys(db, table, tableMap, values)
-		formattedValues := formatValues(values)
 		constraint := strings.Join(table.UniqueIndexes[table.MainUniqueIndexName].Columns, ", ")
 		columnAssignment := formatColumnAssignment(table)
 
-		result = append(result, fmt.Sprintf(`INSERT INTO %s (
-		%s
-	)
-	VALUES
-		%s
-	ON CONFLICT (%s) DO UPDATE
-		SET %s;`, tableName, columnNames, formattedValues, constraint, columnAssignment))
+		for _, value := range values {
+			result = append(result, fmt.Sprintf(`INSERT INTO %s (%s)	VALUES %s  ON CONFLICT (%s) DO UPDATE SET %s;`,
+				tableName, columnNames, formatValue(value), constraint, columnAssignment))
 
+		}
 	}
+
 	return result
 }
 
@@ -121,7 +118,7 @@ func substituteForeignKeys(db *sql.DB, table schemareader.Table, tables map[stri
 					for _, c := range rows[0] {
 						if strings.Compare(c.columnName, foreignColumn) == 0 {
 							whereParameters = append(whereParameters, fmt.Sprintf("%s = %s",
-								foreignColumn, formatValue(c)))
+								foreignColumn, formatField(c)))
 							break
 						}
 					}
@@ -150,24 +147,18 @@ func formatColumnAssignment(table schemareader.Table) string {
 			assignments = append(assignments, fmt.Sprintf("%s = excluded.%s", column, column))
 		}
 	}
-	return strings.Join(assignments, ",\n")
+	return strings.Join(assignments, ",")
 }
 
-func formatValues(values [][]rowDataStructure) string {
+func formatValue(value []rowDataStructure) string {
 	result := make([]string, 0)
-	for _, row := range values {
-		listData := make([]string, 0)
-		for _, col := range row {
-			val := formatValue(col)
-
-			listData = append(listData, val)
-		}
-		result = append(result, "("+strings.Join(listData, ",")+")")
+	for _, col := range value {
+		result = append(result, formatField(col))
 	}
-	return strings.Join(result, ",\n")
+	return "(" + strings.Join(result, ",") + ")"
 }
 
-func formatValue(col rowDataStructure) string {
+func formatField(col rowDataStructure) string {
 	if col.value == nil {
 		return "null"
 	}

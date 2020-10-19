@@ -28,7 +28,7 @@ func Dump(db *sql.DB, tables []schemareader.Table) []string {
 	result := make([]string, 0)
 
 	for i, table := range tables {
-		if i >= 13 {
+		if i >= 18 {
 			break
 		}
 		tableName := table.Name

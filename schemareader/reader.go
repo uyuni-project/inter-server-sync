@@ -23,8 +23,8 @@ func readTableNames() []string {
 		"rhnchannelfamily",
 		"rhnchannelfamilymembers",
 		"rhnerrata",
-
 		"rhnchannelerrata",
+
 		"suseproducts",
 
 		// to be added later: rhnpackage, rhnchannelpackage, rhnerratapackage

@@ -15,8 +15,8 @@ import (
 type rowDataStructure struct {
 	columnName   string
 	columnType   string
-	initialValue interface{} // we probably should not save this here, and maybe we should just save a string...
-	value        interface{} // we probably should not save this here, and maybe we should just save a string...
+	initialValue interface{}
+	value        interface{}
 }
 
 // Dump creates a SQL representation of data in the schema
@@ -28,7 +28,7 @@ func Dump(db *sql.DB, tables []schemareader.Table) []string {
 	result := make([]string, 0)
 
 	for i, table := range tables {
-		if i >= 12 {
+		if i >= 13 {
 			break
 		}
 		tableName := table.Name
@@ -36,13 +36,14 @@ func Dump(db *sql.DB, tables []schemareader.Table) []string {
 		values := dumpValues(db, table, tables)
 		values = substitutePrimaryKeys(db, table, tableMap, values)
 		values = substituteForeignKeys(db, table, tableMap, values)
-		constraint := formatConstraint(table)
+		constraint := "(" + strings.Join(table.UniqueIndexes[table.MainUniqueIndexName].Columns, ", ") + ")"
 		columnAssignment := formatColumnAssignment(table)
 
 		for _, value := range values {
 			valueFiltered := filterRowData(value, table)
-			result = append(result, fmt.Sprintf(`INSERT INTO %s (%s)	VALUES %s  ON CONFLICT (%s) DO UPDATE SET %s;`,
-				tableName, columnNames, formatValue(valueFiltered), constraint, columnAssignment))
+			constraintFiltered := formatConstraint(value, table, constraint)
+			result = append(result, fmt.Sprintf(`INSERT INTO %s (%s)	VALUES %s  ON CONFLICT %s DO UPDATE SET %s;`,
+				tableName, columnNames, formatValue(valueFiltered), constraintFiltered, columnAssignment))
 
 		}
 	}
@@ -61,12 +62,24 @@ func filterRowData(value []rowDataStructure, table schemareader.Table) []rowData
 	return value
 }
 
-func formatConstraint(table schemareader.Table) string {
+func formatConstraint(row []rowDataStructure, table schemareader.Table, defaultConstraint string) string {
 	switch table.Name {
 	case "rhnerrataseverity":
-		return "id"
+		return "(id)"
+	case "rhnerrata":
+		var orgId interface{} = nil
+		for _, field := range row {
+			if strings.Compare(field.columnName, "org_id") == 0 {
+				orgId = field.value
+			}
+		}
+		if orgId == nil {
+			return "(advisory) WHERE org_id IS NULL"
+		} else {
+			return "(advisory, org_id) WHERE org_id IS NOT NULL"
+		}
 	}
-	return strings.Join(table.UniqueIndexes[table.MainUniqueIndexName].Columns, ", ")
+	return defaultConstraint
 }
 
 func substitutePrimaryKeys(db *sql.DB, table schemareader.Table, tables map[string]schemareader.Table, rows [][]rowDataStructure) [][]rowDataStructure {

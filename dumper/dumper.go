@@ -36,14 +36,12 @@ func Dump(db *sql.DB, tables []schemareader.Table) []string {
 		values := dumpValues(db, table, tables)
 		values = substitutePrimaryKeys(db, table, tableMap, values)
 		values = substituteForeignKeys(db, table, tableMap, values)
-		constraint := "(" + strings.Join(table.UniqueIndexes[table.MainUniqueIndexName].Columns, ", ") + ")"
-		columnAssignment := formatColumnAssignment(table)
 
 		for _, value := range values {
 			valueFiltered := filterRowData(value, table)
-			constraintFiltered := formatConstraint(value, table, constraint)
-			result = append(result, fmt.Sprintf(`INSERT INTO %s (%s)	VALUES %s  ON CONFLICT %s DO UPDATE SET %s;`,
-				tableName, columnNames, formatValue(valueFiltered), constraintFiltered, columnAssignment))
+			onConflictFormated := formatOnConflict(value, table)
+			result = append(result, fmt.Sprintf(`INSERT INTO %s (%s)	VALUES %s  ON CONFLICT %s ;`,
+				tableName, columnNames, formatValue(valueFiltered), onConflictFormated))
 
 		}
 	}
@@ -62,10 +60,11 @@ func filterRowData(value []rowDataStructure, table schemareader.Table) []rowData
 	return value
 }
 
-func formatConstraint(row []rowDataStructure, table schemareader.Table, defaultConstraint string) string {
+func formatOnConflict(row []rowDataStructure, table schemareader.Table) string {
+	constraint := "(" + strings.Join(table.UniqueIndexes[table.MainUniqueIndexName].Columns, ", ") + ")"
 	switch table.Name {
 	case "rhnerrataseverity":
-		return "(id)"
+		constraint = "(id)"
 	case "rhnerrata":
 		var orgId interface{} = nil
 		for _, field := range row {
@@ -74,12 +73,25 @@ func formatConstraint(row []rowDataStructure, table schemareader.Table, defaultC
 			}
 		}
 		if orgId == nil {
-			return "(advisory) WHERE org_id IS NULL"
+			constraint = "(advisory) WHERE org_id IS NULL"
 		} else {
-			return "(advisory, org_id) WHERE org_id IS NOT NULL"
+			constraint = "(advisory, org_id) WHERE org_id IS NOT NULL"
+		}
+	case "rhnpackageevr":
+		var epoch interface{} = nil
+		for _, field := range row {
+			if strings.Compare(field.columnName, "epoch") == 0 {
+				epoch = field.value
+			}
+		}
+		if epoch == nil {
+			return "(version, release) WHERE epoch IS NULL DO NOTHING"
+		} else {
+			return "(version, release, epoch) WHERE epoch IS NOT NULL DO NOTHING"
 		}
 	}
-	return defaultConstraint
+	columnAssignment := formatColumnAssignment(table)
+	return fmt.Sprintf("%s DO UPDATE SET %s", constraint, columnAssignment)
 }
 
 func substitutePrimaryKeys(db *sql.DB, table schemareader.Table, tables map[string]schemareader.Table, rows [][]rowDataStructure) [][]rowDataStructure {

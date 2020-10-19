@@ -151,8 +151,13 @@ func substituteForeignKeys(db *sql.DB, table schemareader.Table, tables map[stri
 					// produce the where clause
 					for _, c := range rows[0] {
 						if strings.Compare(c.columnName, foreignColumn) == 0 {
-							whereParameters = append(whereParameters, fmt.Sprintf("%s = %s",
-								foreignColumn, formatField(c)))
+							if c.value == nil {
+								whereParameters = append(whereParameters, fmt.Sprintf("%s is null",
+									foreignColumn))
+							} else {
+								whereParameters = append(whereParameters, fmt.Sprintf("%s = %s",
+									foreignColumn, formatField(c)))
+							}
 							break
 						}
 					}

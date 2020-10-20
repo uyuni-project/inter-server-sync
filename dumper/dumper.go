@@ -28,25 +28,58 @@ func Dump(db *sql.DB, tables []schemareader.Table) []string {
 	result := make([]string, 0)
 
 	for i, table := range tables {
-		if i >= 18 {
+		if i >= 19 {
 			break
 		}
-		tableName := table.Name
-		columnNames := strings.Join(table.Columns, ", ")
 		values := dumpValues(db, table, tables)
 		values = substitutePrimaryKeys(db, table, tableMap, values)
 		values = substituteForeignKeys(db, table, tableMap, values)
 
 		for _, value := range values {
-			valueFiltered := filterRowData(value, table)
-			onConflictFormated := formatOnConflict(value, table)
-			result = append(result, fmt.Sprintf(`INSERT INTO %s (%s)	VALUES %s  ON CONFLICT %s ;`,
-				tableName, columnNames, formatValue(valueFiltered), onConflictFormated))
+			insertStatement := generateInsertStatement(value, table)
+			result = append(result, insertStatement)
 
 		}
 	}
 
 	return result
+}
+
+func generateInsertStatement(values []rowDataStructure, table schemareader.Table) string {
+	tableName := table.Name
+	columnNames := strings.Join(table.Columns, ", ")
+	valueFiltered := filterRowData(values, table)
+	if strings.Compare(tableName, "rhnpackage") == 0 {
+
+		//select nextval('rhn_checksum_id_seq'), 1, 1,
+		//	'2020-10-20 09:47:40.587718 +00:00', '2020-10-20 09:47:40.587718', '2020-10-20 09:47:40.587718'
+		//	where not exists (select 1
+		//		from my_table where org_id = 1 and modified = '2020-10-20 09:47:40.587718' );
+		whereClauseList := make([]string, 0)
+		for _, value := range values {
+			switch value.columnName {
+			case "name_id", "evr_id", "package_arch_id", "checksum_id":
+				whereClauseList = append(whereClauseList, fmt.Sprintf(" %s = %s",
+					value.columnName, formatField(value)))
+				//'org_id', 'name_id', 'evr_id', 'package_arch_id','checksum_id'
+			case "org_id":
+				if value.value == nil {
+					whereClauseList = append(whereClauseList, fmt.Sprintf(" %s IS NULL", value.columnName))
+				} else {
+					whereClauseList = append(whereClauseList, fmt.Sprintf(" %s = %s",
+						value.columnName, formatField(value)))
+				}
+			}
+		}
+		whereClause := strings.Join(whereClauseList, " and ")
+		return fmt.Sprintf(`INSERT INTO %s (%s)	select %s  where  not exists (select 1 from %s where %s);`,
+			tableName, columnNames, formatValue(valueFiltered), tableName, whereClause)
+	} else {
+		onConflictFormated := formatOnConflict(values, table)
+		return fmt.Sprintf(`INSERT INTO %s (%s)	VALUES (%s)  ON CONFLICT %s ;`,
+			tableName, columnNames, formatValue(valueFiltered), onConflictFormated)
+	}
+
 }
 
 func filterRowData(value []rowDataStructure, table schemareader.Table) []rowDataStructure {
@@ -66,6 +99,7 @@ func formatOnConflict(row []rowDataStructure, table schemareader.Table) string {
 	case "rhnerrataseverity":
 		constraint = "(id)"
 	case "rhnerrata":
+		// TODO rhnerrata and rhnpackageevr logic is similar, so we extract to one method on future
 		var orgId interface{} = nil
 		for _, field := range row {
 			if strings.Compare(field.columnName, "org_id") == 0 {
@@ -206,7 +240,7 @@ func formatValue(value []rowDataStructure) string {
 	for _, col := range value {
 		result = append(result, formatField(col))
 	}
-	return "(" + strings.Join(result, ",") + ")"
+	return strings.Join(result, ",")
 }
 
 func formatField(col rowDataStructure) string {
@@ -217,7 +251,7 @@ func formatField(col rowDataStructure) string {
 	switch col.columnType {
 	case "NUMERIC":
 		val = fmt.Sprintf(`%s`, col.value)
-	case "TIMESTAMPTZ":
+	case "TIMESTAMPTZ", "TIMESTAMP":
 		val = pq.QuoteLiteral(string(pq.FormatTimestamp(col.value.(time.Time))))
 	case "SQL":
 		val = fmt.Sprintf(`(%s)`, col.value)

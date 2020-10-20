@@ -30,7 +30,7 @@ func readTableNames() []string {
 		"rhnsourcerpm",    // done
 		"rhnpackageevr",   // done
 		"rhnchecksum",     // done
-
+		//18
 		"rhnpackage",
 		"rhnchannelpackage",
 		"rhnerratapackage",

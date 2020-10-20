@@ -23,3 +23,14 @@ type Reference struct {
 	TableName     string
 	ColumnMapping map[string]string
 }
+
+// we are returning just one reference, the first one which uses the column we want
+func (table *Table) GetFirstReferenceFromColumn(columnName string) Reference {
+	for _, reference := range table.References {
+		_, ok := reference.ColumnMapping[columnName]
+		if ok {
+			return reference
+		}
+	}
+	return Reference{}
+}

@@ -28,7 +28,7 @@ func Dump(db *sql.DB, tables []schemareader.Table) []string {
 	result := make([]string, 0)
 
 	for i, table := range tables {
-		if i >= 19 {
+		if i >= 20 {
 			break
 		}
 		values := dumpValues(db, table, tables)
@@ -157,72 +157,91 @@ func substituteForeignKeys(db *sql.DB, table schemareader.Table, tables map[stri
 	for i, columnName := range table.Columns {
 		columnIndexes[columnName] = i
 	}
-
 	for _, row := range rows {
-		rowResult := make([]rowDataStructure, 0)
-		for _, column := range row {
-			rowResult = append(rowResult, column)
-		}
 
 		for _, reference := range table.References {
-			foreignTable := tables[reference.TableName]
-
-			foreignMainUniqueColumns := foreignTable.UniqueIndexes[foreignTable.MainUniqueIndexName].Columns
-			localColumns := make([]string, 0)
-			foreignColumns := make([]string, 0)
-
-			whereParameters := make([]string, 0)
-			scanParameters := make([]interface{}, 0)
-			for localColumn, foreignColumn := range reference.ColumnMapping {
-				localColumns = append(localColumns, localColumn)
-				foreignColumns = append(foreignColumns, foreignColumn)
-
-				whereParameters = append(whereParameters, fmt.Sprintf("%s = $%d", foreignColumn, len(whereParameters)+1))
-				scanParameters = append(scanParameters, row[columnIndexes[localColumn]].value)
-			}
-
-			formattedColumns := strings.Join(foreignMainUniqueColumns, ", ")
-			formatedWhereParameters := strings.Join(whereParameters, " and ")
-
-			sql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s;`, formattedColumns, reference.TableName, formatedWhereParameters)
-
-			rows := executeQueryWithResults(db, sql, scanParameters...)
-
-			// we will only change for a sub query if we were able to find the target value
-			// other wise we keep the pre existing value.
-			// this can happen when the column for the reference is null. Example rhnchanel->org_id
-			if len(rows) > 0 {
-				whereParameters = make([]string, 0)
-				for _, foreignColumn := range foreignMainUniqueColumns {
-					// produce the where clause
-					for _, c := range rows[0] {
-						if strings.Compare(c.columnName, foreignColumn) == 0 {
-							if c.value == nil {
-								whereParameters = append(whereParameters, fmt.Sprintf("%s is null",
-									foreignColumn))
-							} else {
-								whereParameters = append(whereParameters, fmt.Sprintf("%s = %s",
-									foreignColumn, formatField(c)))
-							}
-							break
-						}
-					}
-
-				}
-				for localColumn, foreignColumn := range reference.ColumnMapping {
-					updatSql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s`, foreignColumn, reference.TableName, strings.Join(whereParameters, " and "))
-
-					rowResult[columnIndexes[localColumn]].value = updatSql
-					rowResult[columnIndexes[localColumn]].columnType = "SQL"
-				}
-			}
-
+			row = substituteForeignKeyReference(db, tables, reference, row, columnIndexes)
 		}
 
-		result = append(result, rowResult)
+		result = append(result, row)
 	}
 
 	return result
+}
+
+func substituteForeignKeyReference(db *sql.DB, tables map[string]schemareader.Table, reference schemareader.Reference, row []rowDataStructure, columnIndexes map[string]int) []rowDataStructure {
+	foreignTable := tables[reference.TableName]
+
+	foreignMainUniqueColumns := foreignTable.UniqueIndexes[foreignTable.MainUniqueIndexName].Columns
+	localColumns := make([]string, 0)
+	foreignColumns := make([]string, 0)
+
+	whereParameters := make([]string, 0)
+	scanParameters := make([]interface{}, 0)
+	for localColumn, foreignColumn := range reference.ColumnMapping {
+		localColumns = append(localColumns, localColumn)
+		foreignColumns = append(foreignColumns, foreignColumn)
+
+		whereParameters = append(whereParameters, fmt.Sprintf("%s = $%d", foreignColumn, len(whereParameters)+1))
+		scanParameters = append(scanParameters, row[columnIndexes[localColumn]].value)
+	}
+
+	formattedColumns := strings.Join(foreignTable.Columns, ", ")
+	formatedWhereParameters := strings.Join(whereParameters, " and ")
+
+	sql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s;`, formattedColumns, reference.TableName, formatedWhereParameters)
+
+	rows := executeQueryWithResults(db, sql, scanParameters...)
+
+	// we will only change for a sub query if we were able to find the target value
+	// other wise we keep the pre existing value.
+	// this can happen when the column for the reference is null. Example rhnchanel->org_id
+	if len(rows) > 0 {
+		whereParameters = make([]string, 0)
+
+		for _, foreignColumn := range foreignMainUniqueColumns {
+			// produce the where clause
+			for _, c := range rows[0] {
+				if strings.Compare(c.columnName, foreignColumn) == 0 {
+					if c.value == nil {
+						whereParameters = append(whereParameters, fmt.Sprintf("%s is null",
+							foreignColumn))
+					} else {
+						foreignReference := foreignTable.GetFirstReferenceFromColumn(foreignColumn)
+						if strings.Compare(foreignReference.TableName, "") == 0 {
+							whereParameters = append(whereParameters, fmt.Sprintf("%s = %s",
+								foreignColumn, formatField(c)))
+						} else {
+							columnIndexesForeign := make(map[string]int)
+							for i, columnName := range foreignTable.Columns {
+								columnIndexesForeign[columnName] = i
+							}
+							rowResultTemp := substituteForeignKeyReference(db, tables, foreignReference, rows[0], columnIndexesForeign)
+							fieldToUpdate := formatField(c)
+							for _, field := range rowResultTemp {
+								if strings.Compare(field.columnName, foreignColumn) == 0 {
+									fieldToUpdate = formatField(field)
+									break
+								}
+							}
+							whereParameters = append(whereParameters, fmt.Sprintf("%s = %s",
+								foreignColumn, fieldToUpdate))
+						}
+
+					}
+					break
+				}
+			}
+
+		}
+		for localColumn, foreignColumn := range reference.ColumnMapping {
+			updatSql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s limit 1`, foreignColumn, reference.TableName, strings.Join(whereParameters, " and "))
+
+			row[columnIndexes[localColumn]].value = updatSql
+			row[columnIndexes[localColumn]].columnType = "SQL"
+		}
+	}
+	return row
 }
 
 func formatColumnAssignment(table schemareader.Table) string {

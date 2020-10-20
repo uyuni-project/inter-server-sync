@@ -34,6 +34,13 @@ func readTableNames() []string {
 		"rhnpackage",
 		"rhnchannelpackage",
 		"rhnerratapackage",
+		//21
+		"rhnpackageprovider", // catalog
+		"rhnpackagekeytype",  // catalog
+		"rhnpackagekey",      // catalog
+		"rhnpackagekeyassociation",
+		//25
+		"rhnerratabuglist",
 
 		"suseproducts",
 

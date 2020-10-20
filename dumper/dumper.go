@@ -28,7 +28,7 @@ func Dump(db *sql.DB, tables []schemareader.Table) []string {
 	result := make([]string, 0)
 
 	for i, table := range tables {
-		if i >= 20 {
+		if i >= 26 {
 			break
 		}
 		values := dumpValues(db, table, tables)

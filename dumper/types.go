@@ -5,6 +5,6 @@ type TableKey struct {
 }
 
 type TableFilter struct {
-	TableName    string
-	WhereClauses []TableKey
+	TableName string
+	keys      []TableKey
 }

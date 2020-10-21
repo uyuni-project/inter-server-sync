@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/moio/mgr-dump/schemareader"
-	"strconv"
 	"strings"
 )
 
@@ -16,35 +15,13 @@ func DumpTableFilter(db *sql.DB, tables []schemareader.Table, ids []int) map[str
 		tableMap[table.Name] = table
 	}
 	for _, channelId := range ids {
-		channelFilter, ok := result["rhnchannel"]
-		if !ok {
-			channelFilter = TableFilter{TableName: "rhnchannel", WhereClauses: make([]TableKey, 0)}
-		}
 		whereFilter := fmt.Sprintf("id = %d", channelId)
-		channelFilter.WhereClauses = append(channelFilter.WhereClauses, TableKey{map[string]string{"id": strconv.Itoa(channelId)}})
-		result["rhnchannel"] = channelFilter
-
 		sql := fmt.Sprintf(`SELECT * FROM rhnchannel where %s ;`, whereFilter)
 		channelRow := executeQueryWithResults(db, sql)
 
 		result = followTableLinks(db, result, tableMap, tableMap["rhnchannel"], channelRow[0])
-		//mergeFilters(result, followedLinks)
-
 	}
 
-	return result
-}
-
-func mergeFilters(mergeTo map[string]TableFilter, mergeFrom map[string]TableFilter) map[string]TableFilter {
-	result := mergeTo
-	for key, fromValue := range mergeFrom {
-		val, ok := result[key]
-		if ok {
-			result[key] = TableFilter{TableName: key, WhereClauses: append(val.WhereClauses, fromValue.WhereClauses...)}
-		} else {
-			result[key] = mergeFrom[key]
-		}
-	}
 	return result
 }
 
@@ -56,24 +33,51 @@ func followTableLinks(db *sql.DB, result map[string]TableFilter, tableMap map[st
 
 	value, ok := result[table.Name]
 	if ok {
-		for _, rowId := range value.WhereClauses {
+		for _, rowId := range value.keys {
+			equalKey := true
 			for columnName, rowIdColumnValue := range rowId.key {
 				if strings.Compare(rowIdColumnValue, formatField(row[columnIndexes[columnName]])) != 0 {
-					return result
+					// ID already processed nothing to do
+					equalKey = false
+					break
 				}
+			}
+			if equalKey {
+				return result
 			}
 		}
 	}
 
+	key := make(map[string]string)
+	for pkColumn, _ := range table.PKColumns {
+		key[pkColumn] = formatField(row[columnIndexes[pkColumn]])
+	}
+
+	tableFilter, ok := result[table.Name]
+	if !ok {
+		tableFilter = TableFilter{TableName: table.Name, keys: make([]TableKey, 0)}
+	}
+	tableFilter.keys = append(tableFilter.keys, TableKey{key})
+	result[table.Name] = tableFilter
+
 	result = followReferencesFrom(db, result, tableMap, table, row)
 	result = followReferencesTo(db, result, tableMap, table, row)
-
 	fmt.Printf("%s \n %s \n\n", table.Name, result)
 
 	return result
 }
 
 func followReferencesTo(db *sql.DB, result map[string]TableFilter, tableMap map[string]schemareader.Table, table schemareader.Table, row []rowDataStructure) map[string]TableFilter {
+
+	//for _, reference := range table.ReferencedBy {
+	//	referencedTable, ok := tableMap[reference.TableName]
+	//	if ! ok {
+	//		continue
+	//	}
+	//	for referenceColumn, localColumn := range reference.ColumnMapping
+	//	// prepare an sql query to load data from
+	//}
+
 	return result
 }
 
@@ -89,10 +93,6 @@ func followReferencesFrom(db *sql.DB, result map[string]TableFilter, tableMap ma
 		if !tableExist {
 			continue
 
-		}
-		tableFilter, ok := result[foreignTable.Name]
-		if !ok {
-			tableFilter = TableFilter{TableName: foreignTable.Name, WhereClauses: make([]TableKey, 0)}
 		}
 
 		//foreignMainUniqueColumns := foreignTable.UniqueIndexes[foreignTable.MainUniqueIndexName].Columns
@@ -117,9 +117,6 @@ func followReferencesFrom(db *sql.DB, result map[string]TableFilter, tableMap ma
 		rows := executeQueryWithResults(db, sql, scanParameters...)
 
 		if len(rows) > 0 {
-			tableFilter.WhereClauses = append(tableFilter.WhereClauses, TableKey{filterWhere})
-			result[foreignTable.Name] = tableFilter
-
 			for _, row := range rows {
 				result = followTableLinks(db, result, tableMap, foreignTable, row)
 			}

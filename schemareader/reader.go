@@ -196,10 +196,54 @@ func readReferenceConstraintNames(db *sql.DB, tableName string) []string {
 	return result
 }
 
+func readReferencedByConstraintNames(db *sql.DB, tableName string) []string {
+	sql := `SELECT DISTINCT tc.constraint_name
+		FROM information_schema.table_constraints AS tc
+			JOIN information_schema.constraint_column_usage AS ccu ON ccu.constraint_name = tc.constraint_name
+				AND ccu.table_schema = tc.table_schema
+		WHERE tc.constraint_type = 'FOREIGN KEY' AND ccu.table_name = $1;`
+
+	rows, err := db.Query(sql, tableName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	result := make([]string, 0)
+	for rows.Next() {
+		var name string
+		err := rows.Scan(&name)
+		if err != nil {
+			log.Fatal(err)
+		}
+		result = append(result, name)
+	}
+
+	return result
+}
+
 func readReferencedTable(db *sql.DB, referenceConstraintName string) string {
 	sql := `SELECT DISTINCT ccu.table_name
 	FROM information_schema.constraint_column_usage AS ccu
 	WHERE ccu.constraint_name = $1;`
+
+	rows, err := db.Query(sql, referenceConstraintName)
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer rows.Close()
+
+	var name string
+	rows.Next()
+	rows.Scan(&name)
+
+	return name
+}
+
+func readReferencedByTable(db *sql.DB, referenceConstraintName string) string {
+	sql := `SELECT DISTINCT table_name
+	FROM information_schema.table_constraints as tc 
+	WHERE tc.constraint_name = $1;`
 
 	rows, err := db.Query(sql, referenceConstraintName)
 	if err != nil {
@@ -340,7 +384,15 @@ func ReadTablesSchema(db *sql.DB) []Table {
 			references = append(references, Reference{TableName: referencedTable, ColumnMapping: columnMap})
 		}
 
-		table := Table{Name: tableName, Columns: columns, PKColumns: pkColumnMap, PKSequence: pkSequence, UniqueIndexes: indexes, MainUniqueIndexName: mainUniqueIndexName, References: references}
+		referencedByConstraintNames := readReferencedByConstraintNames(db, tableName)
+		referencedBy := make([]Reference, 0)
+		for _, constraintName := range referencedByConstraintNames {
+			referencedTable := readReferencedByTable(db, constraintName)
+			columnMap := readReferenceConstraints(db, referencedTable, constraintName)
+			referencedBy = append(referencedBy, Reference{TableName: referencedTable, ColumnMapping: columnMap})
+		}
+
+		table := Table{Name: tableName, Columns: columns, PKColumns: pkColumnMap, PKSequence: pkSequence, UniqueIndexes: indexes, MainUniqueIndexName: mainUniqueIndexName, References: references, ReferencedBy: referencedBy}
 		table = applyTableFilters(table)
 		result = append(result, table)
 	}

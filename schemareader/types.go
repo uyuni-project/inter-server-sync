@@ -10,6 +10,7 @@ type Table struct {
 	// a unique index is main when it is the preferred "natural" key
 	MainUniqueIndexName string
 	References          []Reference
+	ReferencedBy        []Reference
 }
 
 // UniqueIndex represents an index among columns of a Table

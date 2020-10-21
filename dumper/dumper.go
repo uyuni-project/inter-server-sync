@@ -27,10 +27,7 @@ func Dump(db *sql.DB, tables []schemareader.Table) []string {
 	}
 	result := make([]string, 0)
 
-	for i, table := range tables {
-		if i >= 26 {
-			break
-		}
+	for _, table := range tables {
 		values := dumpValues(db, table, tables)
 		values = substitutePrimaryKeys(db, table, tableMap, values)
 		values = substituteForeignKeys(db, table, tableMap, values)

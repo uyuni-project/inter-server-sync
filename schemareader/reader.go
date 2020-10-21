@@ -42,6 +42,22 @@ func readTableNames() []string {
 		//25
 		"rhnerratabuglist",
 
+		"rhnpackagecapability",
+		"rhnpackagebreaks",
+		"rhnpackagechangelogdata",
+		"rhnpackagechangelogrec",
+		"rhnpackageconflicts",
+		"rhnpackageenhances",
+		"rhnpackagefile",
+		"rhnpackageobsoletes",
+		"rhnpackagepredepends",
+		"rhnpackageprovides",
+		"rhnpackagerecommends",
+		"rhnpackagerequires",
+		"rhnsourcerpm",
+		"rhnpackagesource",
+		"rhnpackagesuggests",
+
 		"suseproducts",
 
 		// to be added later: rhnpackage, rhnchannelpackage, rhnerratapackage

@@ -120,6 +120,18 @@ func formatOnConflict(row []rowDataStructure, table schemareader.Table) string {
 		} else {
 			return "(version, release, epoch) WHERE epoch IS NOT NULL DO NOTHING"
 		}
+	case "rhnpackagecapability":
+		var version interface{} = nil
+		for _, field := range row {
+			if strings.Compare(field.columnName, "version") == 0 {
+				version = field.value
+			}
+		}
+		if version == nil {
+			return "(name) WHERE version IS NULL DO NOTHING"
+		} else {
+			return "(name, version) WHERE version IS NOT NULL DO NOTHING"
+		}
 	}
 	columnAssignment := formatColumnAssignment(table)
 	return fmt.Sprintf("%s DO UPDATE SET %s", constraint, columnAssignment)

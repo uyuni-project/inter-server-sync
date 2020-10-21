@@ -28,7 +28,7 @@ func main() {
 	if len(os.Args) > 1 && strings.Compare(os.Args[1], "dot") == 0 {
 		schemareader.DumpToGraphviz(tables)
 	} else {
-		fmt.Println("BEGIN")
+		fmt.Println("BEGIN;")
 		for _, query := range dumper.Dump(db, tables) {
 			fmt.Println(query + "\n")
 		}

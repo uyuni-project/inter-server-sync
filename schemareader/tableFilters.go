@@ -21,6 +21,9 @@ func applyTableFilters(table Table) Table {
 		virtualIndexColumns := []string{"name_id", "evr_id", "package_arch_id", "checksum_id", "org_id"}
 		table.UniqueIndexes[virtualIndexName] = UniqueIndex{Name: virtualIndexName, Columns: virtualIndexColumns}
 		table.MainUniqueIndexName = virtualIndexName
+	case "rhnpackagecapability":
+		// pkid: rhn_pkg_capability_id_pk
+		table.PKSequence = "RHN_PKG_CAPABILITY_ID_SEQ"
 	}
 	return table
 }

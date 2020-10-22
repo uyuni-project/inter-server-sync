@@ -6,6 +6,25 @@ import (
 	"strings"
 )
 
+///// Tables needed for sure
+//rhnchannel
+//rhnchannelcloned
+//rhnchannelfamily
+//rhnchannelfamilymembers
+//rhnchannelproduct
+//rhnpackagecapability
+//rhnpackageevr
+//rhnpackagename
+//rhnproductname
+//rhnpublicchannelfamily
+//
+//suseproductextension
+//susesccsubscription
+//susesccsubscriptionproduct
+//suseupgradepath
+//suseproducts
+//observations
+
 /////missing tables which needs to be exported
 //rhnchannelcloned
 //rhnpublicchannelfamily

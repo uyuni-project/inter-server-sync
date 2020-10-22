@@ -25,10 +25,6 @@ func DumpTableFilter(db *sql.DB, tables []schemareader.Table, ids []int) map[str
 }
 
 func followTableLinks(db *sql.DB, result map[string]TableFilter, tableMap map[string]schemareader.Table, path []string, table schemareader.Table, row []rowDataStructure) map[string]TableFilter {
-	if strings.Compare(table.Name, "rhnchannel") == 0 && len(result) > 0 {
-		return result
-	}
-
 	columnIndexes := make(map[string]int)
 	for i, columnName := range table.Columns {
 		columnIndexes[columnName] = i

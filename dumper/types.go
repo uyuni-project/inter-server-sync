@@ -6,5 +6,5 @@ type TableKey struct {
 
 type TableFilter struct {
 	TableName string
-	keys      []TableKey
+	Keys      []TableKey
 }

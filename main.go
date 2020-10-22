@@ -27,6 +27,22 @@ func main() {
 
 	if len(os.Args) > 1 && strings.Compare(os.Args[1], "dot") == 0 {
 		schemareader.DumpToGraphviz(tables)
+	} else if len(os.Args) > 1 && strings.Compare(os.Args[1], "v2") == 0 {
+		channelLabels := []int{117}
+		filters := dumper.DumpTableFilter(db, tables, channelLabels)
+
+		if len(os.Args) > 2 && strings.Compare(os.Args[1], "ids") == 0 {
+			for _, value := range filters.TableKeys {
+				fmt.Printf("key: %s \n count: %d \n values: %s\n", value.TableName, len(value.Keys), value)
+			}
+
+			fmt.Printf("################%d\n\n", len(filters.Queries))
+		}
+		fmt.Println("BEGIN;")
+		for _, value := range filters.Queries {
+			fmt.Println(value)
+		}
+		fmt.Println("COMMIT;")
 	} else {
 		fmt.Println("BEGIN;")
 		for _, query := range dumper.Dump(db, tables) {

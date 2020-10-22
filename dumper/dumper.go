@@ -48,10 +48,6 @@ func generateInsertStatement(values []rowDataStructure, table schemareader.Table
 	valueFiltered := filterRowData(values, table)
 	if strings.Compare(tableName, "rhnpackage") == 0 {
 
-		//select nextval('rhn_checksum_id_seq'), 1, 1,
-		//	'2020-10-20 09:47:40.587718 +00:00', '2020-10-20 09:47:40.587718', '2020-10-20 09:47:40.587718'
-		//	where not exists (select 1
-		//		from my_table where org_id = 1 and modified = '2020-10-20 09:47:40.587718' );
 		whereClauseList := make([]string, 0)
 		for _, value := range values {
 			switch value.columnName {
@@ -140,23 +136,28 @@ func formatOnConflict(row []rowDataStructure, table schemareader.Table) string {
 func substitutePrimaryKeys(db *sql.DB, table schemareader.Table, tables map[string]schemareader.Table, rows [][]rowDataStructure) [][]rowDataStructure {
 	result := make([][]rowDataStructure, 0)
 	for _, row := range rows {
-		rowResult := make([]rowDataStructure, 0)
-		pkSequence := false
-		if len(table.PKSequence) > 0 {
-			pkSequence = true
-		}
-		for _, column := range row {
-			if pkSequence && strings.Compare(column.columnName, "id") == 0 {
-				column.columnType = "SQL"
-				column.value = fmt.Sprintf("SELECT nextval('%s')", table.PKSequence)
-				rowResult = append(rowResult, column)
-			} else {
-				rowResult = append(rowResult, column)
-			}
-		}
+		rowResult := substitutePrimaryKey(table, row)
 		result = append(result, rowResult)
 	}
 	return result
+}
+
+func substitutePrimaryKey(table schemareader.Table, row []rowDataStructure) []rowDataStructure {
+	rowResult := make([]rowDataStructure, 0)
+	pkSequence := false
+	if len(table.PKSequence) > 0 {
+		pkSequence = true
+	}
+	for _, column := range row {
+		if pkSequence && strings.Compare(column.columnName, "id") == 0 {
+			column.columnType = "SQL"
+			column.value = fmt.Sprintf("SELECT nextval('%s')", table.PKSequence)
+			rowResult = append(rowResult, column)
+		} else {
+			rowResult = append(rowResult, column)
+		}
+	}
+	return rowResult
 }
 
 func substituteForeignKeys(db *sql.DB, table schemareader.Table, tables map[string]schemareader.Table, rows [][]rowDataStructure) [][]rowDataStructure {
@@ -168,14 +169,19 @@ func substituteForeignKeys(db *sql.DB, table schemareader.Table, tables map[stri
 	}
 	for _, row := range rows {
 
-		for _, reference := range table.References {
-			row = substituteForeignKeyReference(db, tables, reference, row, columnIndexes)
-		}
+		row = substituteForeignKey(db, table, tables, row, columnIndexes)
 
 		result = append(result, row)
 	}
 
 	return result
+}
+
+func substituteForeignKey(db *sql.DB, table schemareader.Table, tables map[string]schemareader.Table, row []rowDataStructure, columnIndexes map[string]int) []rowDataStructure {
+	for _, reference := range table.References {
+		row = substituteForeignKeyReference(db, tables, reference, row, columnIndexes)
+	}
+	return row
 }
 
 func substituteForeignKeyReference(db *sql.DB, tables map[string]schemareader.Table, reference schemareader.Reference, row []rowDataStructure, columnIndexes map[string]int) []rowDataStructure {

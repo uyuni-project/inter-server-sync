@@ -7,8 +7,8 @@ import (
 	"strings"
 )
 
-func DumpTableFilter(db *sql.DB, tables []schemareader.Table, ids []int) map[string]TableFilter {
-	result := make(map[string]TableFilter, 0)
+func DumpTableFilter(db *sql.DB, tables []schemareader.Table, ids []int) DataDumper {
+	result := DataDumper{make([]string, 0), make(map[string]TableFilter, 0)}
 
 	tableMap := make(map[string]schemareader.Table)
 	for _, table := range tables {
@@ -24,13 +24,13 @@ func DumpTableFilter(db *sql.DB, tables []schemareader.Table, ids []int) map[str
 	return result
 }
 
-func followTableLinks(db *sql.DB, result map[string]TableFilter, tableMap map[string]schemareader.Table, path []string, table schemareader.Table, row []rowDataStructure) map[string]TableFilter {
+func followTableLinks(db *sql.DB, result DataDumper, tableMap map[string]schemareader.Table, path []string, table schemareader.Table, row []rowDataStructure) DataDumper {
 	columnIndexes := make(map[string]int)
 	for i, columnName := range table.Columns {
 		columnIndexes[columnName] = i
 	}
 
-	value, ok := result[table.Name]
+	value, ok := result.TableKeys[table.Name]
 	if ok {
 		for _, rowId := range value.Keys {
 			equalKey := true
@@ -58,18 +58,25 @@ func followTableLinks(db *sql.DB, result map[string]TableFilter, tableMap map[st
 		}
 	}
 
-	tableFilter, ok := result[table.Name]
+	tableFilter, ok := result.TableKeys[table.Name]
 	if !ok {
 		tableFilter = TableFilter{TableName: table.Name, Keys: make([]TableKey, 0)}
 	}
 	tableFilter.Keys = append(tableFilter.Keys, TableKey{key})
+	result.TableKeys[table.Name] = tableFilter
 	path = append(path, table.Name)
 
 	result = followReferencesFrom(db, result, tableMap, path, table, row)
-	result[table.Name] = tableFilter
+	result.Queries = append(result.Queries, prepareRowInsert(db, table, row, tableMap, columnIndexes))
 	result = followReferencesTo(db, result, tableMap, path, table, row)
 
 	return result
+}
+
+func prepareRowInsert(db *sql.DB, table schemareader.Table, row []rowDataStructure, tableMap map[string]schemareader.Table, columnIndexes map[string]int) string {
+	values := substitutePrimaryKey(table, row)
+	values = substituteForeignKey(db, table, tableMap, values, columnIndexes)
+	return generateInsertStatement(values, table)
 }
 
 func shouldFollowReferenceByLink(path []string, table schemareader.Table, reference schemareader.Reference, referencedTable schemareader.Table) bool {
@@ -101,7 +108,7 @@ func shouldFollowReferenceByLink(path []string, table schemareader.Table, refere
 	return false
 }
 
-func followReferencesTo(db *sql.DB, result map[string]TableFilter, tableMap map[string]schemareader.Table, path []string, table schemareader.Table, row []rowDataStructure) map[string]TableFilter {
+func followReferencesTo(db *sql.DB, result DataDumper, tableMap map[string]schemareader.Table, path []string, table schemareader.Table, row []rowDataStructure) DataDumper {
 	columnIndexes := make(map[string]int)
 	for i, columnName := range table.Columns {
 		columnIndexes[columnName] = i
@@ -144,7 +151,7 @@ func followReferencesTo(db *sql.DB, result map[string]TableFilter, tableMap map[
 	return result
 }
 
-func followReferencesFrom(db *sql.DB, result map[string]TableFilter, tableMap map[string]schemareader.Table, path []string, table schemareader.Table, row []rowDataStructure) map[string]TableFilter {
+func followReferencesFrom(db *sql.DB, result DataDumper, tableMap map[string]schemareader.Table, path []string, table schemareader.Table, row []rowDataStructure) DataDumper {
 
 	columnIndexes := make(map[string]int)
 	for i, columnName := range table.Columns {

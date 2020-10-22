@@ -6,6 +6,17 @@ import (
 	"strings"
 )
 
+/////missing tables which needs to be exported
+//rhnchannelcloned
+//rhnpublicchannelfamily
+//
+//suseproductextension
+//susesccsubscription
+//susesccsubscriptionproduct
+//suseupgradepath
+//suseproducts
+//observations
+
 func readTableNames() []string {
 	return []string{
 		// dictionaries
@@ -58,9 +69,8 @@ func readTableNames() []string {
 		"rhnpackagesource",
 		"rhnpackagesuggests",
 
-		"suseproducts",
+		//"suseproducts",
 
-		// to be added later: rhnpackage, rhnchannelpackage, rhnerratapackage
 	}
 }
 

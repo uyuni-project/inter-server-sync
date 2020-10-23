@@ -13,7 +13,7 @@ type processItem struct {
 	path      []string
 }
 
-func DumpTableFilter(db *sql.DB, tables []schemareader.Table, ids []int) DataDumper {
+func DumpTableData(db *sql.DB, tables []schemareader.Table, ids []int) DataDumper {
 
 	tableMap := make(map[string]schemareader.Table)
 	for _, table := range tables {
@@ -40,9 +40,10 @@ func followTableLinks(db *sql.DB, tableMap map[string]schemareader.Table, initia
 	itemsToProcess := initialDataSet
 
 IterateItemsLoop:
-	for i := 0; i < len(itemsToProcess); i++ {
+	for len(itemsToProcess) > 0 {
 
-		itemToProcess := itemsToProcess[i]
+		itemToProcess := itemsToProcess[0]
+		itemsToProcess = itemsToProcess[1:]
 		table, ok := tableMap[itemToProcess.tableName]
 
 		columnIndexes := make(map[string]int)
@@ -78,8 +79,6 @@ IterateItemsLoop:
 		result.TableData[table.Name] = resultTableValues
 
 		itemsToProcess = append(itemsToProcess, followReferencesFrom(db, tableMap, table, columnIndexes, itemToProcess)...)
-		////result.Queries = append(result.Queries, prepareRowInsert(db, table, row, tableMap, columnIndexes))
-		//fmt.Println(prepareRowInsert(db, table, row, tableMap, columnIndexes))
 		itemsToProcess = append(itemsToProcess, followReferencesTo(db, tableMap, table, columnIndexes, itemToProcess)...)
 
 	}

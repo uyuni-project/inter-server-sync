@@ -28,21 +28,28 @@ func main() {
 	if len(os.Args) > 1 && strings.Compare(os.Args[1], "dot") == 0 {
 		schemareader.DumpToGraphviz(tables)
 	} else if len(os.Args) > 1 && strings.Compare(os.Args[1], "v2") == 0 {
-		channelLabels := []int{117}
-		filters := dumper.DumpTableFilter(db, tables, channelLabels)
+		//channelLabels := []int{118} // c1
+		//channelLabels := []int{117, 118, 102, 101, 119, 103, 104} //c2
+		//channelLabels := []int{117, 118, 102, 101, 119, 103, 104, 107} //c3
+		//channelLabels := []int{117, 118, 102, 101, 119, 103, 104, 107, 108} //c4
+		//channelLabels := []int{102, 101, 119, 117, 103, 104, 118, 107, 108, 106} // c5
+		channelLabels := []int{102, 103, 104, 105, 106, 107, 108} // c6
+		//channelLabels := []int{117, 118} // c7
+		//channelLabels := []int{108} // c8
+		tableData := dumper.DumpTableData(db, tables, channelLabels)
 
-		if len(os.Args) > 2 && strings.Compare(os.Args[1], "ids") == 0 {
-			for _, value := range filters.TableKeys {
-				fmt.Printf("key: %s \n count: %d \n values: %s\n", value.TableName, len(value.Keys), value)
+		countQueries := dumper.PrintTableDataOrdered(tables, tableData)
+
+		if len(os.Args) > 2 && strings.Compare(os.Args[2], "info") == 0 {
+			count := 0
+			for _, value := range tableData.TableData {
+				fmt.Printf("Table: %s \n\tQueries len: %d \n\tKeys len: %d \n\t keys: %s\n", value.TableName, len(value.Queries), len(value.Keys), value.Keys)
+				count = count + len(value.Keys)
 			}
 
-			fmt.Printf("################%d\n\n", len(filters.Queries))
+			fmt.Printf("IDS############%d\n\n", count)
+			fmt.Printf("countQueries############%d\n\n", countQueries)
 		}
-		fmt.Println("BEGIN;")
-		for _, value := range filters.Queries {
-			fmt.Println(value)
-		}
-		fmt.Println("COMMIT;")
 	} else {
 		fmt.Println("BEGIN;")
 		for _, query := range dumper.Dump(db, tables) {

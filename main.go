@@ -38,7 +38,7 @@ func main() {
 		//channelLabels := []int{108} // c8
 		tableData := dumper.DumpTableData(db, tables, channelLabels)
 
-		countQueries := dumper.PrintTableDataOrdered(tables, tableData)
+		countQueries := dumper.PrintTableDataOrdered(db, tables, tableData)
 
 		if len(os.Args) > 2 && strings.Compare(os.Args[2], "info") == 0 {
 			count := 0

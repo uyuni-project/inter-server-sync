@@ -67,15 +67,16 @@ IterateItemsLoop:
 		}
 
 		if ok {
-			_, processed := resultTableValues.Keys[strings.Join(keyColumnToMap, "$$")]
+			_, processed := resultTableValues.KeyMap[strings.Join(keyColumnToMap, "$$")]
 			if processed {
 				continue IterateItemsLoop
 			}
 		} else {
-			resultTableValues = TableDump{TableName: table.Name, Keys: make(map[string]TableKey)}
+			resultTableValues = TableDump{TableName: table.Name, KeyMap: make(map[string]bool), Keys: make([]TableKey, 0)}
 		}
-		resultTableValues.Keys[strings.Join(keyColumnToMap, "$$")] = TableKey{keyColumnData}
-		resultTableValues.Queries = append(resultTableValues.Queries, prepareRowInsert(db, table, itemToProcess.row, tableMap, columnIndexes))
+		resultTableValues.KeyMap[strings.Join(keyColumnToMap, "$$")] = true
+		resultTableValues.Keys = append(resultTableValues.Keys, TableKey{keyColumnData})
+		//resultTableValues.Queries = append(resultTableValues.Queries, prepareRowInsert(db, table, itemToProcess.row, tableMap, columnIndexes))
 		result.TableData[table.Name] = resultTableValues
 
 		itemsToProcess = append(itemsToProcess, followReferencesFrom(db, tableMap, table, columnIndexes, itemToProcess)...)

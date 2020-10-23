@@ -6,7 +6,8 @@ type TableKey struct {
 
 type TableDump struct {
 	TableName string
-	Keys      map[string]TableKey
+	KeyMap    map[string]bool
+	Keys      []TableKey
 	Queries   []string
 }
 

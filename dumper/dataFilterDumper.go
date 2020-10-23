@@ -35,7 +35,7 @@ func DumpTableFilter(db *sql.DB, tables []schemareader.Table, ids []int) DataDum
 
 func followTableLinks(db *sql.DB, tableMap map[string]schemareader.Table, initialDataSet []processItem) DataDumper {
 
-	result := DataDumper{make([]string, 0), make(map[string]TableFilter, 0)}
+	result := DataDumper{make(map[string]TableDump, 0)}
 
 	itemsToProcess := initialDataSet
 
@@ -49,39 +49,33 @@ IterateItemsLoop:
 		for i, columnName := range table.Columns {
 			columnIndexes[columnName] = i
 		}
-		resultTableValues, ok := result.TableKeys[table.Name]
+		resultTableValues, ok := result.TableData[table.Name]
 
-		if ok {
-			for _, tableKeyColumns := range resultTableValues.Keys {
-				equalKey := true
-				for columnName, rowIdColumnValue := range tableKeyColumns.key {
-					if strings.Compare(rowIdColumnValue, formatField(itemToProcess.row[columnIndexes[columnName]])) != 0 {
-						// ID already processed nothing to do
-						equalKey = false
-						break
-					}
-				}
-				if equalKey {
-					continue IterateItemsLoop
-				}
-			}
-		} else {
-			resultTableValues = TableFilter{TableName: table.Name, Keys: make([]TableKey, 0)}
-		}
-
-		key := make(map[string]string)
+		keyColumnData := make(map[string]string)
+		keyColumnToMap := make([]string, 0)
 		if len(table.PKColumns) > 0 {
 			for pkColumn, _ := range table.PKColumns {
-				key[pkColumn] = formatField(itemToProcess.row[columnIndexes[pkColumn]])
+				keyColumnData[pkColumn] = formatField(itemToProcess.row[columnIndexes[pkColumn]])
+				keyColumnToMap = append(keyColumnToMap, keyColumnData[pkColumn])
 			}
 		} else {
 			for _, pkColumn := range table.UniqueIndexes[table.MainUniqueIndexName].Columns {
-				key[pkColumn] = formatField(itemToProcess.row[columnIndexes[pkColumn]])
+				keyColumnData[pkColumn] = formatField(itemToProcess.row[columnIndexes[pkColumn]])
+				keyColumnToMap = append(keyColumnToMap, keyColumnData[pkColumn])
 			}
 		}
 
-		resultTableValues.Keys = append(resultTableValues.Keys, TableKey{key})
-		result.TableKeys[table.Name] = resultTableValues
+		if ok {
+			_, processed := resultTableValues.Keys[strings.Join(keyColumnToMap, "$$")]
+			if processed {
+				continue IterateItemsLoop
+			}
+		} else {
+			resultTableValues = TableDump{TableName: table.Name, Keys: make(map[string]TableKey)}
+		}
+		resultTableValues.Keys[strings.Join(keyColumnToMap, "$$")] = TableKey{keyColumnData}
+		resultTableValues.Queries = append(resultTableValues.Queries, prepareRowInsert(db, table, itemToProcess.row, tableMap, columnIndexes))
+		result.TableData[table.Name] = resultTableValues
 
 		itemsToProcess = append(itemsToProcess, followReferencesFrom(db, tableMap, table, columnIndexes, itemToProcess)...)
 		////result.Queries = append(result.Queries, prepareRowInsert(db, table, row, tableMap, columnIndexes))
@@ -106,19 +100,16 @@ func shouldFollowReferenceByLink(path []string, table schemareader.Table, refere
 			return false
 		}
 	}
-	// HACK. We should not follow links to this table
-	if strings.Compare(table.Name, "rhnpackagecapability") == 0 {
-		return false
-	}
-	// HACK
-	if strings.Compare(table.Name, "rhnpackage") == 0 && strings.Compare(referencedTable.Name, "rhnerratapackage") == 0 {
-		return false
-	}
+	//// HACK. We should not follow links to this table
+	//if strings.Compare(table.Name, "rhnpackagecapability") == 0 {
+	//	return false
+	//}
 
 	// maybe we can check by convention the linking table. example: rhnerrata -> rhnerratapackage
 
 	// If we don't have a link from to this table we should try to use it.
-	if len(referencedTable.ReferencedBy) == 0 {
+	// also check if the current table is the linking table dominant
+	if len(referencedTable.ReferencedBy) == 0 && strings.HasPrefix(referencedTable.Name, table.Name) {
 		for _, ref := range referencedTable.References {
 			//In the reference table we will go through all the references
 			// ignoring the ones to the current table.
@@ -126,7 +117,7 @@ func shouldFollowReferenceByLink(path []string, table schemareader.Table, refere
 			// If we already passed, we should not follow this path, because we have been already here from another reference
 			if strings.Compare(table.Name, ref.TableName) != 0 {
 				for _, p := range path {
-					if strings.Compare(p, ref.TableName) == 0 {
+					if strings.Compare(p, ref.TableName) == 0 && strings.HasPrefix(referencedTable.Name, table.Name) {
 						return false
 					}
 				}
@@ -180,8 +171,8 @@ func followReferencesTo(db *sql.DB, tableMap map[string]schemareader.Table, tabl
 func followReferencesFrom(db *sql.DB, tableMap map[string]schemareader.Table, table schemareader.Table, columnIndexes map[string]int, row processItem) []processItem {
 	result := make([]processItem, 0)
 	for _, reference := range table.References {
-		foreignTable, tableExist := tableMap[reference.TableName]
-		if !tableExist {
+		foreignTable, ok := tableMap[reference.TableName]
+		if !ok {
 			continue
 		}
 		passed := false

@@ -4,12 +4,12 @@ type TableKey struct {
 	key map[string]string
 }
 
-type TableFilter struct {
+type TableDump struct {
 	TableName string
-	Keys      []TableKey
+	Keys      map[string]TableKey
+	Queries   []string
 }
 
 type DataDumper struct {
-	Queries   []string
-	TableKeys map[string]TableFilter
+	TableData map[string]TableDump
 }

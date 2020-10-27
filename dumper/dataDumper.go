@@ -35,7 +35,7 @@ func DumpTableData(db *sql.DB, tables []schemareader.Table, ids []int) DataDumpe
 
 func followTableLinks(db *sql.DB, tableMap map[string]schemareader.Table, initialDataSet []processItem) DataDumper {
 
-	result := DataDumper{make(map[string]TableDump, 0)}
+	result := DataDumper{make(map[string]TableDump, 0), make(map[string]bool)}
 
 	itemsToProcess := initialDataSet
 
@@ -78,6 +78,10 @@ IterateItemsLoop:
 		resultTableValues.Keys = append(resultTableValues.Keys, TableKey{keyColumnData})
 		//resultTableValues.Queries = append(resultTableValues.Queries, prepareRowInsert(db, table, itemToProcess.row, tableMap, columnIndexes))
 		result.TableData[table.Name] = resultTableValues
+		_, okPath := result.Paths[strings.Join(itemToProcess.path, ",")]
+		if !okPath {
+			result.Paths[strings.Join(itemToProcess.path, ",")] = true
+		}
 
 		itemsToProcess = append(itemsToProcess, followReferencesFrom(db, tableMap, table, columnIndexes, itemToProcess)...)
 		itemsToProcess = append(itemsToProcess, followReferencesTo(db, tableMap, table, columnIndexes, itemToProcess)...)
@@ -160,7 +164,10 @@ func followReferencesTo(db *sql.DB, tableMap map[string]schemareader.Table, tabl
 
 		if len(followRows) > 0 {
 			for _, followRow := range followRows {
-				result = append(result, processItem{referencedTable.Name, followRow, append(row.path, referencedTable.Name)})
+				newPath := make([]string, 0)
+				newPath = append(newPath, row.path...)
+				newPath = append(newPath, referencedTable.Name)
+				result = append(result, processItem{referencedTable.Name, followRow, newPath})
 			}
 		}
 	}
@@ -206,7 +213,10 @@ func followReferencesFrom(db *sql.DB, tableMap map[string]schemareader.Table, ta
 
 		if len(followRows) > 0 {
 			for _, followRow := range followRows {
-				result = append(result, processItem{foreignTable.Name, followRow, append(row.path, foreignTable.Name)})
+				newPath := make([]string, 0)
+				newPath = append(newPath, row.path...)
+				newPath = append(newPath, foreignTable.Name)
+				result = append(result, processItem{foreignTable.Name, followRow, newPath})
 			}
 		}
 	}

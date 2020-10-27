@@ -41,6 +41,9 @@ func main() {
 		countQueries := dumper.PrintTableDataOrdered(db, tables, tableData)
 
 		if len(os.Args) > 2 && strings.Compare(os.Args[2], "info") == 0 {
+			for path, _ := range tableData.Paths {
+				println(path)
+			}
 			count := 0
 			for _, value := range tableData.TableData {
 				fmt.Printf("Table: %s \n\tQueries len: %d \n\tKeys len: %d \n\t keys: %s\n", value.TableName, len(value.Queries), len(value.Keys), value.Keys)

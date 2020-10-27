@@ -13,4 +13,5 @@ type TableDump struct {
 
 type DataDumper struct {
 	TableData map[string]TableDump
+	Paths     map[string]bool
 }

@@ -55,7 +55,7 @@ func main() {
 		}
 	} else {
 		fmt.Println("BEGIN;")
-		for _, query := range dumper.Dump(db, tables) {
+		for _, query := range dumper.DumpAllData(db, tables) {
 			fmt.Println(query + "\n")
 		}
 		fmt.Println("COMMIT;")

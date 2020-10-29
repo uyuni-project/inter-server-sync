@@ -7,12 +7,6 @@ import (
 	"strings"
 )
 
-type processItem struct {
-	tableName string
-	row       []rowDataStructure
-	path      []string
-}
-
 func DumpTableData(db *sql.DB, tables []schemareader.Table, ids []int) DataDumper {
 
 	tableMap := make(map[string]schemareader.Table)

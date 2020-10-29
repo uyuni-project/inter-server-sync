@@ -12,13 +12,6 @@ import (
 	"github.com/moio/mgr-dump/schemareader"
 )
 
-type rowDataStructure struct {
-	columnName   string
-	columnType   string
-	initialValue interface{}
-	value        interface{}
-}
-
 // Dump creates a SQL representation of data in the schema
 func Dump(db *sql.DB, tables []schemareader.Table) []string {
 	tableMap := make(map[string]schemareader.Table)

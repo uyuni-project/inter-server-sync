@@ -27,20 +27,22 @@ func main() {
 
 	if len(os.Args) > 1 && strings.Compare(os.Args[1], "dot") == 0 {
 		schemareader.DumpToGraphviz(tables)
-	} else if len(os.Args) > 1 && strings.Compare(os.Args[1], "v2") == 0 {
+	} else {
 		//channelLabels := []int{118} // c1
-		//channelLabels := []int{117, 118, 102, 101, 119, 103, 104} //c2
+		channelLabels := []int{117, 118, 102, 101, 119, 103, 104} //c2
 		//channelLabels := []int{117, 118, 102, 101, 119, 103, 104, 107} //c3
 		//channelLabels := []int{117, 118, 102, 101, 119, 103, 104, 107, 108} //c4
 		//channelLabels := []int{102, 101, 119, 117, 103, 104, 118, 107, 108, 106} // c5
-		channelLabels := []int{102, 103, 104, 105, 106, 107, 108} // c6
+		//channelLabels := []int{102, 103, 104, 105, 106, 107, 108} // c6
 		//channelLabels := []int{117, 118} // c7
 		//channelLabels := []int{108} // c8
+
+		//channelLabels := []int{102} // Moio's tests
 		tableData := dumper.DumpTableData(db, tables, channelLabels)
 
 		countQueries := dumper.PrintTableDataOrdered(db, tables, tableData)
 
-		if len(os.Args) > 2 && strings.Compare(os.Args[2], "info") == 0 {
+		if len(os.Args) > 1 && strings.Compare(os.Args[1], "info") == 0 {
 			for path, _ := range tableData.Paths {
 				println(path)
 			}
@@ -53,12 +55,5 @@ func main() {
 			fmt.Printf("IDS############%d\n\n", count)
 			fmt.Printf("countQueries############%d\n\n", countQueries)
 		}
-	} else {
-		fmt.Println("BEGIN;")
-		for _, query := range dumper.DumpAllData(db, tables) {
-			fmt.Println(query + "\n")
-		}
-		fmt.Println("COMMIT;")
 	}
-
 }

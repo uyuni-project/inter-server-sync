@@ -426,30 +426,5 @@ func ReadTablesSchema(db *sql.DB) []Table {
 		result = append(result, table)
 	}
 
-	// if we need to apply a schema filter it should be place on a special method
-	// for example the next code
-
-	// main indexes might not cover columns which are populated with sequences
-	// RICARDO: I commented this code block. Didn't remove it because I'm not sure if we should or not keep it
-	// If a table have a unique index referencing a primary key it should be safe since the primary key cannot change.
-	//for i, table := range result {
-	//	if len(table.MainUniqueIndexName) > 0 {
-	//		for _, column := range table.UniqueIndexes[table.MainUniqueIndexName].Columns {
-	//			for _, reference := range table.References {
-	//				referencedColumn := reference.ColumnMapping[column]
-	//				if strings.Compare(referencedColumn, "id") == 0 {
-	//					for _, referencedTable := range result {
-	//						if strings.Compare(referencedTable.Name, reference.TableName) == 0 {
-	//							if strings.Compare(referencedTable.PKSequence, "") != 0 {
-	//								result[i].MainUniqueIndexName = ""
-	//							}
-	//						}
-	//					}
-	//				}
-	//			}
-	//		}
-	//	}
-	//}
-
 	return result
 }

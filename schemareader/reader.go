@@ -370,10 +370,10 @@ func readPKSequence(db *sql.DB, tableName string) string {
 }
 
 // ReadTablesSchema inspects the DB and returns a list of tables
-func ReadTablesSchema(db *sql.DB) []Table {
+func ReadTablesSchema(db *sql.DB) map[string]Table {
 	tableNames := readTableNames()
 
-	result := make([]Table, 0)
+	result := make(map[string]Table, 0)
 	for _, tableName := range tableNames {
 		columns := readColumnNames(db, tableName)
 
@@ -423,7 +423,7 @@ func ReadTablesSchema(db *sql.DB) []Table {
 
 		table := Table{Name: tableName, Columns: columns, PKColumns: pkColumnMap, PKSequence: pkSequence, UniqueIndexes: indexes, MainUniqueIndexName: mainUniqueIndexName, References: references, ReferencedBy: referencedBy}
 		table = applyTableFilters(table)
-		result = append(result, table)
+		result[table.Name] = table
 	}
 
 	return result

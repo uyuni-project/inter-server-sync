@@ -9,13 +9,9 @@ import (
 	"time"
 )
 
-func PrintTableDataOrdered(db *sql.DB, tables []schemareader.Table, data DataDumper) int {
-	tableMap := make(map[string]schemareader.Table)
+func PrintTableDataOrdered(db *sql.DB, tables map[string]schemareader.Table, data DataDumper) int {
 	fmt.Println("BEGIN;")
-	for _, table := range tables {
-		tableMap[table.Name] = table
-	}
-	result := printTableData(db, tableMap, data, tableMap["rhnchannel"], make(map[string]bool), make([]string, 0))
+	result := printTableData(db, tables, data, tables["rhnchannel"], make(map[string]bool), make([]string, 0))
 	fmt.Println("COMMIT;")
 
 	return result

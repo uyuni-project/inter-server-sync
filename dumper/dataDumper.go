@@ -7,23 +7,19 @@ import (
 	"strings"
 )
 
-func DumpTableData(db *sql.DB, tables []schemareader.Table, ids []int) DataDumper {
+func DumpTableData(db *sql.DB, tables map[string]schemareader.Table, ids []int) DataDumper {
 
-	tableMap := make(map[string]schemareader.Table)
-	for _, table := range tables {
-		tableMap[table.Name] = table
-	}
 	initalDataSet := make([]processItem, 0)
 	for _, channelId := range ids {
 		whereFilter := fmt.Sprintf("id = %d", channelId)
 		sql := fmt.Sprintf(`SELECT * FROM rhnchannel where %s ;`, whereFilter)
 		rows := executeQueryWithResults(db, sql)
 		for _, row := range rows {
-			initalDataSet = append(initalDataSet, processItem{tableMap["rhnchannel"].Name, row, []string{"rhnchannel"}})
+			initalDataSet = append(initalDataSet, processItem{tables["rhnchannel"].Name, row, []string{"rhnchannel"}})
 		}
 
 	}
-	result := followTableLinks(db, tableMap, initalDataSet)
+	result := followTableLinks(db, tables, initalDataSet)
 	return result
 }
 

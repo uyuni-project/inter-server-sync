@@ -7,7 +7,7 @@ import (
 
 // DumpToGraphviz outputs a dot representation of a schema. Use:
 // go run . | dot -Tx11
-func DumpToGraphviz(tables []Table) {
+func DumpToGraphviz(tables map[string]Table) {
 	fmt.Printf("graph schema {\n")
 	fmt.Printf("  layout=fdp;\n")
 	fmt.Printf("  K=0.15;\n")

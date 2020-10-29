@@ -48,7 +48,7 @@ func main() {
 			}
 			count := 0
 			for _, value := range tableData.TableData {
-				fmt.Printf("Table: %s \n\tQueries len: %d \n\tKeys len: %d \n\t keys: %s\n", value.TableName, len(value.Queries), len(value.Keys), value.Keys)
+				fmt.Printf("Table: %s \n\tKeys len: %d \n\t keys: %s\n", value.TableName, len(value.Keys), value.Keys)
 				count = count + len(value.Keys)
 			}
 

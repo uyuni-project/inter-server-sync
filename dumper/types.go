@@ -8,7 +8,6 @@ type TableDump struct {
 	TableName string
 	KeyMap    map[string]bool
 	Keys      []TableKey
-	Queries   []string
 }
 
 type DataDumper struct {

@@ -9,15 +9,16 @@ import (
 	"time"
 )
 
-func PrintTableDataOrdered(db *sql.DB, tables map[string]schemareader.Table, data DataDumper) int {
+func PrintTableDataOrdered(db *sql.DB, schemaMetadata map[string]schemareader.Table, data DataDumper) int {
 	fmt.Println("BEGIN;")
-	result := printTableData(db, tables, data, tables["rhnchannel"], make(map[string]bool), make([]string, 0))
+	result := printTableData(db, schemaMetadata, data, schemaMetadata["rhnchannel"], make(map[string]bool), make([]string, 0))
 	fmt.Println("COMMIT;")
 
 	return result
 }
 
-func printTableData(db *sql.DB, tableMap map[string]schemareader.Table, data DataDumper, table schemareader.Table, processedTables map[string]bool, path []string) int {
+func printTableData(db *sql.DB, schemaMetadata map[string]schemareader.Table,
+	data DataDumper, table schemareader.Table, processedTables map[string]bool, path []string) int {
 
 	result := 0
 	_, tableProcessed := processedTables[table.Name]
@@ -30,11 +31,11 @@ func printTableData(db *sql.DB, tableMap map[string]schemareader.Table, data Dat
 	}
 
 	for _, reference := range table.References {
-		tableReference, ok := tableMap[reference.TableName]
+		tableReference, ok := schemaMetadata[reference.TableName]
 		if !ok {
 			continue
 		}
-		result = result + printTableData(db, tableMap, data, tableReference, processedTables, path)
+		result = result + printTableData(db, schemaMetadata, data, tableReference, processedTables, path)
 	}
 	for _, key := range tableData.Keys {
 
@@ -52,19 +53,19 @@ func printTableData(db *sql.DB, tableMap map[string]schemareader.Table, data Dat
 
 		for _, row := range rows {
 			result++
-			fmt.Println(prepareRowInsert(db, table, row, tableMap))
+			fmt.Println(prepareRowInsert(db, table, row, schemaMetadata))
 		}
 	}
 
 	for _, reference := range table.ReferencedBy {
-		tableReference, ok := tableMap[reference.TableName]
+		tableReference, ok := schemaMetadata[reference.TableName]
 		if !ok {
 			continue
 		}
-		if !shouldFollowReferenceToLink(path, table, reference, tableReference) {
+		if !shouldFollowReferenceToLink(path, table, tableReference) {
 			continue
 		}
-		result = result + printTableData(db, tableMap, data, tableReference, processedTables, path)
+		result = result + printTableData(db, schemaMetadata, data, tableReference, processedTables, path)
 	}
 	return result
 }

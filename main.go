@@ -23,9 +23,9 @@ func main() {
 		log.Fatal(err)
 	}
 	defer db.Close()
-	tables := schemareader.ReadTablesSchema(db)
 
 	if len(os.Args) > 1 && strings.Compare(os.Args[1], "dot") == 0 {
+		tables := schemareader.ReadAllTablesSchema(db)
 		schemareader.DumpToGraphviz(tables)
 	} else {
 		//channelLabels := []int{118} // c1
@@ -38,9 +38,7 @@ func main() {
 		//channelLabels := []int{108} // c8
 
 		//channelLabels := []int{102} // Moio's tests
-		tableData := dumper.DumpTableData(db, tables, channelLabels)
-
-		countQueries := dumper.PrintTableDataOrdered(db, tables, tableData)
+		tableData := dumper.DumpeChannelData(db, channelLabels)
 
 		if len(os.Args) > 1 && strings.Compare(os.Args[1], "info") == 0 {
 			for path, _ := range tableData.Paths {
@@ -53,7 +51,6 @@ func main() {
 			}
 
 			fmt.Printf("IDS############%d\n\n", count)
-			fmt.Printf("countQueries############%d\n\n", countQueries)
 		}
 	}
 }

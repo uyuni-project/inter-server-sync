@@ -6,91 +6,28 @@ import (
 	"strings"
 )
 
-///// Tables needed for sure
-//rhnchannel
-//rhnchannelcloned
-//rhnchannelfamily
-//rhnchannelfamilymembers
-//rhnchannelproduct
-//rhnpackagecapability
-//rhnpackageevr
-//rhnpackagename
-//rhnproductname
-//rhnpublicchannelfamily
-//
-//suseproductextension
-//susesccsubscription
-//susesccsubscriptionproduct
-//suseupgradepath
-//suseproducts
-//observations
+func readTableNames(db *sql.DB) []string {
+	sql := `SELECT table_name
+		FROM information_schema.tables
+		WHERE table_schema = 'public'
+			AND table_type = 'BASE TABLE';`
 
-/////missing tables which needs to be exported
-//rhnchannelcloned
-//rhnpublicchannelfamily
-//
-//suseproductextension
-//susesccsubscription
-//susesccsubscriptionproduct
-//suseupgradepath
-//suseproducts
-//observations
-
-func readTableNames() []string {
-	return []string{
-		// dictionaries
-		"rhnproductname",
-		"rhnchannelproduct",
-		"rhnarchtype",
-		"rhnchecksumtype",
-		"rhnpackagearch",
-		"web_customer",
-		"rhnchannelarch",
-		"rhnerrataseverity", // this table is static (even the id's). Should we copy it?
-		//8
-		// data to transfer
-		"rhnchannel",
-		"rhnchannelfamily",
-		"rhnchannelfamilymembers",
-		"rhnerrata",
-		"rhnchannelerrata",
-		//13
-		"rhnpackagename",  // done
-		"rhnpackagegroup", // done
-		"rhnsourcerpm",    // done
-		"rhnpackageevr",   // done
-		"rhnchecksum",     // done
-		//18
-		"rhnpackage",
-		"rhnchannelpackage",
-		"rhnerratapackage",
-		//21
-		"rhnpackageprovider", // catalog
-		"rhnpackagekeytype",  // catalog
-		"rhnpackagekey",      // catalog
-		"rhnpackagekeyassociation",
-		//25
-		"rhnerratabuglist",
-
-		"rhnpackagecapability",
-		"rhnpackagebreaks",
-		"rhnpackagechangelogdata",
-		"rhnpackagechangelogrec",
-		"rhnpackageconflicts",
-		"rhnpackageenhances",
-		"rhnpackagefile",
-		"rhnpackageobsoletes",
-		"rhnpackagepredepends",
-		"rhnpackageprovides",
-		"rhnpackagerecommends",
-		"rhnpackagerequires",
-		"rhnsourcerpm",
-		"rhnpackagesource",
-		"rhnpackagesuggests",
-
-		//"suseproducts",
-
+	rows, err := db.Query(sql)
+	if err != nil {
+		log.Fatal(err)
 	}
+
+	result := make([]string, 0)
+	for rows.Next() {
+		var tableName string
+		err := rows.Scan(&tableName)
+		if err != nil {
+			log.Fatal(err)
+		}
+		result = append(result, tableName)
+	}
+
+	return result
 }
 
 func readColumnNames(db *sql.DB, tableName string) []string {
@@ -370,8 +307,11 @@ func readPKSequence(db *sql.DB, tableName string) string {
 }
 
 // ReadTablesSchema inspects the DB and returns a list of tables
-func ReadTablesSchema(db *sql.DB) map[string]Table {
-	tableNames := readTableNames()
+func ReadAllTablesSchema(db *sql.DB) map[string]Table {
+	return ReadTablesSchema(db, readTableNames(db))
+}
+
+func ReadTablesSchema(db *sql.DB, tableNames []string) map[string]Table {
 
 	result := make(map[string]Table, 0)
 	for _, tableName := range tableNames {

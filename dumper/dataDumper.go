@@ -7,23 +7,7 @@ import (
 	"strings"
 )
 
-func DumpTableData(db *sql.DB, tables map[string]schemareader.Table, ids []int) DataDumper {
-
-	initalDataSet := make([]processItem, 0)
-	for _, channelId := range ids {
-		whereFilter := fmt.Sprintf("id = %d", channelId)
-		sql := fmt.Sprintf(`SELECT * FROM rhnchannel where %s ;`, whereFilter)
-		rows := executeQueryWithResults(db, sql)
-		for _, row := range rows {
-			initalDataSet = append(initalDataSet, processItem{tables["rhnchannel"].Name, row, []string{"rhnchannel"}})
-		}
-
-	}
-	result := followTableLinks(db, tables, initalDataSet)
-	return result
-}
-
-func followTableLinks(db *sql.DB, tableMap map[string]schemareader.Table, initialDataSet []processItem) DataDumper {
+func dumpTableData(db *sql.DB, schemaMetadata map[string]schemareader.Table, initialDataSet []processItem) DataDumper {
 
 	result := DataDumper{make(map[string]TableDump, 0), make(map[string]bool)}
 
@@ -34,7 +18,7 @@ IterateItemsLoop:
 
 		itemToProcess := itemsToProcess[0]
 		itemsToProcess = itemsToProcess[1:]
-		table, ok := tableMap[itemToProcess.tableName]
+		table, ok := schemaMetadata[itemToProcess.tableName]
 
 		resultTableValues, ok := result.TableData[table.Name]
 
@@ -68,17 +52,17 @@ IterateItemsLoop:
 			result.Paths[strings.Join(itemToProcess.path, ",")] = true
 		}
 
-		itemsToProcess = append(itemsToProcess, followReferencesFrom(db, tableMap, table, itemToProcess)...)
-		itemsToProcess = append(itemsToProcess, followReferencesTo(db, tableMap, table, itemToProcess)...)
+		itemsToProcess = append(itemsToProcess, followReferencesFrom(db, schemaMetadata, table, itemToProcess)...)
+		itemsToProcess = append(itemsToProcess, followReferencesTo(db, schemaMetadata, table, itemToProcess)...)
 
 	}
 	return result
 }
 
-func followReferencesFrom(db *sql.DB, tableMap map[string]schemareader.Table, table schemareader.Table, row processItem) []processItem {
+func followReferencesFrom(db *sql.DB, schemaMetadata map[string]schemareader.Table, table schemareader.Table, row processItem) []processItem {
 	result := make([]processItem, 0)
 	for _, reference := range table.References {
-		foreignTable, ok := tableMap[reference.TableName]
+		foreignTable, ok := schemaMetadata[reference.TableName]
 		if !ok {
 			continue
 		}
@@ -123,7 +107,7 @@ func followReferencesFrom(db *sql.DB, tableMap map[string]schemareader.Table, ta
 	return result
 }
 
-func shouldFollowReferenceToLink(path []string, table schemareader.Table, reference schemareader.Reference, referencedTable schemareader.Table) bool {
+func shouldFollowReferenceToLink(path []string, table schemareader.Table, referencedTable schemareader.Table) bool {
 
 	// if we already passed by the table we don't want to follow
 	for _, p := range path {
@@ -159,15 +143,15 @@ func shouldFollowReferenceToLink(path []string, table schemareader.Table, refere
 	return false
 }
 
-func followReferencesTo(db *sql.DB, tableMap map[string]schemareader.Table, table schemareader.Table, row processItem) []processItem {
+func followReferencesTo(db *sql.DB, schemaMetadata map[string]schemareader.Table, table schemareader.Table, row processItem) []processItem {
 	result := make([]processItem, 0)
 
 	for _, reference := range table.ReferencedBy {
-		referencedTable, ok := tableMap[reference.TableName]
+		referencedTable, ok := schemaMetadata[reference.TableName]
 		if !ok {
 			continue
 		}
-		if !shouldFollowReferenceToLink(row.path, table, reference, referencedTable) {
+		if !shouldFollowReferenceToLink(row.path, table, referencedTable) {
 			continue
 		}
 

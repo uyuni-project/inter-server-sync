@@ -3,6 +3,7 @@ package dumper
 import (
 	"database/sql"
 	"fmt"
+
 	"github.com/moio/mgr-dump/schemareader"
 )
 
@@ -60,13 +61,13 @@ func readTableNames() []string {
 	}
 }
 
-func DumpeChannelData(db *sql.DB, ids []int) DataDumper {
+func DumpeChannelData(db *sql.DB, channelLabels []string) DataDumper {
 
 	schemaMetadata := schemareader.ReadTablesSchema(db, readTableNames())
 
 	initalDataSet := make([]processItem, 0)
-	for _, channelId := range ids {
-		whereFilter := fmt.Sprintf("id = %d", channelId)
+	for _, channelLabel := range channelLabels {
+		whereFilter := fmt.Sprintf("label = '%s'", channelLabel)
 		sql := fmt.Sprintf(`SELECT * FROM rhnchannel where %s ;`, whereFilter)
 		rows := executeQueryWithResults(db, sql)
 		for _, row := range rows {

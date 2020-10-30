@@ -377,6 +377,11 @@ func ReadTablesSchema(db *sql.DB) map[string]Table {
 	for _, tableName := range tableNames {
 		columns := readColumnNames(db, tableName)
 
+		columnIndexes := make(map[string]int)
+		for i, columnName := range columns {
+			columnIndexes[columnName] = i
+		}
+
 		pkColumns := readPKColumnNames(db, tableName)
 		pkColumnMap := make(map[string]bool)
 		for _, column := range pkColumns {
@@ -421,7 +426,16 @@ func ReadTablesSchema(db *sql.DB) map[string]Table {
 			referencedBy = append(referencedBy, Reference{TableName: referencedTable, ColumnMapping: columnMap})
 		}
 
-		table := Table{Name: tableName, Columns: columns, PKColumns: pkColumnMap, PKSequence: pkSequence, UniqueIndexes: indexes, MainUniqueIndexName: mainUniqueIndexName, References: references, ReferencedBy: referencedBy}
+		table := Table{
+			Name:                tableName,
+			Columns:             columns,
+			ColumnIndexes:       columnIndexes,
+			PKColumns:           pkColumnMap,
+			PKSequence:          pkSequence,
+			UniqueIndexes:       indexes,
+			MainUniqueIndexName: mainUniqueIndexName,
+			References:          references,
+			ReferencedBy:        referencedBy}
 		table = applyTableFilters(table)
 		result[table.Name] = table
 	}

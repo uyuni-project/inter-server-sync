@@ -19,11 +19,6 @@ func PrintTableDataOrdered(db *sql.DB, tables map[string]schemareader.Table, dat
 
 func printTableData(db *sql.DB, tableMap map[string]schemareader.Table, data DataDumper, table schemareader.Table, processedTables map[string]bool, path []string) int {
 
-	columnIndexes := make(map[string]int)
-	for i, columnName := range table.Columns {
-		columnIndexes[columnName] = i
-	}
-
 	result := 0
 	_, tableProcessed := processedTables[table.Name]
 	processedTables[table.Name] = true
@@ -57,7 +52,7 @@ func printTableData(db *sql.DB, tableMap map[string]schemareader.Table, data Dat
 
 		for _, row := range rows {
 			result++
-			fmt.Println(prepareRowInsert(db, table, row, tableMap, columnIndexes))
+			fmt.Println(prepareRowInsert(db, table, row, tableMap))
 		}
 	}
 
@@ -74,9 +69,9 @@ func printTableData(db *sql.DB, tableMap map[string]schemareader.Table, data Dat
 	return result
 }
 
-func prepareRowInsert(db *sql.DB, table schemareader.Table, row []rowDataStructure, tableMap map[string]schemareader.Table, columnIndexes map[string]int) string {
+func prepareRowInsert(db *sql.DB, table schemareader.Table, row []rowDataStructure, tableMap map[string]schemareader.Table) string {
 	values := substitutePrimaryKey(table, row)
-	values = substituteForeignKey(db, table, tableMap, values, columnIndexes)
+	values = substituteForeignKey(db, table, tableMap, values)
 	return generateInsertStatement(values, table)
 }
 
@@ -98,14 +93,14 @@ func substitutePrimaryKey(table schemareader.Table, row []rowDataStructure) []ro
 	return rowResult
 }
 
-func substituteForeignKey(db *sql.DB, table schemareader.Table, tables map[string]schemareader.Table, row []rowDataStructure, columnIndexes map[string]int) []rowDataStructure {
+func substituteForeignKey(db *sql.DB, table schemareader.Table, tables map[string]schemareader.Table, row []rowDataStructure) []rowDataStructure {
 	for _, reference := range table.References {
-		row = substituteForeignKeyReference(db, tables, reference, row, columnIndexes)
+		row = substituteForeignKeyReference(db, table, tables, reference, row)
 	}
 	return row
 }
 
-func substituteForeignKeyReference(db *sql.DB, tables map[string]schemareader.Table, reference schemareader.Reference, row []rowDataStructure, columnIndexes map[string]int) []rowDataStructure {
+func substituteForeignKeyReference(db *sql.DB, table schemareader.Table, tables map[string]schemareader.Table, reference schemareader.Reference, row []rowDataStructure) []rowDataStructure {
 	foreignTable := tables[reference.TableName]
 
 	foreignMainUniqueColumns := foreignTable.UniqueIndexes[foreignTable.MainUniqueIndexName].Columns
@@ -119,7 +114,7 @@ func substituteForeignKeyReference(db *sql.DB, tables map[string]schemareader.Ta
 		foreignColumns = append(foreignColumns, foreignColumn)
 
 		whereParameters = append(whereParameters, fmt.Sprintf("%s = $%d", foreignColumn, len(whereParameters)+1))
-		scanParameters = append(scanParameters, row[columnIndexes[localColumn]].value)
+		scanParameters = append(scanParameters, row[table.ColumnIndexes[localColumn]].value)
 	}
 
 	formattedColumns := strings.Join(foreignTable.Columns, ", ")
@@ -148,11 +143,7 @@ func substituteForeignKeyReference(db *sql.DB, tables map[string]schemareader.Ta
 							whereParameters = append(whereParameters, fmt.Sprintf("%s = %s",
 								foreignColumn, formatField(c)))
 						} else {
-							columnIndexesForeign := make(map[string]int)
-							for i, columnName := range foreignTable.Columns {
-								columnIndexesForeign[columnName] = i
-							}
-							rowResultTemp := substituteForeignKeyReference(db, tables, foreignReference, rows[0], columnIndexesForeign)
+							rowResultTemp := substituteForeignKeyReference(db, foreignTable, tables, foreignReference, rows[0])
 							fieldToUpdate := formatField(c)
 							for _, field := range rowResultTemp {
 								if strings.Compare(field.columnName, foreignColumn) == 0 {
@@ -173,8 +164,8 @@ func substituteForeignKeyReference(db *sql.DB, tables map[string]schemareader.Ta
 		for localColumn, foreignColumn := range reference.ColumnMapping {
 			updatSql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s limit 1`, foreignColumn, reference.TableName, strings.Join(whereParameters, " and "))
 
-			row[columnIndexes[localColumn]].value = updatSql
-			row[columnIndexes[localColumn]].columnType = "SQL"
+			row[table.ColumnIndexes[localColumn]].value = updatSql
+			row[table.ColumnIndexes[localColumn]].columnType = "SQL"
 		}
 	}
 	return row

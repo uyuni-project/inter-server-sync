@@ -4,6 +4,7 @@ package schemareader
 type Table struct {
 	Name          string
 	Columns       []string
+	ColumnIndexes map[string]int
 	PKColumns     map[string]bool
 	PKSequence    string
 	UniqueIndexes map[string]UniqueIndex

@@ -36,22 +36,18 @@ IterateItemsLoop:
 		itemsToProcess = itemsToProcess[1:]
 		table, ok := tableMap[itemToProcess.tableName]
 
-		columnIndexes := make(map[string]int)
-		for i, columnName := range table.Columns {
-			columnIndexes[columnName] = i
-		}
 		resultTableValues, ok := result.TableData[table.Name]
 
 		keyColumnData := make(map[string]string)
 		keyColumnToMap := make([]string, 0)
 		if len(table.PKColumns) > 0 {
 			for pkColumn, _ := range table.PKColumns {
-				keyColumnData[pkColumn] = formatField(itemToProcess.row[columnIndexes[pkColumn]])
+				keyColumnData[pkColumn] = formatField(itemToProcess.row[table.ColumnIndexes[pkColumn]])
 				keyColumnToMap = append(keyColumnToMap, keyColumnData[pkColumn])
 			}
 		} else {
 			for _, pkColumn := range table.UniqueIndexes[table.MainUniqueIndexName].Columns {
-				keyColumnData[pkColumn] = formatField(itemToProcess.row[columnIndexes[pkColumn]])
+				keyColumnData[pkColumn] = formatField(itemToProcess.row[table.ColumnIndexes[pkColumn]])
 				keyColumnToMap = append(keyColumnToMap, keyColumnData[pkColumn])
 			}
 		}
@@ -72,14 +68,14 @@ IterateItemsLoop:
 			result.Paths[strings.Join(itemToProcess.path, ",")] = true
 		}
 
-		itemsToProcess = append(itemsToProcess, followReferencesFrom(db, tableMap, table, columnIndexes, itemToProcess)...)
-		itemsToProcess = append(itemsToProcess, followReferencesTo(db, tableMap, table, columnIndexes, itemToProcess)...)
+		itemsToProcess = append(itemsToProcess, followReferencesFrom(db, tableMap, table, itemToProcess)...)
+		itemsToProcess = append(itemsToProcess, followReferencesTo(db, tableMap, table, itemToProcess)...)
 
 	}
 	return result
 }
 
-func followReferencesFrom(db *sql.DB, tableMap map[string]schemareader.Table, table schemareader.Table, columnIndexes map[string]int, row processItem) []processItem {
+func followReferencesFrom(db *sql.DB, tableMap map[string]schemareader.Table, table schemareader.Table, row processItem) []processItem {
 	result := make([]processItem, 0)
 	for _, reference := range table.References {
 		foreignTable, ok := tableMap[reference.TableName]
@@ -107,7 +103,7 @@ func followReferencesFrom(db *sql.DB, tableMap map[string]schemareader.Table, ta
 			foreignColumns = append(foreignColumns, foreignColumn)
 
 			whereParameters = append(whereParameters, fmt.Sprintf("%s = $%d", foreignColumn, len(whereParameters)+1))
-			scanParameters = append(scanParameters, row.row[columnIndexes[localColumn]].value)
+			scanParameters = append(scanParameters, row.row[table.ColumnIndexes[localColumn]].value)
 		}
 
 		formattedColumns := strings.Join(foreignTable.Columns, ", ")
@@ -163,7 +159,7 @@ func shouldFollowReferenceToLink(path []string, table schemareader.Table, refere
 	return false
 }
 
-func followReferencesTo(db *sql.DB, tableMap map[string]schemareader.Table, table schemareader.Table, columnIndexes map[string]int, row processItem) []processItem {
+func followReferencesTo(db *sql.DB, tableMap map[string]schemareader.Table, table schemareader.Table, row processItem) []processItem {
 	result := make([]processItem, 0)
 
 	for _, reference := range table.ReferencedBy {
@@ -185,7 +181,7 @@ func followReferencesTo(db *sql.DB, tableMap map[string]schemareader.Table, tabl
 			foreignColumns = append(foreignColumns, foreignColumn)
 
 			whereParameters = append(whereParameters, fmt.Sprintf("%s = $%d", localColumn, len(whereParameters)+1))
-			scanParameters = append(scanParameters, row.row[columnIndexes[foreignColumn]].value)
+			scanParameters = append(scanParameters, row.row[table.ColumnIndexes[foreignColumn]].value)
 		}
 
 		formattedColumns := strings.Join(referencedTable.Columns, ", ")

@@ -71,21 +71,11 @@ func main() {
 		tables := schemareader.ReadAllTablesSchema(db)
 		schemareader.DumpToGraphviz(tables)
 	} else {
-		//channelLabels := []int{118} // c1
-		//channelLabels := []int{117, 118, 102, 101, 119, 103, 104} //c2
-		//channelLabels := []int{117, 118, 102, 101, 119, 103, 104, 107} //c3
-		//channelLabels := []int{117, 118, 102, 101, 119, 103, 104, 107, 108} //c4
-		//channelLabels := []int{102, 101, 119, 117, 103, 104, 118, 107, 108, 106} // c5
-		//channelLabels := []int{102, 103, 104, 105, 106, 107, 108} // c6
-		//channelLabels := []int{117, 118} // c7
-		//channelLabels := []int{108} // c8
-
-		//channelLabels := []int{102} // Moio's tests
 		channelLabels := parsedArgs.channleLabels
 		tableData := dumper.DumpeChannelData(db, channelLabels)
 
 		if len(os.Args) > 1 && strings.Compare(os.Args[1], "info") == 0 {
-			for path, _ := range tableData.Paths {
+			for path := range tableData.Paths {
 				println(path)
 			}
 			count := 0

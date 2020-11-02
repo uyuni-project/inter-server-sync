@@ -115,12 +115,6 @@ func shouldFollowReferenceToLink(path []string, table schemareader.Table, refere
 			return false
 		}
 	}
-	//// HACK. We should not follow links to this table
-	//if strings.Compare(table.Name, "rhnpackagecapability") == 0 {
-	//	return false
-	//}
-
-	// maybe we can check by convention the linking table. example: rhnerrata -> rhnerratapackage
 
 	// If we don't have a link from to this table we should try to use it.
 	// also check if the current table is the linking table dominant

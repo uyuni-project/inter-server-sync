@@ -31,8 +31,10 @@ type Args struct {
 	debug         bool
 }
 
+const configFilePath = "/etc/rhn/rhn.conf"
+
 // cd spacewalk/java; make -f Makefile.docker dockerrun_pg
-const connectionString = "user='spacewalk' password='spacewalk' dbname='susemanager' host='localhost' port='5432' sslmode=disable"
+//const connectionString = "user='spacewalk' password='spacewalk' dbname='susemanager' host='localhost' port='5432' sslmode=disable"
 
 // psql --host=localhost --port=5432 --username=spacewalk susemanager
 
@@ -64,7 +66,7 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
-
+	connectionString := schemareader.GetConnectionString(configFilePath)
 	db, err := sql.Open("postgres", connectionString)
 	if err != nil {
 		log.Fatal(err)

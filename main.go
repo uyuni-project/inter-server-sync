@@ -27,6 +27,7 @@ Options:
 type Args struct {
 	channleLabels []string
 	path          string
+	dot           bool
 }
 
 // cd spacewalk/java; make -f Makefile.docker dockerrun_pg
@@ -44,6 +45,8 @@ func cli(args []string) (*Args, error) {
 
 	path := flag.String("path", ".", "Location for generated data")
 
+	dot := flag.Bool("dot", false, "Create dot file for Graphviz")
+
 	if len(args) < 2 {
 		flag.Usage()
 		return nil, errors.New("Insufficent arguments")
@@ -51,12 +54,11 @@ func cli(args []string) (*Args, error) {
 
 	flag.Parse()
 
-	return &Args{strings.Split(*channelLabels, ","), *path}, nil
+	return &Args{strings.Split(*channelLabels, ","), *path, *dot}, nil
 }
 
 func main() {
 	parsedArgs, err := cli(os.Args)
-
 	if err != nil {
 		os.Exit(1)
 	}
@@ -65,26 +67,26 @@ func main() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	defer db.Close()
 
-	if len(os.Args) > 1 && strings.Compare(os.Args[1], "dot") == 0 {
+	if parsedArgs.dot {
 		tables := schemareader.ReadAllTablesSchema(db)
 		schemareader.DumpToGraphviz(tables)
-	} else {
+		return
+	}
+	if len(parsedArgs.channleLabels) > 0 {
 		channelLabels := parsedArgs.channleLabels
 		tableData := dumper.DumpeChannelData(db, channelLabels)
 
-		if len(os.Args) > 1 && strings.Compare(os.Args[1], "info") == 0 {
-			for path := range tableData.Paths {
-				println(path)
-			}
-			count := 0
-			for _, value := range tableData.TableData {
-				fmt.Printf("Table: %s \n\tKeys len: %d \n\t keys: %s\n", value.TableName, len(value.Keys), value.Keys)
-				count = count + len(value.Keys)
-			}
-
-			fmt.Printf("IDS############%d\n\n", count)
+		for path := range tableData.Paths {
+			println(path)
 		}
+		count := 0
+		for _, value := range tableData.TableData {
+			fmt.Printf("Table: %s \n\tKeys len: %d \n\t keys: %s\n", value.TableName, len(value.Keys), value.Keys)
+			count = count + len(value.Keys)
+		}
+		fmt.Printf("IDS############%d\n\n", count)
 	}
 }

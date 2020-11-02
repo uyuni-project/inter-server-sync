@@ -61,7 +61,7 @@ func readTableNames() []string {
 	}
 }
 
-func DumpeChannelData(db *sql.DB, channelLabels []string) DataDumper {
+func DumpeChannelData(db *sql.DB, channelLabels []string, outputFolder string) DataDumper {
 
 	schemaMetadata := schemareader.ReadTablesSchema(db, readTableNames())
 
@@ -76,6 +76,6 @@ func DumpeChannelData(db *sql.DB, channelLabels []string) DataDumper {
 
 	}
 	tableData := dumpTableData(db, schemaMetadata, initalDataSet)
-	PrintTableDataOrdered(db, schemaMetadata, tableData)
+	PrintTableDataOrdered(db, outputFolder, schemaMetadata, tableData)
 	return tableData
 }

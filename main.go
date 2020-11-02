@@ -28,6 +28,7 @@ type Args struct {
 	channleLabels []string
 	path          string
 	dot           bool
+	debug         bool
 }
 
 // cd spacewalk/java; make -f Makefile.docker dockerrun_pg
@@ -46,6 +47,7 @@ func cli(args []string) (*Args, error) {
 	path := flag.String("path", ".", "Location for generated data")
 
 	dot := flag.Bool("dot", false, "Create dot file for Graphviz")
+	debug := flag.Bool("debug", false, "debug export data")
 
 	if len(args) < 2 {
 		flag.Usage()
@@ -54,7 +56,7 @@ func cli(args []string) (*Args, error) {
 
 	flag.Parse()
 
-	return &Args{strings.Split(*channelLabels, ","), *path, *dot}, nil
+	return &Args{strings.Split(*channelLabels, ","), *path, *dot, *debug}, nil
 }
 
 func main() {
@@ -77,16 +79,19 @@ func main() {
 	}
 	if len(parsedArgs.channleLabels) > 0 {
 		channelLabels := parsedArgs.channleLabels
-		tableData := dumper.DumpeChannelData(db, channelLabels)
+		outputFolder := parsedArgs.path
+		tableData := dumper.DumpeChannelData(db, channelLabels, outputFolder)
 
-		for path := range tableData.Paths {
-			println(path)
+		if parsedArgs.debug {
+			for path := range tableData.Paths {
+				println(path)
+			}
+			count := 0
+			for _, value := range tableData.TableData {
+				fmt.Printf("Table: %s \n\tKeys len: %d \n\t keys: %s\n", value.TableName, len(value.Keys), value.Keys)
+				count = count + len(value.Keys)
+			}
+			fmt.Printf("IDS############%d\n\n", count)
 		}
-		count := 0
-		for _, value := range tableData.TableData {
-			fmt.Printf("Table: %s \n\tKeys len: %d \n\t keys: %s\n", value.TableName, len(value.Keys), value.Keys)
-			count = count + len(value.Keys)
-		}
-		fmt.Printf("IDS############%d\n\n", count)
 	}
 }

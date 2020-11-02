@@ -1,24 +1,34 @@
 package dumper
 
 import (
+	"bufio"
 	"database/sql"
 	"fmt"
 	"github.com/lib/pq"
 	"github.com/moio/mgr-dump/schemareader"
+	"log"
+	"os"
 	"strings"
 	"time"
 )
 
-func PrintTableDataOrdered(db *sql.DB, schemaMetadata map[string]schemareader.Table, data DataDumper) int {
-	fmt.Println("BEGIN;")
-	result := printTableData(db, schemaMetadata, data, schemaMetadata["rhnchannel"], make(map[string]bool), make([]string, 0))
-	fmt.Println("COMMIT;")
+func PrintTableDataOrdered(db *sql.DB, outputFolder string, schemaMetadata map[string]schemareader.Table, data DataDumper) int {
+	file, err := os.Create(outputFolder + "/sql_statements.sql")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	bufferWritter := bufio.NewWriter(file)
+	defer bufferWritter.Flush()
+
+	bufferWritter.WriteString("BEGIN;\n")
+	result := printTableData(db, bufferWritter, schemaMetadata, data, schemaMetadata["rhnchannel"], make(map[string]bool), make([]string, 0))
+	bufferWritter.WriteString("COMMIT;\n")
 
 	return result
 }
 
-func printTableData(db *sql.DB, schemaMetadata map[string]schemareader.Table,
-	data DataDumper, table schemareader.Table, processedTables map[string]bool, path []string) int {
+func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string]schemareader.Table, data DataDumper, table schemareader.Table, processedTables map[string]bool, path []string) int {
 
 	result := 0
 	_, tableProcessed := processedTables[table.Name]
@@ -35,7 +45,7 @@ func printTableData(db *sql.DB, schemaMetadata map[string]schemareader.Table,
 		if !ok {
 			continue
 		}
-		result = result + printTableData(db, schemaMetadata, data, tableReference, processedTables, path)
+		result = result + printTableData(db, writter, schemaMetadata, data, tableReference, processedTables, path)
 	}
 	for _, key := range tableData.Keys {
 
@@ -53,7 +63,7 @@ func printTableData(db *sql.DB, schemaMetadata map[string]schemareader.Table,
 
 		for _, row := range rows {
 			result++
-			fmt.Println(prepareRowInsert(db, table, row, schemaMetadata))
+			writter.WriteString(prepareRowInsert(db, table, row, schemaMetadata) + "\n")
 		}
 	}
 
@@ -65,7 +75,7 @@ func printTableData(db *sql.DB, schemaMetadata map[string]schemareader.Table,
 		if !shouldFollowReferenceToLink(path, table, tableReference) {
 			continue
 		}
-		result = result + printTableData(db, schemaMetadata, data, tableReference, processedTables, path)
+		result = result + printTableData(db, writter, schemaMetadata, data, tableReference, processedTables, path)
 	}
 	return result
 }

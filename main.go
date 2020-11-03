@@ -27,16 +27,12 @@ Options:
 type Args struct {
 	channleLabels []string
 	path          string
+	config        string
 	dot           bool
 	debug         bool
 }
 
 const configFilePath = "/etc/rhn/rhn.conf"
-
-// cd spacewalk/java; make -f Makefile.docker dockerrun_pg
-//const connectionString = "user='spacewalk' password='spacewalk' dbname='susemanager' host='localhost' port='5432' sslmode=disable"
-
-// psql --host=localhost --port=5432 --username=spacewalk susemanager
 
 func cli(args []string) (*Args, error) {
 
@@ -48,7 +44,10 @@ func cli(args []string) (*Args, error) {
 
 	path := flag.String("path", ".", "Location for generated data")
 
+	config := flag.String("config", "/etc/rhn/rhn.conf", "Path for the config file")
+
 	dot := flag.Bool("dot", false, "Create dot file for Graphviz")
+
 	debug := flag.Bool("debug", false, "debug export data")
 
 	if len(args) < 2 {
@@ -58,7 +57,7 @@ func cli(args []string) (*Args, error) {
 
 	flag.Parse()
 
-	return &Args{strings.Split(*channelLabels, ","), *path, *dot, *debug}, nil
+	return &Args{strings.Split(*channelLabels, ","), *path, *config, *dot, *debug}, nil
 }
 
 func main() {
@@ -66,7 +65,7 @@ func main() {
 	if err != nil {
 		os.Exit(1)
 	}
-	connectionString := schemareader.GetConnectionString(configFilePath)
+	connectionString := schemareader.GetConnectionString(parsedArgs.config)
 	db, err := sql.Open("postgres", connectionString)
 	if err != nil {
 		log.Fatal(err)

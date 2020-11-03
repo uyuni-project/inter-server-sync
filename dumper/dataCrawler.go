@@ -7,7 +7,10 @@ import (
 	"strings"
 )
 
-func dumpTableData(db *sql.DB, schemaMetadata map[string]schemareader.Table, initialDataSet []processItem) DataDumper {
+// dataCrawler will go through all the elements in the initialDataSet an extract related data
+// for all tables presented in the schemaMetadata by following foreign keys and references to the table row
+// The result will be a structure containing ID of each row which should be exported per table
+func dataCrawler(db *sql.DB, schemaMetadata map[string]schemareader.Table, initialDataSet []processItem) DataDumper {
 
 	result := DataDumper{make(map[string]TableDump, 0), make(map[string]bool)}
 
@@ -18,34 +21,27 @@ IterateItemsLoop:
 
 		itemToProcess := itemsToProcess[0]
 		itemsToProcess = itemsToProcess[1:]
-		table, ok := schemaMetadata[itemToProcess.tableName]
 
-		resultTableValues, ok := result.TableData[table.Name]
-
-		keyColumnData := make(map[string]string)
-		keyColumnToMap := make([]string, 0)
-		if len(table.PKColumns) > 0 {
-			for pkColumn, _ := range table.PKColumns {
-				keyColumnData[pkColumn] = formatField(itemToProcess.row[table.ColumnIndexes[pkColumn]])
-				keyColumnToMap = append(keyColumnToMap, keyColumnData[pkColumn])
-			}
-		} else {
-			for _, pkColumn := range table.UniqueIndexes[table.MainUniqueIndexName].Columns {
-				keyColumnData[pkColumn] = formatField(itemToProcess.row[table.ColumnIndexes[pkColumn]])
-				keyColumnToMap = append(keyColumnToMap, keyColumnData[pkColumn])
-			}
+		table, tableExists := schemaMetadata[itemToProcess.tableName]
+		if !tableExists {
+			continue IterateItemsLoop
 		}
 
-		if ok {
-			_, processed := resultTableValues.KeyMap[strings.Join(keyColumnToMap, "$$")]
-			if processed {
+		keyColumnData := extractRowKeyData(table, itemToProcess)
+		keyIdToMap := generateKeyIdToMap(keyColumnData)
+
+		resultTableValues, resultExists := result.TableData[table.Name]
+		if resultExists {
+			_, rowProcessed := resultTableValues.KeyMap[keyIdToMap]
+			if rowProcessed {
 				continue IterateItemsLoop
 			}
 		} else {
 			resultTableValues = TableDump{TableName: table.Name, KeyMap: make(map[string]bool), Keys: make([]TableKey, 0)}
 		}
-		resultTableValues.KeyMap[strings.Join(keyColumnToMap, "$$")] = true
+		resultTableValues.KeyMap[keyIdToMap] = true
 		resultTableValues.Keys = append(resultTableValues.Keys, TableKey{keyColumnData})
+
 		result.TableData[table.Name] = resultTableValues
 		_, okPath := result.Paths[strings.Join(itemToProcess.path, ",")]
 		if !okPath {
@@ -59,35 +55,52 @@ IterateItemsLoop:
 	return result
 }
 
+func generateKeyIdToMap(data map[string]string) string {
+	keyValuesList := make([]string, 0)
+	for _, value := range data {
+		keyValuesList = append(keyValuesList, value)
+	}
+	return strings.Join(keyValuesList, "$$")
+}
+
+func extractRowKeyData(table schemareader.Table, itemToProcess processItem) map[string]string {
+	keyColumnData := make(map[string]string)
+	if len(table.PKColumns) > 0 {
+		for pkColumn, _ := range table.PKColumns {
+			keyColumnData[pkColumn] = formatField(itemToProcess.row[table.ColumnIndexes[pkColumn]])
+		}
+	} else {
+		for _, pkColumn := range table.UniqueIndexes[table.MainUniqueIndexName].Columns {
+			keyColumnData[pkColumn] = formatField(itemToProcess.row[table.ColumnIndexes[pkColumn]])
+		}
+	}
+	return keyColumnData
+}
+
 func followReferencesFrom(db *sql.DB, schemaMetadata map[string]schemareader.Table, table schemareader.Table, row processItem) []processItem {
 	result := make([]processItem, 0)
+
 	for _, reference := range table.References {
 		foreignTable, ok := schemaMetadata[reference.TableName]
 		if !ok {
 			continue
 		}
-		passed := false
+		targetTableVisited := false
 		for _, p := range row.path {
 			if strings.Compare(p, foreignTable.Name) == 0 {
-				passed = true
+				targetTableVisited = true
 				break
 			}
 		}
-		if passed {
+		if targetTableVisited {
 			continue
 		}
-
-		localColumns := make([]string, 0)
-		foreignColumns := make([]string, 0)
 
 		whereParameters := make([]string, 0)
 		scanParameters := make([]interface{}, 0)
 		for localColumn, foreignColumn := range reference.ColumnMapping {
-			localColumns = append(localColumns, localColumn)
-			foreignColumns = append(foreignColumns, foreignColumn)
-
 			whereParameters = append(whereParameters, fmt.Sprintf("%s = $%d", foreignColumn, len(whereParameters)+1))
-			scanParameters = append(scanParameters, row.row[table.ColumnIndexes[localColumn]].value)
+			scanParameters = append(scanParameters, formatField(row.row[table.ColumnIndexes[localColumn]]))
 		}
 
 		formattedColumns := strings.Join(foreignTable.Columns, ", ")
@@ -107,26 +120,26 @@ func followReferencesFrom(db *sql.DB, schemaMetadata map[string]schemareader.Tab
 	return result
 }
 
-func shouldFollowReferenceToLink(path []string, table schemareader.Table, referencedTable schemareader.Table) bool {
+func shouldFollowReferenceToLink(path []string, currentTable schemareader.Table, referencedTable schemareader.Table) bool {
 
-	// if we already passed by the table we don't want to follow
+	// if we already passed by the referencedTable we don't want to follow
 	for _, p := range path {
 		if strings.Compare(p, referencedTable.Name) == 0 {
 			return false
 		}
 	}
 
-	// If we don't have a link from to this table we should try to use it.
-	// also check if the current table is the linking table dominant
-	if len(referencedTable.ReferencedBy) == 0 && strings.HasPrefix(referencedTable.Name, table.Name) {
+	// If referencedTable don't have any link to it, we should try to use it
+	// Also in the referencedTable it the currentTable is the linking table dominant, by comparing is name
+	if len(referencedTable.ReferencedBy) == 0 && strings.HasPrefix(referencedTable.Name, currentTable.Name) {
 		for _, ref := range referencedTable.References {
-			//In the reference table we will go through all the references
-			// ignoring the ones to the current table.
-			// And see if we have already passed (part of path) in one of the references
-			// If we already passed, we should not follow this path, because we have been already here from another reference
-			if strings.Compare(table.Name, ref.TableName) != 0 {
+			//In the referencedTable we will go through all the references
+			// ignoring the ones to the currentTable.
+			// And see if we have already passed (part of path) in one of the reference tables of referencedTable
+			// If we already passed, we should not follow this path, because we have been already here
+			if strings.Compare(currentTable.Name, ref.TableName) != 0 {
 				for _, p := range path {
-					if strings.Compare(p, ref.TableName) == 0 && strings.HasPrefix(referencedTable.Name, table.Name) {
+					if strings.Compare(p, ref.TableName) == 0 {
 						return false
 					}
 				}
@@ -149,17 +162,11 @@ func followReferencesTo(db *sql.DB, schemaMetadata map[string]schemareader.Table
 			continue
 		}
 
-		localColumns := make([]string, 0)
-		foreignColumns := make([]string, 0)
-
 		whereParameters := make([]string, 0)
 		scanParameters := make([]interface{}, 0)
 		for localColumn, foreignColumn := range reference.ColumnMapping {
-			localColumns = append(localColumns, localColumn)
-			foreignColumns = append(foreignColumns, foreignColumn)
-
 			whereParameters = append(whereParameters, fmt.Sprintf("%s = $%d", localColumn, len(whereParameters)+1))
-			scanParameters = append(scanParameters, row.row[table.ColumnIndexes[foreignColumn]].value)
+			scanParameters = append(scanParameters, formatField(row.row[table.ColumnIndexes[foreignColumn]]))
 		}
 
 		formattedColumns := strings.Join(referencedTable.Columns, ", ")
@@ -176,6 +183,5 @@ func followReferencesTo(db *sql.DB, schemaMetadata map[string]schemareader.Table
 			}
 		}
 	}
-
 	return result
 }

@@ -17,30 +17,25 @@ func readTableNames() []string {
 		"rhnpackagearch",
 		"web_customer",
 		"rhnchannelarch",
-		"rhnerrataseverity", // this table is static (even the id's). Should we copy it?
-		//8
+		"rhnerrataseverity", // catalog
 		// data to transfer
 		"rhnchannel",
 		"rhnchannelfamily",
 		"rhnchannelfamilymembers",
 		"rhnerrata",
 		"rhnchannelerrata",
-		//13
 		"rhnpackagename",  // done
 		"rhnpackagegroup", // done
 		"rhnsourcerpm",    // done
 		"rhnpackageevr",   // done
 		"rhnchecksum",     // done
-		//18
 		"rhnpackage",
 		"rhnchannelpackage",
 		"rhnerratapackage",
-		//21
 		"rhnpackageprovider", // catalog
 		"rhnpackagekeytype",  // catalog
 		"rhnpackagekey",      // catalog
 		"rhnpackagekeyassociation",
-		//25
 		"rhnerratabuglist",
 
 		"rhnpackagecapability",
@@ -75,7 +70,7 @@ func DumpeChannelData(db *sql.DB, channelLabels []string, outputFolder string) D
 		}
 
 	}
-	tableData := dumpTableData(db, schemaMetadata, initalDataSet)
+	tableData := dataCrawler(db, schemaMetadata, initalDataSet)
 	PrintTableDataOrdered(db, outputFolder, schemaMetadata, tableData)
 	return tableData
 }

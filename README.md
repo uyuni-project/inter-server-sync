@@ -1,28 +1,29 @@
-This is a POC for a new implementation of Inter Server Sync (ISS) on uyuni-project.
+# Inter Server Sync (ISS)
+
+## Available configuration parameters
+
+| name       | default value       | description | 
+| ---------- | ------------------- | ----------- |
+| channels   | ""                  | Labels for channels to sync (comma seprated in case of multiple) |
+| path       | "."                 | Location for generated data|
+| config     | "/etc/rhn/rhn.conf" | Path for the config file | 
+| dot        | false               | Output dot format of table metadata for Graphviz |
+| debug      | false               | Output debug information about the export data |
 
 ## Dot graph with schema metadata
 
-`go run . dot | dot -Tx11`
+`go run . -dot | dot -Tx11`
 
 ## Export Data
 
-### Version 1
+- run commnad `go run -channels=LABEL1,LABEL2`
 
-Export all data from the database table specified in `schemareadr/reader.go`
+A file named `sql_statements.sql` will be generated on the location defined in `path`.
 
-command: `go run . > sql_inserts.sql`
-
-### Version 2
-
-Export data filtered by channel ID.
-
-- Update channels ids in https://github.com/uyuni-project/inter-server-sync/blob/main/main.go#L36-L39
-- run commnad `go run . v2 &> update_queries.sql`
-
-It's also possible to print summary information at the end, 
-containing all id's and number of records per table and also the total number of inserts.
-For that run the command: `go run . v2 info &> update_queries.sql`
+For debug purposes it's also possible to generate debug information about the generated data.
+`go run -channels=LABEL1,LABEL2 -debug`
 
 ## After export
 
-Copy file to target machine and run `spacewalk-sql `
+Copy file to target machine and run `sql-statements.sql`
+Import can be done with `spacewalk-sql sql-statements.sql`

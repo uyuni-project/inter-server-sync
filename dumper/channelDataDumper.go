@@ -20,6 +20,12 @@ func SoftwareChannelTableNames() []string {
 		// data to transfer: products
 		"rhnproductname",
 		"rhnchannelproduct",
+		"suseproductchannel",
+		"suseproductextension",
+		"suseproducts",
+		"suseproductsccrepository",
+		"susesccrepository",
+		// data to transfer: channels
 		"rhnchannel",
 		"rhnchannelfamily",
 		"rhnchannelfamilymembers",

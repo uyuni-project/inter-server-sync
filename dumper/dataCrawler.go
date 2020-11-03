@@ -100,7 +100,7 @@ func followReferencesFrom(db *sql.DB, schemaMetadata map[string]schemareader.Tab
 		scanParameters := make([]interface{}, 0)
 		for localColumn, foreignColumn := range reference.ColumnMapping {
 			whereParameters = append(whereParameters, fmt.Sprintf("%s = $%d", foreignColumn, len(whereParameters)+1))
-			scanParameters = append(scanParameters, formatField(row.row[table.ColumnIndexes[localColumn]]))
+			scanParameters = append(scanParameters, row.row[table.ColumnIndexes[localColumn]].value)
 		}
 
 		formattedColumns := strings.Join(foreignTable.Columns, ", ")
@@ -166,7 +166,7 @@ func followReferencesTo(db *sql.DB, schemaMetadata map[string]schemareader.Table
 		scanParameters := make([]interface{}, 0)
 		for localColumn, foreignColumn := range reference.ColumnMapping {
 			whereParameters = append(whereParameters, fmt.Sprintf("%s = $%d", localColumn, len(whereParameters)+1))
-			scanParameters = append(scanParameters, formatField(row.row[table.ColumnIndexes[foreignColumn]]))
+			scanParameters = append(scanParameters, row.row[table.ColumnIndexes[foreignColumn]].value)
 		}
 
 		formattedColumns := strings.Join(referencedTable.Columns, ", ")

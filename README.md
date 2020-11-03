@@ -16,7 +16,7 @@ command: `go run . > sql_inserts.sql`
 
 Export data filtered by channel ID.
 
-- Update channels ids in https://github.com/moio/mgr-dump/blob/main/main.go#L36-L39
+- Update channels ids in https://github.com/uyuni-project/inter-server-sync/blob/main/main.go#L36-L39
 - run commnad `go run . v2 &> update_queries.sql`
 
 It's also possible to print summary information at the end, 

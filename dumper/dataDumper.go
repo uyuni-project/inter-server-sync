@@ -3,7 +3,7 @@ package dumper
 import (
 	"database/sql"
 	"fmt"
-	"github.com/moio/mgr-dump/schemareader"
+	"github.com/uyuni-project/inter-server-sync/schemareader"
 	"strings"
 )
 

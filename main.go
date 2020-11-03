@@ -10,8 +10,8 @@ import (
 	"strings"
 
 	_ "github.com/lib/pq"
-	"github.com/moio/mgr-dump/dumper"
-	"github.com/moio/mgr-dump/schemareader"
+	"github.com/uyuni-project/inter-server-sync/dumper"
+	"github.com/uyuni-project/inter-server-sync/schemareader"
 )
 
 const (

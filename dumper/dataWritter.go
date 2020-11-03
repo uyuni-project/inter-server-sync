@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/lib/pq"
-	"github.com/moio/mgr-dump/schemareader"
+	"github.com/uyuni-project/inter-server-sync/schemareader"
 	"log"
 	"os"
 	"strings"

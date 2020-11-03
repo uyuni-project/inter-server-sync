@@ -1,4 +1,4 @@
-module github.com/moio/mgr-dump
+module github.com/uyuni-project/inter-server-sync
 
 go 1.12
 

@@ -27,10 +27,13 @@ func SoftwareChannelTableNames() []string {
 		"susesccrepository",
 		// data to transfer: channels
 		"rhnchannel",
+		"rhnchannelcloned",
 		"rhnchannelfamily",
 		"rhnchannelfamilymembers",
+		"rhnpublicchannelfamily",
 		"rhnerrata",
 		"rhnchannelerrata",
+		"rhnpackagenevra",
 		"rhnpackagename",  // done
 		"rhnpackagegroup", // done
 		"rhnsourcerpm",    // done
@@ -44,7 +47,9 @@ func SoftwareChannelTableNames() []string {
 		"rhnpackagekey",      // catalog
 		"rhnpackagekeyassociation",
 		"rhnerratabuglist",
-
+		"rhncve",
+		"rhnerratacve",
+		"rhnerratakeyword",
 		"rhnpackagecapability",
 		"rhnpackagebreaks",
 		"rhnpackagechangelogdata",
@@ -60,6 +65,9 @@ func SoftwareChannelTableNames() []string {
 		"rhnsourcerpm",
 		"rhnpackagesource",
 		"rhnpackagesuggests",
+		"rhnpackagesupplements",
+		"susemddata",
+		"susemdkeyword",
 	}
 }
 

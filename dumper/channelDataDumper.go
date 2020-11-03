@@ -11,15 +11,15 @@ import (
 func SoftwareChannelTableNames() []string {
 	return []string{
 		// dictionaries
-		"rhnproductname",
-		"rhnchannelproduct",
 		"rhnarchtype",
 		"rhnchecksumtype",
 		"rhnpackagearch",
 		"web_customer",
 		"rhnchannelarch",
-		"rhnerrataseverity", // catalog
-		// data to transfer
+		"rhnerrataseverity",
+		// data to transfer: products
+		"rhnproductname",
+		"rhnchannelproduct",
 		"rhnchannel",
 		"rhnchannelfamily",
 		"rhnchannelfamilymembers",

@@ -2,6 +2,7 @@ package schemareader
 
 import (
 	"bufio"
+	"database/sql"
 	"fmt"
 	"log"
 	"os"
@@ -50,7 +51,14 @@ func GetConnectionString(configFilePath string) string {
 			}
 		}
 	}
-	msg := fmt.Sprintf("user='%s' password='%s' dbname='%s' host='%s' port='%s' sslmode=disable", dataSource.user, dataSource.password, dataSource.dbname, dataSource.host, dataSource.port)
-	return msg
+	return fmt.Sprintf("user='%s' password='%s' dbname='%s' host='%s' port='%s' sslmode=disable", dataSource.user, dataSource.password, dataSource.dbname, dataSource.host, dataSource.port)
+}
 
+//GetDBconnection return the database connection
+func GetDBconnection(configFilePath string) *sql.DB {
+	db, err := sql.Open("postgres", GetConnectionString(configFilePath))
+	if err != nil {
+		log.Fatal(err)
+	}
+	return db
 }

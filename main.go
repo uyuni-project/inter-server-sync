@@ -1,89 +1,35 @@
 package main
 
 import (
-	"database/sql"
-	"errors"
-	"flag"
 	"fmt"
-	"log"
 	"os"
-	"strings"
 
 	_ "github.com/lib/pq"
+	"github.com/uyuni-project/inter-server-sync/cli"
 	"github.com/uyuni-project/inter-server-sync/dumper"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
 )
 
-const (
-	usage = `ISS export tool
-
-Usage: %s [Options]
-	
-
-Options:
-`
-)
-
-type Args struct {
-	channleLabels []string
-	path          string
-	config        string
-	dot           bool
-	debug         bool
-}
-
-const configFilePath = "/etc/rhn/rhn.conf"
-
-func cli(args []string) (*Args, error) {
-
-	flag.Usage = func() {
-		fmt.Fprintf(flag.CommandLine.Output(), usage, os.Args[0])
-		flag.PrintDefaults()
-	}
-	channelLabels := flag.String("channels", "", "Labels for channels to sync (comma seprated in case of multiple)")
-
-	path := flag.String("path", ".", "Location for generated data")
-
-	config := flag.String("config", "/etc/rhn/rhn.conf", "Path for the config file")
-
-	dot := flag.Bool("dot", false, "Create dot file for Graphviz")
-
-	debug := flag.Bool("debug", false, "debug export data")
-
-	if len(args) < 2 {
-		flag.Usage()
-		return nil, errors.New("Insufficent arguments")
-	}
-
-	flag.Parse()
-
-	return &Args{strings.Split(*channelLabels, ","), *path, *config, *dot, *debug}, nil
-}
-
 func main() {
-	parsedArgs, err := cli(os.Args)
+	parsedArgs, err := cli.CliArgs(os.Args)
 	if err != nil {
 		os.Exit(1)
 	}
-	connectionString := schemareader.GetConnectionString(parsedArgs.config)
-	db, err := sql.Open("postgres", connectionString)
-	if err != nil {
-		log.Fatal(err)
-	}
 
+	db := schemareader.GetDBconnection(parsedArgs.Config)
 	defer db.Close()
 
-	if parsedArgs.dot {
+	if parsedArgs.Dot {
 		tables := schemareader.ReadAllTablesSchema(db)
 		schemareader.DumpToGraphviz(tables)
 		return
 	}
-	if len(parsedArgs.channleLabels) > 0 {
-		channelLabels := parsedArgs.channleLabels
-		outputFolder := parsedArgs.path
+	if len(parsedArgs.ChannleLabels) > 0 {
+		channelLabels := parsedArgs.ChannleLabels
+		outputFolder := parsedArgs.Path
 		tableData := dumper.DumpeChannelData(db, channelLabels, outputFolder)
 
-		if parsedArgs.debug {
+		if parsedArgs.Debug {
 			for path := range tableData.Paths {
 				println(path)
 			}

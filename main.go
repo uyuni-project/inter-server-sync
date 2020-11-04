@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 
 	_ "github.com/lib/pq"
@@ -9,6 +10,8 @@ import (
 	"github.com/uyuni-project/inter-server-sync/dumper"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
 )
+
+func init() { log.SetFlags(log.Lshortfile | log.LstdFlags) }
 
 func main() {
 	parsedArgs, err := cli.CliArgs(os.Args)

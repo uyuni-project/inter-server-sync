@@ -27,7 +27,7 @@ func SoftwareChannelTableNames() []string {
 		"susesccrepository",
 		// data to transfer: channels
 		"rhnchannel",
-		"rhnchannelcloned",
+		//"rhnchannelcloned",
 		"rhnchannelfamily",
 		"rhnchannelfamilymembers",
 		"rhnpublicchannelfamily",

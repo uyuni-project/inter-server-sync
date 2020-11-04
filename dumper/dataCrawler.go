@@ -121,11 +121,25 @@ func followReferencesFrom(db *sql.DB, schemaMetadata map[string]schemareader.Tab
 }
 
 func shouldFollowReferenceToLink(path []string, currentTable schemareader.Table, referencedTable schemareader.Table) bool {
-
 	// if we already passed by the referencedTable we don't want to follow
 	for _, p := range path {
 		if strings.Compare(p, referencedTable.Name) == 0 {
 			return false
+		}
+	}
+
+	forcedNavegations := map[string] []string {
+		"rhnchannelfamily": {"rhnpublicchannelfamily"},
+		"rhnchannel": {"susemddata", "suseproductchannel"},
+		"suseproducts": {"suseproductextension", "suseproductsccrepository"},
+		"rhnpackageevr": {"rhnpackagenevra"},
+	}
+
+	if tableNavegation, ok := forcedNavegations[currentTable.Name]; ok {
+		for _, targetNavegationTable := range tableNavegation{
+			if strings.Compare(targetNavegationTable, referencedTable.Name) == 0{
+				return true
+			}
 		}
 	}
 

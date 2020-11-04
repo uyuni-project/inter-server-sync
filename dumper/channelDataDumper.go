@@ -7,7 +7,8 @@ import (
 	"github.com/uyuni-project/inter-server-sync/schemareader"
 )
 
-func readTableNames() []string {
+// SoftwareChannelTableNames is the list of names of tables relevant for exporting software channels
+func SoftwareChannelTableNames() []string {
 	return []string{
 		// dictionaries
 		"rhnproductname",
@@ -58,7 +59,7 @@ func readTableNames() []string {
 
 func DumpeChannelData(db *sql.DB, channelLabels []string, outputFolder string) DataDumper {
 
-	schemaMetadata := schemareader.ReadTablesSchema(db, readTableNames())
+	schemaMetadata := schemareader.ReadTablesSchema(db, SoftwareChannelTableNames())
 
 	initalDataSet := make([]processItem, 0)
 	for _, channelLabel := range channelLabels {

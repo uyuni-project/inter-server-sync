@@ -23,7 +23,7 @@ func main() {
 	defer db.Close()
 
 	if parsedArgs.Dot {
-		tables := schemareader.ReadAllTablesSchema(db)
+		tables := schemareader.ReadTablesSchema(db, dumper.SoftwareChannelTableNames())
 		schemareader.DumpToGraphviz(tables)
 		return
 	}

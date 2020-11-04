@@ -24,6 +24,18 @@ func applyTableFilters(table Table) Table {
 	case "rhnpackagecapability":
 		// pkid: rhn_pkg_capability_id_pk
 		table.PKSequence = "RHN_PKG_CAPABILITY_ID_SEQ"
+	case "suseproductchannel": //FIXME we should try to add a unique constraint to this table instead of this hack
+		// We need to add a virtual unique constraint
+		virtualIndexName := "virtual_main_unique_index"
+		virtualIndexColumns := []string{"product_id", "channel_id"}
+		table.UniqueIndexes[virtualIndexName] = UniqueIndex{Name: virtualIndexName, Columns: virtualIndexColumns}
+		table.MainUniqueIndexName = virtualIndexName
+	case "susemdkeyword": //FIXME we should try to add a unique constraint to this table instead of this hack
+		// We need to add a virtual unique constraint
+		virtualIndexName := "virtual_main_unique_index"
+		virtualIndexColumns := []string{"label"}
+		table.UniqueIndexes[virtualIndexName] = UniqueIndex{Name: virtualIndexName, Columns: virtualIndexColumns}
+		table.MainUniqueIndexName = virtualIndexName
 	}
 	return table
 }

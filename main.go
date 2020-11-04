@@ -38,7 +38,8 @@ func main() {
 			}
 			count := 0
 			for _, value := range tableData.TableData {
-				fmt.Printf("Table: %s \n\tKeys len: %d \n\t keys: %s\n", value.TableName, len(value.Keys), value.Keys)
+				fmt.Printf("%s number inserts: %d \n\t %s keys: %s\n", value.TableName, len(value.Keys),
+					value.TableName, value.Keys)
 				count = count + len(value.Keys)
 			}
 			fmt.Printf("IDS############%d\n\n", count)

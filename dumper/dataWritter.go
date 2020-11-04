@@ -301,7 +301,35 @@ func generateInsertStatement(values []rowDataStructure, table schemareader.Table
 		whereClause := strings.Join(whereClauseList, " and ")
 		return fmt.Sprintf(`INSERT INTO %s (%s)	select %s  where  not exists (select 1 from %s where %s);`,
 			tableName, columnNames, formatValue(valueFiltered), tableName, whereClause)
-	} else {
+	} else if strings.Compare(tableName, "suseproductchannel") == 0 {
+		//FIXME we should try to add a unique constraint to this table instead of this hack
+
+		whereClauseList := make([]string, 0)
+		for _, value := range values {
+			switch value.columnName {
+			case "product_id", "channel_id":
+				whereClauseList = append(whereClauseList, fmt.Sprintf(" %s = %s",
+					value.columnName, formatField(value)))
+			}
+		}
+		whereClause := strings.Join(whereClauseList, " and ")
+		return fmt.Sprintf(`INSERT INTO %s (%s)	select %s  where  not exists (select 1 from %s where %s);`,
+			tableName, columnNames, formatValue(valueFiltered), tableName, whereClause)
+	} else if strings.Compare(tableName, "susemdkeyword") == 0 {
+		//FIXME we should try to add a unique constraint to this table instead of this hack
+
+		whereClauseList := make([]string, 0)
+		for _, value := range values {
+			switch value.columnName {
+			case "label" :
+				whereClauseList = append(whereClauseList, fmt.Sprintf(" %s = %s",
+					value.columnName, formatField(value)))
+			}
+		}
+		whereClause := strings.Join(whereClauseList, " and ")
+		return fmt.Sprintf(`INSERT INTO %s (%s)	select %s  where  not exists (select 1 from %s where %s);`,
+			tableName, columnNames, formatValue(valueFiltered), tableName, whereClause)
+	}else {
 		onConflictFormated := formatOnConflict(values, table)
 		return fmt.Sprintf(`INSERT INTO %s (%s)	VALUES (%s)  ON CONFLICT %s ;`,
 			tableName, columnNames, formatValue(valueFiltered), onConflictFormated)

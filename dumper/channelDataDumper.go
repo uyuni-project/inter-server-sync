@@ -11,20 +11,29 @@ import (
 func SoftwareChannelTableNames() []string {
 	return []string{
 		// dictionaries
-		"rhnproductname",
-		"rhnchannelproduct",
 		"rhnarchtype",
 		"rhnchecksumtype",
 		"rhnpackagearch",
 		"web_customer",
 		"rhnchannelarch",
-		"rhnerrataseverity", // catalog
-		// data to transfer
+		"rhnerrataseverity",
+		// data to transfer: products
+		"rhnproductname",
+		"rhnchannelproduct",
+		"suseproductchannel",
+		"suseproductextension",
+		"suseproducts",
+		"suseproductsccrepository",
+		"susesccrepository",
+		// data to transfer: channels
 		"rhnchannel",
+		//"rhnchannelcloned",
 		"rhnchannelfamily",
 		"rhnchannelfamilymembers",
+		"rhnpublicchannelfamily",
 		"rhnerrata",
 		"rhnchannelerrata",
+		"rhnpackagenevra",
 		"rhnpackagename",  // done
 		"rhnpackagegroup", // done
 		"rhnsourcerpm",    // done
@@ -38,7 +47,9 @@ func SoftwareChannelTableNames() []string {
 		"rhnpackagekey",      // catalog
 		"rhnpackagekeyassociation",
 		"rhnerratabuglist",
-
+		"rhncve",
+		"rhnerratacve",
+		"rhnerratakeyword",
 		"rhnpackagecapability",
 		"rhnpackagebreaks",
 		"rhnpackagechangelogdata",
@@ -54,6 +65,9 @@ func SoftwareChannelTableNames() []string {
 		"rhnsourcerpm",
 		"rhnpackagesource",
 		"rhnpackagesuggests",
+		"rhnpackagesupplements",
+		"susemddata",
+		"susemdkeyword",
 	}
 }
 

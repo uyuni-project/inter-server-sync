@@ -1,8 +1,11 @@
 package dumper
 
 import (
+	"bufio"
 	"database/sql"
 	"fmt"
+	"log"
+	"os"
 
 	"github.com/uyuni-project/inter-server-sync/schemareader"
 )
@@ -84,6 +87,21 @@ func SoftwareChannelTableNames() map[string]bool {
 
 func DumpeChannelData(db *sql.DB, channelLabels []string, outputFolder string) DataDumper {
 
+	file, err := os.Create(outputFolder + "/sql_statements.sql")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer file.Close()
+	bufferWritter := bufio.NewWriter(file)
+	defer bufferWritter.Flush()
+
+	bufferWritter.WriteString("BEGIN;\n")
+	result := processAndInsertChannels(db, channelLabels, bufferWritter)
+	bufferWritter.WriteString("COMMIT;\n")
+	return result
+}
+
+func processAndInsertChannels(db *sql.DB, channelLabels []string, writter *bufio.Writer) DataDumper{
 	schemaMetadata := schemareader.ReadTablesSchema(db, SoftwareChannelTableNames())
 
 	initalDataSet := make([]processItem, 0)
@@ -97,6 +115,6 @@ func DumpeChannelData(db *sql.DB, channelLabels []string, outputFolder string) D
 
 	}
 	tableData := dataCrawler(db, schemaMetadata, initalDataSet)
-	PrintTableDataOrdered(db, outputFolder, schemaMetadata, schemaMetadata["rhnchannel"], tableData)
+	PrintTableDataOrdered(db, writter, schemaMetadata, schemaMetadata["rhnchannel"], tableData)
 	return tableData
 }

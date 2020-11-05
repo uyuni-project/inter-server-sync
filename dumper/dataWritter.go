@@ -6,25 +6,12 @@ import (
 	"fmt"
 	"github.com/lib/pq"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
-	"log"
-	"os"
 	"strings"
 	"time"
 )
 
-func PrintTableDataOrdered(db *sql.DB, outputFolder string, schemaMetadata map[string]schemareader.Table, startingTable schemareader.Table, data DataDumper) int {
-	file, err := os.Create(outputFolder + "/sql_statements.sql")
-	if err != nil {
-		log.Fatal(err)
-	}
-	defer file.Close()
-	bufferWritter := bufio.NewWriter(file)
-	defer bufferWritter.Flush()
-
-	bufferWritter.WriteString("BEGIN;\n")
-	result := printTableData(db, bufferWritter, schemaMetadata, data, startingTable, make(map[string]bool), make([]string, 0))
-	bufferWritter.WriteString("COMMIT;\n")
-
+func PrintTableDataOrdered(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string]schemareader.Table, startingTable schemareader.Table, data DataDumper) int {
+	result := printTableData(db, writter, schemaMetadata, data, startingTable, make(map[string]bool), make([]string, 0))
 	return result
 }
 

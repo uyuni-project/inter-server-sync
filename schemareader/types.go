@@ -3,6 +3,7 @@ package schemareader
 // Table represents a DB table to dump
 type Table struct {
 	Name          string
+	Export        bool
 	Columns       []string
 	ColumnIndexes map[string]int
 	PKColumns     map[string]bool

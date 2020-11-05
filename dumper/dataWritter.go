@@ -35,14 +35,15 @@ func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string
 	processedTables[table.Name] = true
 	path = append(path, table.Name)
 
+	currentTable := schemaMetadata[table.Name]
 	tableData, dataOK := data.TableData[table.Name]
-	if !dataOK || tableProcessed {
+	if !dataOK || tableProcessed || !currentTable.Export {
 		return result
 	}
 
 	for _, reference := range table.References {
 		tableReference, ok := schemaMetadata[reference.TableName]
-		if !ok {
+		if !ok || !tableReference.Export{
 			continue
 		}
 		result = result + printTableData(db, writter, schemaMetadata, data, tableReference, processedTables, path)
@@ -69,7 +70,7 @@ func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string
 
 	for _, reference := range table.ReferencedBy {
 		tableReference, ok := schemaMetadata[reference.TableName]
-		if !ok {
+		if !ok || !tableReference.Export{
 			continue
 		}
 		if !shouldFollowReferenceToLink(path, table, tableReference) {

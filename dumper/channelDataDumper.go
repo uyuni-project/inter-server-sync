@@ -8,66 +8,65 @@ import (
 )
 
 // SoftwareChannelTableNames is the list of names of tables relevant for exporting software channels
-func SoftwareChannelTableNames() []string {
-	return []string{
+func SoftwareChannelTableNames() map[string]bool {
+	return map[string]bool{
 		// dictionaries
-		"rhnarchtype",
-		"rhnchecksumtype",
-		"rhnpackagearch",
-		"web_customer",
-		"rhnchannelarch",
-		"rhnerrataseverity",
+		"rhnarchtype": true,
+		"rhnchecksumtype": true,
+		"rhnpackagearch": true,
+		"web_customer": false,
+		"rhnchannelarch": true,
+		"rhnerrataseverity": true,
 		// data to transfer: products
-		"rhnproductname",
-		"rhnchannelproduct",
-		"suseproductchannel",
-		"suseproductextension",
-		"suseproducts",
-		"suseproductsccrepository",
-		"susesccrepository",
+		"rhnproductname": true,
+		"rhnchannelproduct": true,
+		"suseproductchannel": true,
+		"suseproductextension": true,
+		"suseproducts": true,
+		"suseproductsccrepository": true,
+		"susesccrepository": true,
 		// data to transfer: channels
-		"rhnchannel",
-		//"rhnchannelcloned",
-		"rhnchannelfamily",
-		"rhnchannelfamilymembers",
-		"rhnpublicchannelfamily",
-		"rhnerrata",
-		"rhnchannelerrata",
-		"rhnpackagenevra",
-		"rhnpackagename",  // done
-		"rhnpackagegroup", // done
-		"rhnsourcerpm",    // done
-		"rhnpackageevr",   // done
-		"rhnchecksum",     // done
-		"rhnpackage",
-		"rhnchannelpackage",
-		"rhnerratapackage",
-		"rhnpackageprovider", // catalog
-		"rhnpackagekeytype",  // catalog
-		"rhnpackagekey",      // catalog
-		"rhnpackagekeyassociation",
-		"rhnerratabuglist",
-		"rhncve",
-		"rhnerratacve",
-		"rhnerratakeyword",
-		"rhnpackagecapability",
-		"rhnpackagebreaks",
-		"rhnpackagechangelogdata",
-		"rhnpackagechangelogrec",
-		"rhnpackageconflicts",
-		"rhnpackageenhances",
-		"rhnpackagefile",
-		"rhnpackageobsoletes",
-		"rhnpackagepredepends",
-		"rhnpackageprovides",
-		"rhnpackagerecommends",
-		"rhnpackagerequires",
-		"rhnsourcerpm",
-		"rhnpackagesource",
-		"rhnpackagesuggests",
-		"rhnpackagesupplements",
-		"susemddata",
-		"susemdkeyword",
+		"rhnchannel": true,
+		//"rhnchannelcloned": true,
+		"rhnchannelfamily": true,
+		"rhnchannelfamilymembers": true,
+		"rhnpublicchannelfamily": true,
+		"rhnerrata": true,
+		"rhnchannelerrata": true,
+		"rhnpackagenevra": true,
+		"rhnpackagename": true,  // done
+		"rhnpackagegroup": true, // done
+		"rhnsourcerpm": true,    // done
+		"rhnpackageevr": true,   // done
+		"rhnchecksum": true,     // done
+		"rhnpackage": true,
+		"rhnchannelpackage": true,
+		"rhnerratapackage": true,
+		"rhnpackageprovider": false, // catalog
+		"rhnpackagekeytype": false,  // catalog
+		"rhnpackagekey": false,      // catalog
+		"rhnpackagekeyassociation": true,
+		"rhnerratabuglist": true,
+		"rhncve": true,
+		"rhnerratacve": true,
+		"rhnerratakeyword": true,
+		"rhnpackagecapability": true,
+		"rhnpackagebreaks": true,
+		"rhnpackagechangelogdata": true,
+		"rhnpackagechangelogrec": true,
+		"rhnpackageconflicts": true,
+		"rhnpackageenhances": true,
+		"rhnpackagefile": true,
+		"rhnpackageobsoletes": true,
+		"rhnpackagepredepends": true,
+		"rhnpackageprovides": true,
+		"rhnpackagerecommends": true,
+		"rhnpackagerequires": true,
+		"rhnpackagesource": true,
+		"rhnpackagesuggests": true,
+		"rhnpackagesupplements": true,
+		"susemddata": true,
+		"susemdkeyword": true,
 	}
 }
 

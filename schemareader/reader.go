@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func readTableNames(db *sql.DB) []string {
+func readTableNames(db *sql.DB) map[string]bool {
 	sql := `SELECT table_name
 		FROM information_schema.tables
 		WHERE table_schema = 'public'
@@ -17,14 +17,14 @@ func readTableNames(db *sql.DB) []string {
 		log.Fatal(err)
 	}
 
-	result := make([]string, 0)
+	result := make(map[string]bool, 0)
 	for rows.Next() {
 		var tableName string
 		err := rows.Scan(&tableName)
 		if err != nil {
 			log.Fatal(err)
 		}
-		result = append(result, tableName)
+		result[tableName] = true
 	}
 
 	return result
@@ -311,10 +311,10 @@ func ReadAllTablesSchema(db *sql.DB) map[string]Table {
 	return ReadTablesSchema(db, readTableNames(db))
 }
 
-func ReadTablesSchema(db *sql.DB, tableNames []string) map[string]Table {
+func ReadTablesSchema(db *sql.DB, tableNames map[string]bool) map[string]Table {
 
 	result := make(map[string]Table, 0)
-	for _, tableName := range tableNames {
+	for tableName, exportable := range tableNames {
 		columns := readColumnNames(db, tableName)
 
 		columnIndexes := make(map[string]int)
@@ -368,6 +368,7 @@ func ReadTablesSchema(db *sql.DB, tableNames []string) map[string]Table {
 
 		table := Table{
 			Name:                tableName,
+			Export: 			 exportable,
 			Columns:             columns,
 			ColumnIndexes:       columnIndexes,
 			PKColumns:           pkColumnMap,

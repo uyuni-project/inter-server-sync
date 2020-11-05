@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-func readTableNames(db *sql.DB) map[string]bool {
+func readTableNames(db *sql.DB) []string {
 	sql := `SELECT table_name
 		FROM information_schema.tables
 		WHERE table_schema = 'public'
@@ -17,14 +17,14 @@ func readTableNames(db *sql.DB) map[string]bool {
 		log.Fatal(err)
 	}
 
-	result := make(map[string]bool, 0)
+	result := make([]string, 0)
 	for rows.Next() {
 		var tableName string
 		err := rows.Scan(&tableName)
 		if err != nil {
 			log.Fatal(err)
 		}
-		result[tableName] = true
+		result = append(result, tableName)
 	}
 
 	return result
@@ -311,75 +311,99 @@ func ReadAllTablesSchema(db *sql.DB) map[string]Table {
 	return ReadTablesSchema(db, readTableNames(db))
 }
 
-func ReadTablesSchema(db *sql.DB, tableNames map[string]bool) map[string]Table {
+func ReadTablesSchema(db *sql.DB, tableNames []string) map[string]Table {
 
 	result := make(map[string]Table, 0)
-	for tableName, exportable := range tableNames {
-		columns := readColumnNames(db, tableName)
-
-		columnIndexes := make(map[string]int)
-		for i, columnName := range columns {
-			columnIndexes[columnName] = i
-		}
-
-		pkColumns := readPKColumnNames(db, tableName)
-		pkColumnMap := make(map[string]bool)
-		for _, column := range pkColumns {
-			pkColumnMap[column] = true
-		}
-
-		pkSequence := readPKSequence(db, tableName)
-
-		indexNames := readUniqueIndexNames(db, tableName)
-		indexes := make(map[string]UniqueIndex)
-		for _, indexName := range indexNames {
-			indexColumns := readIndexColumns(db, indexName)
-			indexes[indexName] = UniqueIndex{Name: indexName, Columns: indexColumns}
-		}
-
-		mainUniqueIndexName := ""
-		if len(indexNames) == 1 {
-			mainUniqueIndexName = indexNames[0]
-		} else if len(indexNames) > 1 {
-			mainUniqueIndexName = findIndex(indexes, "label")
-			if len(mainUniqueIndexName) == 0 {
-				mainUniqueIndexName = findIndex(indexes, "name")
-				if len(mainUniqueIndexName) == 0 {
-					mainUniqueIndexName = indexNames[0]
-				}
-			}
-		}
-
-		constraintNames := readReferenceConstraintNames(db, tableName)
-		references := make([]Reference, 0)
-		for _, constraintName := range constraintNames {
-			columnMap := readReferenceConstraints(db, tableName, constraintName)
-			referencedTable := readReferencedTable(db, constraintName)
-			references = append(references, Reference{TableName: referencedTable, ColumnMapping: columnMap})
-		}
-
-		referencedByConstraintNames := readReferencedByConstraintNames(db, tableName)
-		referencedBy := make([]Reference, 0)
-		for _, constraintName := range referencedByConstraintNames {
-			referencedTable := readReferencedByTable(db, constraintName)
-			columnMap := readReferenceConstraints(db, referencedTable, constraintName)
-			referencedBy = append(referencedBy, Reference{TableName: referencedTable, ColumnMapping: columnMap})
-		}
-
-		table := Table{
-			Name:                tableName,
-			Export: 			 exportable,
-			Columns:             columns,
-			ColumnIndexes:       columnIndexes,
-			PKColumns:           pkColumnMap,
-			PKSequence:          pkSequence,
-			UniqueIndexes:       indexes,
-			MainUniqueIndexName: mainUniqueIndexName,
-			References:          references,
-			ReferencedBy:        referencedBy}
-		table = applyTableFilters(table)
+	for _, tableName := range tableNames {
+		table := processTable(db, tableName, true)
 		result[table.Name] = table
 	}
 
+	//Load all reference tables not loaded yet
+	for _, table := range result {
+		result = processReferenceTables(db, table, result)
+	}
+
 	return result
+}
+
+func processReferenceTables(db *sql.DB, table Table, currentTables map[string]Table) map[string]Table {
+	for _, reference := range table.References {
+		_, ok := currentTables[reference.TableName]
+		if ok {
+			continue
+		}
+		tableProcessed := processTable(db, reference.TableName, false)
+		currentTables[reference.TableName] = tableProcessed
+		currentTables = processReferenceTables(db, tableProcessed, currentTables)
+	}
+
+	return currentTables
+}
+
+func processTable(db *sql.DB, tableName string, exportable bool) Table {
+	columns := readColumnNames(db, tableName)
+
+	columnIndexes := make(map[string]int)
+	for i, columnName := range columns {
+		columnIndexes[columnName] = i
+	}
+
+	pkColumns := readPKColumnNames(db, tableName)
+	pkColumnMap := make(map[string]bool)
+	for _, column := range pkColumns {
+		pkColumnMap[column] = true
+	}
+
+	pkSequence := readPKSequence(db, tableName)
+
+	indexNames := readUniqueIndexNames(db, tableName)
+	indexes := make(map[string]UniqueIndex)
+	for _, indexName := range indexNames {
+		indexColumns := readIndexColumns(db, indexName)
+		indexes[indexName] = UniqueIndex{Name: indexName, Columns: indexColumns}
+	}
+
+	mainUniqueIndexName := ""
+	if len(indexNames) == 1 {
+		mainUniqueIndexName = indexNames[0]
+	} else if len(indexNames) > 1 {
+		mainUniqueIndexName = findIndex(indexes, "label")
+		if len(mainUniqueIndexName) == 0 {
+			mainUniqueIndexName = findIndex(indexes, "name")
+			if len(mainUniqueIndexName) == 0 {
+				mainUniqueIndexName = indexNames[0]
+			}
+		}
+	}
+
+	constraintNames := readReferenceConstraintNames(db, tableName)
+	references := make([]Reference, 0)
+	for _, constraintName := range constraintNames {
+		columnMap := readReferenceConstraints(db, tableName, constraintName)
+		referencedTable := readReferencedTable(db, constraintName)
+		references = append(references, Reference{TableName: referencedTable, ColumnMapping: columnMap})
+	}
+
+	referencedByConstraintNames := readReferencedByConstraintNames(db, tableName)
+	referencedBy := make([]Reference, 0)
+	for _, constraintName := range referencedByConstraintNames {
+		referencedTable := readReferencedByTable(db, constraintName)
+		columnMap := readReferenceConstraints(db, referencedTable, constraintName)
+		referencedBy = append(referencedBy, Reference{TableName: referencedTable, ColumnMapping: columnMap})
+	}
+
+	table := Table{
+		Name:                tableName,
+		Export:              exportable,
+		Columns:             columns,
+		ColumnIndexes:       columnIndexes,
+		PKColumns:           pkColumnMap,
+		PKSequence:          pkSequence,
+		UniqueIndexes:       indexes,
+		MainUniqueIndexName: mainUniqueIndexName,
+		References:          references,
+		ReferencedBy:        referencedBy}
+	table = applyTableFilters(table)
+	return table
 }

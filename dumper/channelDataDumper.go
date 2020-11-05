@@ -26,12 +26,12 @@ import (
 func SoftwareChannelTableNames() []string {
 	return []string{
 		// product data tables
-		"suseproducts",
-		"suseproductchannel", // add only if there are corresponding rows in rhnchannel
-		"suseproductextension",
-		"suseproductsccrepository",
-		"susesccrepository",
-		"suseupgradepath",
+		"suseproducts",             // clean
+		"suseproductchannel",       // add only if there are corresponding rows in rhnchannel // clean
+		"suseproductextension",     // clean
+		"suseproductsccrepository", // clean
+		"susesccrepository",        // clean
+		"suseupgradepath",          // clean
 
 		// software channel data tables
 		"rhnchannel",
@@ -39,8 +39,8 @@ func SoftwareChannelTableNames() []string {
 		//"rhnchannelcloned", // add only if there are corresponding rows in rhnchannel
 		"rhnproductname",
 		"rhnchannelproduct",
-		"rhnreleasechannelmap",
-		"rhndistchannelmap",
+		"rhnreleasechannelmap", // clean
+		"rhndistchannelmap",    // clean
 		"rhnchannelcomps",
 		"rhnchannelfamily",
 		"rhnchannelfamilymembers",
@@ -48,24 +48,24 @@ func SoftwareChannelTableNames() []string {
 		"rhnerrata",
 		// FIXME This table needs a special treatement to check if channels exists. Inser to into.. select .. were
 		//"rhnerratacloned", // add only if there are corresponding rows in rhnerrata
-		"rhnchannelerrata",
+		"rhnchannelerrata", // clean
 		"rhnpackagenevra",
 		"rhnpackagename",
 		"rhnpackagegroup",
 		"rhnpackageevr",
 		"rhnchecksum",
 		"rhnpackage",
-		"rhnchannelpackage",
-		"rhnerratapackage",
-		"rhnerratafile",
-		"rhnerratafilechannel",
-		"rhnerratafilepackage",
-		"rhnerratafilepackagesource",
+		"rhnchannelpackage",          // clean
+		"rhnerratapackage",           // clean
+		"rhnerratafile",              // clean
+		"rhnerratafilechannel",       // clean
+		"rhnerratafilepackage",       // clean
+		"rhnerratafilepackagesource", // clean
 		"rhnpackagekeyassociation",
-		"rhnerratabuglist",
+		"rhnerratabuglist", // clean
 		"rhncve",
-		"rhnerratacve",
-		"rhnerratakeyword",
+		"rhnerratacve",     // clean
+		"rhnerratakeyword", // clean
 		"rhnpackagecapability",
 		"rhnpackagebreaks",
 		"rhnpackagechangelogdata",
@@ -82,8 +82,8 @@ func SoftwareChannelTableNames() []string {
 		"rhnpackagesource",
 		"rhnpackagesuggests",
 		"rhnpackagesupplements",
-		"susemddata",
-		"susemdkeyword",
+		"susemddata",    // clean
+		"susemdkeyword", // clean
 	}
 }
 

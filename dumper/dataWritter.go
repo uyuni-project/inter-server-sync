@@ -12,7 +12,7 @@ import (
 	"time"
 )
 
-func PrintTableDataOrdered(db *sql.DB, outputFolder string, schemaMetadata map[string]schemareader.Table, data DataDumper) int {
+func PrintTableDataOrdered(db *sql.DB, outputFolder string, schemaMetadata map[string]schemareader.Table, startingTable schemareader.Table, data DataDumper) int {
 	file, err := os.Create(outputFolder + "/sql_statements.sql")
 	if err != nil {
 		log.Fatal(err)
@@ -22,7 +22,7 @@ func PrintTableDataOrdered(db *sql.DB, outputFolder string, schemaMetadata map[s
 	defer bufferWritter.Flush()
 
 	bufferWritter.WriteString("BEGIN;\n")
-	result := printTableData(db, bufferWritter, schemaMetadata, data, schemaMetadata["rhnchannel"], make(map[string]bool), make([]string, 0))
+	result := printTableData(db, bufferWritter, schemaMetadata, data, startingTable, make(map[string]bool), make([]string, 0))
 	bufferWritter.WriteString("COMMIT;\n")
 
 	return result
@@ -280,56 +280,25 @@ func generateInsertStatement(values []rowDataStructure, table schemareader.Table
 	tableName := table.Name
 	columnNames := strings.Join(table.Columns, ", ")
 	valueFiltered := filterRowData(values, table)
-	if strings.Compare(tableName, "rhnpackage") == 0 {
 
+	if strings.Compare(table.MainUniqueIndexName, schemareader.VirtualIndexName) == 0{
 		whereClauseList := make([]string, 0)
-		for _, value := range values {
-			switch value.columnName {
-			case "name_id", "evr_id", "package_arch_id", "checksum_id":
-				whereClauseList = append(whereClauseList, fmt.Sprintf(" %s = %s",
-					value.columnName, formatField(value)))
-				//'org_id', 'name_id', 'evr_id', 'package_arch_id','checksum_id'
-			case "org_id":
-				if value.value == nil {
-					whereClauseList = append(whereClauseList, fmt.Sprintf(" %s IS NULL", value.columnName))
-				} else {
-					whereClauseList = append(whereClauseList, fmt.Sprintf(" %s = %s",
-						value.columnName, formatField(value)))
+		for _, indexColumn :=  range table.UniqueIndexes[table.MainUniqueIndexName].Columns{
+			for _, value := range values {
+				if strings.Compare(indexColumn, value.columnName) == 0{
+					if value.value == nil {
+						whereClauseList = append(whereClauseList, fmt.Sprintf(" %s IS NULL", value.columnName))
+					} else {
+						whereClauseList = append(whereClauseList, fmt.Sprintf(" %s = %s",
+							value.columnName, formatField(value)))
+					}
 				}
 			}
 		}
 		whereClause := strings.Join(whereClauseList, " and ")
 		return fmt.Sprintf(`INSERT INTO %s (%s)	select %s  where  not exists (select 1 from %s where %s);`,
 			tableName, columnNames, formatValue(valueFiltered), tableName, whereClause)
-	} else if strings.Compare(tableName, "suseproductchannel") == 0 {
-		//FIXME we should try to add a unique constraint to this table instead of this hack
-
-		whereClauseList := make([]string, 0)
-		for _, value := range values {
-			switch value.columnName {
-			case "product_id", "channel_id":
-				whereClauseList = append(whereClauseList, fmt.Sprintf(" %s = %s",
-					value.columnName, formatField(value)))
-			}
-		}
-		whereClause := strings.Join(whereClauseList, " and ")
-		return fmt.Sprintf(`INSERT INTO %s (%s)	select %s  where  not exists (select 1 from %s where %s);`,
-			tableName, columnNames, formatValue(valueFiltered), tableName, whereClause)
-	} else if strings.Compare(tableName, "susemdkeyword") == 0 {
-		//FIXME we should try to add a unique constraint to this table instead of this hack
-
-		whereClauseList := make([]string, 0)
-		for _, value := range values {
-			switch value.columnName {
-			case "label" :
-				whereClauseList = append(whereClauseList, fmt.Sprintf(" %s = %s",
-					value.columnName, formatField(value)))
-			}
-		}
-		whereClause := strings.Join(whereClauseList, " and ")
-		return fmt.Sprintf(`INSERT INTO %s (%s)	select %s  where  not exists (select 1 from %s where %s);`,
-			tableName, columnNames, formatValue(valueFiltered), tableName, whereClause)
-	}else {
+	} else {
 		onConflictFormated := formatOnConflict(values, table)
 		return fmt.Sprintf(`INSERT INTO %s (%s)	VALUES (%s)  ON CONFLICT %s ;`,
 			tableName, columnNames, formatValue(valueFiltered), onConflictFormated)

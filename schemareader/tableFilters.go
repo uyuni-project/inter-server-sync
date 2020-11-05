@@ -1,5 +1,9 @@
 package schemareader
 
+const (
+	VirtualIndexName = "virtual_main_unique_index"
+)
+
 func applyTableFilters(table Table) Table {
 	switch table.Name {
 	case "rhnchecksumtype":
@@ -17,25 +21,22 @@ func applyTableFilters(table Table) Table {
 	case "rhnpackage":
 		// We need to add a virtual unique constraint
 		table.PKSequence = "RHN_PACKAGE_ID_SEQ"
-		virtualIndexName := "virtual_main_unique_index"
 		virtualIndexColumns := []string{"name_id", "evr_id", "package_arch_id", "checksum_id", "org_id"}
-		table.UniqueIndexes[virtualIndexName] = UniqueIndex{Name: virtualIndexName, Columns: virtualIndexColumns}
-		table.MainUniqueIndexName = virtualIndexName
+		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
+		table.MainUniqueIndexName = VirtualIndexName
 	case "rhnpackagecapability":
 		// pkid: rhn_pkg_capability_id_pk
 		table.PKSequence = "RHN_PKG_CAPABILITY_ID_SEQ"
 	case "suseproductchannel": //FIXME we should try to add a unique constraint to this table instead of this hack
 		// We need to add a virtual unique constraint
-		virtualIndexName := "virtual_main_unique_index"
 		virtualIndexColumns := []string{"product_id", "channel_id"}
-		table.UniqueIndexes[virtualIndexName] = UniqueIndex{Name: virtualIndexName, Columns: virtualIndexColumns}
-		table.MainUniqueIndexName = virtualIndexName
+		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
+		table.MainUniqueIndexName = VirtualIndexName
 	case "susemdkeyword": //FIXME we should try to add a unique constraint to this table instead of this hack
 		// We need to add a virtual unique constraint
-		virtualIndexName := "virtual_main_unique_index"
 		virtualIndexColumns := []string{"label"}
-		table.UniqueIndexes[virtualIndexName] = UniqueIndex{Name: virtualIndexName, Columns: virtualIndexColumns}
-		table.MainUniqueIndexName = virtualIndexName
+		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
+		table.MainUniqueIndexName = VirtualIndexName
 	}
 	return table
 }

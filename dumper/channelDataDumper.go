@@ -86,6 +86,6 @@ func DumpeChannelData(db *sql.DB, channelLabels []string, outputFolder string) D
 
 	}
 	tableData := dataCrawler(db, schemaMetadata, initalDataSet)
-	PrintTableDataOrdered(db, outputFolder, schemaMetadata, tableData)
+	PrintTableDataOrdered(db, outputFolder, schemaMetadata, schemaMetadata["rhnchannel"], tableData)
 	return tableData
 }

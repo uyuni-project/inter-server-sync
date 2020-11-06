@@ -4,11 +4,14 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
-	"github.com/lib/pq"
-	"github.com/uyuni-project/inter-server-sync/schemareader"
 	"strings"
 	"time"
+
+	"github.com/lib/pq"
+	"github.com/uyuni-project/inter-server-sync/schemareader"
 )
+
+var cache = make(map[string][][]rowDataStructure)
 
 func PrintTableDataOrdered(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string]schemareader.Table, startingTable schemareader.Table, data DataDumper) int {
 	result := printTableData(db, writter, schemaMetadata, data, startingTable, make(map[string]bool), make([]string, 0))
@@ -120,8 +123,13 @@ func substituteForeignKeyReference(db *sql.DB, table schemareader.Table, tables 
 	formatedWhereParameters := strings.Join(whereParameters, " and ")
 
 	sql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s;`, formattedColumns, reference.TableName, formatedWhereParameters)
+	key := fmt.Sprintf("%s,%s", sql, scanParameters)
+	rows, ok := cache[key]
+	if !ok {
+		rows = executeQueryWithResults(db, sql, scanParameters...)
+		//cache[key] = rows
 
-	rows := executeQueryWithResults(db, sql, scanParameters...)
+	}
 
 	// we will only change for a sub query if we were able to find the target value
 	// other wise we keep the pre existing value.
@@ -142,7 +150,9 @@ func substituteForeignKeyReference(db *sql.DB, table schemareader.Table, tables 
 							whereParameters = append(whereParameters, fmt.Sprintf("%s = %s",
 								foreignColumn, formatField(c)))
 						} else {
-							rowResultTemp := substituteForeignKeyReference(db, foreignTable, tables, foreignReference, rows[0])
+							copiedrow := make([]rowDataStructure, len(rows[0]))
+							copy(copiedrow, rows[0])
+							rowResultTemp := substituteForeignKeyReference(db, foreignTable, tables, foreignReference, copiedrow)
 							fieldToUpdate := formatField(c)
 							for _, field := range rowResultTemp {
 								if strings.Compare(field.columnName, foreignColumn) == 0 {

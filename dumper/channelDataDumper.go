@@ -104,7 +104,16 @@ func DumpChannelData(db *sql.DB, channelLabels []string, outputFolder string) Da
 func processAndInsertProducts(db *sql.DB, writter *bufio.Writer) {
 	schemaMetadata := schemareader.ReadTablesSchema(db, ProductsTableNames())
 	startingTables := []schemareader.Table {schemaMetadata["suseproducts"]}
-	dumpAllTablesData(db, writter, schemaMetadata, startingTables)
+
+	var whereFilterClause = func(table schemareader.Table) string {
+		filterOrg := ""
+		if _, ok := table.ColumnIndexes["org_id"]; ok {
+			filterOrg = " where org_id is null"
+		}
+		return filterOrg
+	}
+
+	dumpAllTablesData(db, writter, schemaMetadata, startingTables, whereFilterClause)
 }
 
 func processAndInsertChannels(db *sql.DB, channelLabels []string, writter *bufio.Writer) DataDumper{

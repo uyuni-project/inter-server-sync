@@ -24,6 +24,8 @@ type Cliargs struct {
 	Config        string
 	Dot           bool
 	Debug         bool
+	Cpuprofile    string
+	Memprofile    string
 }
 
 func CliArgs(args []string) (*Cliargs, error) {
@@ -41,6 +43,8 @@ func CliArgs(args []string) (*Cliargs, error) {
 	dot := flag.Bool("dot", false, "Create dot file for Graphviz")
 
 	debug := flag.Bool("debug", false, "debug export data")
+	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to `file`")
+	memprofile := flag.String("memprofile", "", "write memory profile to `file`")
 
 	if len(args) < 2 {
 		flag.Usage()
@@ -49,5 +53,5 @@ func CliArgs(args []string) (*Cliargs, error) {
 
 	flag.Parse()
 
-	return &Cliargs{strings.Split(*channelLabels, ","), *path, *config, *dot, *debug}, nil
+	return &Cliargs{strings.Split(*channelLabels, ","), *path, *config, *dot, *debug, *cpuprofile, *memprofile}, nil
 }

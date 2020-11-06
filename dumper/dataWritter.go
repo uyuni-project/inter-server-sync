@@ -127,7 +127,7 @@ func substituteForeignKeyReference(db *sql.DB, table schemareader.Table, tables 
 	rows, ok := cache[key]
 	if !ok {
 		rows = executeQueryWithResults(db, sql, scanParameters...)
-		//cache[key] = rows
+		cache[key] = rows
 
 	}
 

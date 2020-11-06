@@ -10,29 +10,9 @@ import (
 	"github.com/uyuni-project/inter-server-sync/schemareader"
 )
 
-//"rhnarchtype",
-//"rhnchecksumtype",
-//"rhnpackagearch",
-//"web_customer",
-//"rhnchannelarch",
-//"rhnerrataseverity",
-//"rhncompstype",
-//"rhnerratafiletype",
-//"rhnpackageprovider",
-//"rhnpackagekeytype",
-//"rhnpackagekey",
-
 // SoftwareChannelTableNames is the list of names of tables relevant for exporting software channels
 func SoftwareChannelTableNames() []string {
 	return []string{
-		// product data tables
-		"suseproducts",             // clean
-		"suseproductchannel",       // add only if there are corresponding rows in rhnchannel // clean
-		"suseproductextension",     // clean
-		"suseproductsccrepository", // clean
-		"susesccrepository",        // clean
-		"suseupgradepath",          // clean
-
 		// software channel data tables
 		"rhnchannel",
 		// FIXME This table needs a special treatement to check if channels exists. Inser to into.. select .. were
@@ -87,7 +67,24 @@ func SoftwareChannelTableNames() []string {
 	}
 }
 
-func DumpeChannelData(db *sql.DB, channelLabels []string, outputFolder string) DataDumper {
+func ProductsTableNames() []string {
+	return []string{
+		// product data tables
+		"suseproducts",             // clean
+		// FIXME This table needs a special treatement to check if channels exists. Inser to into.. select .. were
+		// shouldn't this table be parte of channel export tables?
+		//"suseproductchannel",       // add only if there are corresponding rows in rhnchannel // clean
+		"suseproductextension",     // clean
+		"suseproductsccrepository", // clean
+		"susesccrepository",        // clean
+		"suseupgradepath",          // clean
+		// product data tables
+		"rhnchannelfamily",
+		"rhnpublicchannelfamily",
+	}
+}
+
+func DumpChannelData(db *sql.DB, channelLabels []string, outputFolder string) DataDumper {
 
 	file, err := os.Create(outputFolder + "/sql_statements.sql")
 	if err != nil {
@@ -98,9 +95,16 @@ func DumpeChannelData(db *sql.DB, channelLabels []string, outputFolder string) D
 	defer bufferWritter.Flush()
 
 	bufferWritter.WriteString("BEGIN;\n")
-	result := processAndInsertChannels(db, channelLabels, bufferWritter)
+	processAndInsertProducts(db, bufferWritter)
+	channelsResult := processAndInsertChannels(db, channelLabels, bufferWritter)
 	bufferWritter.WriteString("COMMIT;\n")
-	return result
+	return channelsResult
+}
+
+func processAndInsertProducts(db *sql.DB, writter *bufio.Writer) {
+	schemaMetadata := schemareader.ReadTablesSchema(db, ProductsTableNames())
+	startingTables := []schemareader.Table {schemaMetadata["suseproducts"]}
+	dumpAllTablesData(db, writter, schemaMetadata, startingTables)
 }
 
 func processAndInsertChannels(db *sql.DB, channelLabels []string, writter *bufio.Writer) DataDumper{

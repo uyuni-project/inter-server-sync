@@ -11,7 +11,7 @@ import (
 	"github.com/uyuni-project/inter-server-sync/schemareader"
 )
 
-var cache = make(map[string][][]rowDataStructure)
+var cache = make(map[string]string)
 
 func PrintTableDataOrdered(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string]schemareader.Table, startingTable schemareader.Table, data DataDumper) int {
 	result := printTableData(db, writter, schemaMetadata, data, startingTable, make(map[string]bool), make([]string, 0))
@@ -33,7 +33,7 @@ func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string
 
 	for _, reference := range table.References {
 		tableReference, ok := schemaMetadata[reference.TableName]
-		if !ok || !tableReference.Export{
+		if !ok || !tableReference.Export {
 			continue
 		}
 		result = result + printTableData(db, writter, schemaMetadata, data, tableReference, processedTables, path)
@@ -60,7 +60,7 @@ func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string
 
 	for _, reference := range table.ReferencedBy {
 		tableReference, ok := schemaMetadata[reference.TableName]
-		if !ok || !tableReference.Export{
+		if !ok || !tableReference.Export {
 			continue
 		}
 		if !shouldFollowReferenceToLink(path, table, tableReference) {
@@ -123,58 +123,62 @@ func substituteForeignKeyReference(db *sql.DB, table schemareader.Table, tables 
 	formatedWhereParameters := strings.Join(whereParameters, " and ")
 
 	sql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s;`, formattedColumns, reference.TableName, formatedWhereParameters)
-	key := fmt.Sprintf("%s,%s", sql, scanParameters)
-	rows, ok := cache[key]
-	if !ok {
-		rows = executeQueryWithResults(db, sql, scanParameters...)
-		cache[key] = rows
+	key := fmt.Sprintf("%s,%s,%s", reference.TableName, formatedWhereParameters, scanParameters)
 
-	}
+	cachedValue, found := cache[key]
 
-	// we will only change for a sub query if we were able to find the target value
-	// other wise we keep the pre existing value.
-	// this can happen when the column for the reference is null. Example rhnchanel->org_id
-	if len(rows) > 0 {
-		whereParameters = make([]string, 0)
+	if found {
+		//Assuming there will be one entry in reference.ColumnMapping
+		row[table.ColumnIndexes[localColumns[0]]].value = cachedValue
+		row[table.ColumnIndexes[localColumns[0]]].columnType = "SQL"
 
-		for _, foreignColumn := range foreignMainUniqueColumns {
-			// produce the where clause
-			for _, c := range rows[0] {
-				if strings.Compare(c.columnName, foreignColumn) == 0 {
-					if c.value == nil {
-						whereParameters = append(whereParameters, fmt.Sprintf("%s is null",
-							foreignColumn))
-					} else {
-						foreignReference := foreignTable.GetFirstReferenceFromColumn(foreignColumn)
-						if strings.Compare(foreignReference.TableName, "") == 0 {
-							whereParameters = append(whereParameters, fmt.Sprintf("%s = %s",
-								foreignColumn, formatField(c)))
+	} else {
+		rows := executeQueryWithResults(db, sql, scanParameters...)
+		// we will only change for a sub query if we were able to find the target value
+		// other wise we keep the pre existing value.
+		// this can happen when the column for the reference is null. Example rhnchanel->org_id
+		if len(rows) > 0 {
+			whereParameters = make([]string, 0)
+
+			for _, foreignColumn := range foreignMainUniqueColumns {
+				// produce the where clause
+				for _, c := range rows[0] {
+					if strings.Compare(c.columnName, foreignColumn) == 0 {
+						if c.value == nil {
+							whereParameters = append(whereParameters, fmt.Sprintf("%s is null",
+								foreignColumn))
 						} else {
-							copiedrow := make([]rowDataStructure, len(rows[0]))
-							copy(copiedrow, rows[0])
-							rowResultTemp := substituteForeignKeyReference(db, foreignTable, tables, foreignReference, copiedrow)
-							fieldToUpdate := formatField(c)
-							for _, field := range rowResultTemp {
-								if strings.Compare(field.columnName, foreignColumn) == 0 {
-									fieldToUpdate = formatField(field)
-									break
+							foreignReference := foreignTable.GetFirstReferenceFromColumn(foreignColumn)
+							if strings.Compare(foreignReference.TableName, "") == 0 {
+								whereParameters = append(whereParameters, fmt.Sprintf("%s = %s",
+									foreignColumn, formatField(c)))
+							} else {
+								//copiedrow := make([]rowDataStructure, len(rows[0]))
+								//copy(copiedrow, rows[0])
+								rowResultTemp := substituteForeignKeyReference(db, foreignTable, tables, foreignReference, rows[0])
+								fieldToUpdate := formatField(c)
+								for _, field := range rowResultTemp {
+									if strings.Compare(field.columnName, foreignColumn) == 0 {
+										fieldToUpdate = formatField(field)
+										break
+									}
 								}
+								whereParameters = append(whereParameters, fmt.Sprintf("%s = %s",
+									foreignColumn, fieldToUpdate))
 							}
-							whereParameters = append(whereParameters, fmt.Sprintf("%s = %s",
-								foreignColumn, fieldToUpdate))
+
 						}
-
+						break
 					}
-					break
 				}
+
 			}
-
-		}
-		for localColumn, foreignColumn := range reference.ColumnMapping {
-			updatSql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s limit 1`, foreignColumn, reference.TableName, strings.Join(whereParameters, " and "))
-
-			row[table.ColumnIndexes[localColumn]].value = updatSql
-			row[table.ColumnIndexes[localColumn]].columnType = "SQL"
+			for localColumn, foreignColumn := range reference.ColumnMapping {
+				updatSql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s limit 1`, foreignColumn, reference.TableName, strings.Join(whereParameters, " and "))
+				row[table.ColumnIndexes[localColumn]].value = updatSql
+				row[table.ColumnIndexes[localColumn]].columnType = "SQL"
+				cache[key] = updatSql
+			}
 		}
 	}
 	return row
@@ -279,11 +283,11 @@ func generateInsertStatement(values []rowDataStructure, table schemareader.Table
 	columnNames := strings.Join(table.Columns, ", ")
 	valueFiltered := filterRowData(values, table)
 
-	if strings.Compare(table.MainUniqueIndexName, schemareader.VirtualIndexName) == 0{
+	if strings.Compare(table.MainUniqueIndexName, schemareader.VirtualIndexName) == 0 {
 		whereClauseList := make([]string, 0)
-		for _, indexColumn :=  range table.UniqueIndexes[table.MainUniqueIndexName].Columns{
+		for _, indexColumn := range table.UniqueIndexes[table.MainUniqueIndexName].Columns {
 			for _, value := range values {
-				if strings.Compare(indexColumn, value.columnName) == 0{
+				if strings.Compare(indexColumn, value.columnName) == 0 {
 					if value.value == nil {
 						whereClauseList = append(whereClauseList, fmt.Sprintf(" %s IS NULL", value.columnName))
 					} else {

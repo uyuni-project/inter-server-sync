@@ -37,6 +37,11 @@ func applyTableFilters(table Table) Table {
 		virtualIndexColumns := []string{"label"}
 		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
 		table.MainUniqueIndexName = VirtualIndexName
+	case "suseupgradepath": //FIXME we should try to add a unique constraint to this table instead of this hack
+		// We need to add a virtual unique constraint
+		virtualIndexColumns := []string{"from_pdid", "to_pdid"}
+		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
+		table.MainUniqueIndexName = VirtualIndexName
 	}
 	return table
 }

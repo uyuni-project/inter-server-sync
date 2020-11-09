@@ -43,7 +43,7 @@ func main() {
 	if len(parsedArgs.ChannleLabels) > 0 {
 		channelLabels := parsedArgs.ChannleLabels
 		outputFolder := parsedArgs.Path
-		tableData := dumper.DumpeChannelData(db, channelLabels, outputFolder)
+		tableData := dumper.DumpChannelData(db, channelLabels, outputFolder)
 
 		if parsedArgs.Debug {
 			for path := range tableData.Paths {

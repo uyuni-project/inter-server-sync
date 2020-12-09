@@ -10,6 +10,10 @@ import (
 	"github.com/uyuni-project/inter-server-sync/schemareader"
 )
 
+// TablesToClean represents Tables which needs to be cleaned in case on client side there is a record that doesn't exist anymore on master side
+var TablesToClean = []string{"rhnreleasechannelmap", "rhndistchannelmap", "rhnchannelerrata", "rhnchannelpackage", "rhnerratapackage", "rhnerratafile",
+	"rhnerratafilechannel", "rhnerratafilepackage", "rhnerratafilepackagesource", "rhnerratabuglist", "rhnerratacve", "rhnerratakeyword", "susemddata", "susemdkeyword"}
+
 // SoftwareChannelTableNames is the list of names of tables relevant for exporting software channels
 func SoftwareChannelTableNames() []string {
 	return []string{

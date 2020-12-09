@@ -4,11 +4,13 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
+	"log"
 	"strings"
 	"time"
 
 	"github.com/lib/pq"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
+	"github.com/uyuni-project/inter-server-sync/utils"
 )
 
 var cache = make(map[string]string)
@@ -38,27 +40,32 @@ func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string
 		}
 		result = result + printTableData(db, writter, schemaMetadata, data, tableReference, processedTables, path)
 	}
-	for _, key := range tableData.Keys {
 
-		whereParameters := make([]string, 0)
-		scanParameters := make([]interface{}, 0)
-		for column, value := range key.key {
-			whereParameters = append(whereParameters, fmt.Sprintf("%s = $%d", column, len(whereParameters)+1))
-			scanParameters = append(scanParameters, value)
+	if utils.Contains(TablesToClean, table.Name) {
+		rowsValues := make([][]rowDataStructure, 0)
+		for _, key := range tableData.Keys {
+			rows := getRows(db, table, key)
+			for _, row := range rows {
+				result++
+				values := substituteKeys(db, table, row, schemaMetadata)
+				rowsValues = append(rowsValues, values)
+			}
 		}
-		formattedColumns := strings.Join(table.Columns, ", ")
-		formatedWhereParameters := strings.Join(whereParameters, " and ")
-
-		sql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s;`, formattedColumns, table.Name, formatedWhereParameters)
-		rows := executeQueryWithResults(db, sql, scanParameters...)
-
-		for _, row := range rows {
-			result++
-			writter.WriteString(prepareRowInsert(db, table, row, schemaMetadata) + "\n")
+		rowToInsert := generateInsertWithClean(rowsValues, table, path, schemaMetadata)
+		writter.WriteString(rowToInsert + "\n")
+	} else {
+		for _, key := range tableData.Keys {
+			rows := getRows(db, table, key)
+			for _, row := range rows {
+				result++
+				rowToInsert := prepareRowInsert(db, table, row, schemaMetadata)
+				writter.WriteString(rowToInsert + "\n")
+			}
 		}
 	}
 
 	for _, reference := range table.ReferencedBy {
+
 		tableReference, ok := schemaMetadata[reference.TableName]
 		if !ok || !tableReference.Export {
 			continue
@@ -71,9 +78,29 @@ func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string
 	return result
 }
 
-func prepareRowInsert(db *sql.DB, table schemareader.Table, row []rowDataStructure, tableMap map[string]schemareader.Table) string {
+func getRows(db *sql.DB, table schemareader.Table, key TableKey) [][]rowDataStructure {
+	whereParameters := make([]string, 0)
+	scanParameters := make([]interface{}, 0)
+	for column, value := range key.key {
+		whereParameters = append(whereParameters, fmt.Sprintf("%s = $%d", column, len(whereParameters)+1))
+		scanParameters = append(scanParameters, value)
+	}
+	formattedColumns := strings.Join(table.Columns, ", ")
+	formatedWhereParameters := strings.Join(whereParameters, " and ")
+
+	sql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s;`, formattedColumns, table.Name, formatedWhereParameters)
+	rows := executeQueryWithResults(db, sql, scanParameters...)
+	return rows
+}
+
+func substituteKeys(db *sql.DB, table schemareader.Table, row []rowDataStructure, tableMap map[string]schemareader.Table) []rowDataStructure {
 	values := substitutePrimaryKey(table, row)
 	values = substituteForeignKey(db, table, tableMap, values)
+	return values
+}
+
+func prepareRowInsert(db *sql.DB, table schemareader.Table, row []rowDataStructure, tableMap map[string]schemareader.Table) string {
+	values := substituteKeys(db, table, row, tableMap)
 	return generateInsertStatement(values, table)
 }
 
@@ -277,6 +304,48 @@ func filterRowData(value []rowDataStructure, table schemareader.Table) []rowData
 	}
 	return value
 }
+func buildQueryToGetExistingRecords(path []string, table schemareader.Table, schemaMetadata map[string]schemareader.Table) string {
+	mainUniqueColumns := strings.Join(table.UniqueIndexes[table.MainUniqueIndexName].Columns, ",")
+	joinsClause := getJoinsClause(path, table, schemaMetadata)
+	whereClause := fmt.Sprintf(`WHERE rhnchannel.id = (SELECT id FROM rhnchannel WHERE label = %s`, "replace-me)")
+	return fmt.Sprintf(`SELECT %s.%s FROM %s %s %s`, table.Name, mainUniqueColumns, table.Name, joinsClause, whereClause)
+}
+
+func getJoinsClause(path []string, table schemareader.Table, schemaMetadata map[string]schemareader.Table) string {
+	var result strings.Builder
+	utils.ReverseArray(path)
+	log.Printf("%s", path)
+	for i := 0; i < len(path)-1; i++ {
+		firstTable := path[i]
+		secondTable := path[i+1]
+		reverseRelationLookup := false
+		relationFound := findRelationInfo(schemaMetadata[firstTable].ReferencedBy, secondTable)
+		if relationFound == nil {
+			relationFound = findRelationInfo(schemaMetadata[firstTable].References, secondTable)
+			reverseRelationLookup = true
+		}
+		for key, value := range relationFound {
+			if reverseRelationLookup {
+				result.WriteString(fmt.Sprintf(` INNER JOIN %s on %s.%s = %s.%s`, secondTable, secondTable, value, firstTable, key))
+			} else {
+				result.WriteString(fmt.Sprintf(` INNER JOIN %s on %s.%s = %s.%s`, secondTable, secondTable, key, firstTable, value))
+			}
+
+		}
+	}
+
+	return result.String()
+}
+
+func findRelationInfo(References []schemareader.Reference, tableToFind string) map[string]string {
+	for _, reference := range References {
+
+		if reference.TableName == tableToFind {
+			return reference.ColumnMapping
+		}
+	}
+	return nil
+}
 
 func generateInsertStatement(values []rowDataStructure, table schemareader.Table) string {
 	tableName := table.Name
@@ -305,5 +374,31 @@ func generateInsertStatement(values []rowDataStructure, table schemareader.Table
 		return fmt.Sprintf(`INSERT INTO %s (%s)	VALUES (%s)  ON CONFLICT %s ;`,
 			tableName, columnNames, formatValue(valueFiltered), onConflictFormated)
 	}
+
+}
+func generateInsertWithClean(values [][]rowDataStructure, table schemareader.Table, path []string, schemaMetadata map[string]schemareader.Table) string {
+
+	var valueFiltered []string
+	for _, rowValue := range values {
+		valueFiltered = append(valueFiltered, "("+formatValue(rowValue)+")")
+
+	}
+	allValues := strings.Join(valueFiltered, ", ")
+
+	tableName := table.Name
+	columnNames := strings.Join(table.Columns, ", ")
+	onConflictFormated := formatOnConflict(values[0], table)
+
+	mainUniqueColumns := strings.Join(table.UniqueIndexes[table.MainUniqueIndexName].Columns, ",")
+
+	insertPart := fmt.Sprintf(`WITH new_records_%s AS (INSERT INTO %s (%s) VALUES %s  ON CONFLICT %s RETURNING %s)`,
+		tableName, tableName, columnNames, allValues, onConflictFormated, mainUniqueColumns)
+
+	existingRecords := buildQueryToGetExistingRecords(path, table, schemaMetadata)
+
+	deletePart := fmt.Sprintf("\nDELETE FROM %s WHERE (%s) IN (SELECT * FROM existing_records_%s EXCEPT ALL SELECT * FROM new_records_%s);", tableName, mainUniqueColumns, tableName, tableName)
+	finalQuery := fmt.Sprintf(`%s, existing_records_%s as (%s) %s`, insertPart, tableName, existingRecords, deletePart)
+	log.Printf(finalQuery)
+	return finalQuery
 
 }

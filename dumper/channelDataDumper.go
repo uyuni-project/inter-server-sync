@@ -88,7 +88,7 @@ func ProductsTableNames() []string {
 	}
 }
 
-func DumpChannelData(db *sql.DB, channelLabels []string, outputFolder string) DataDumper {
+func DumpChannelData(db *sql.DB, channelLabels []string, outputFolder string) []DataDumper {
 
 	file, err := os.Create(outputFolder + "/sql_statements.sql")
 	if err != nil {

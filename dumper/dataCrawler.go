@@ -55,23 +55,24 @@ IterateItemsLoop:
 	return result
 }
 
-func generateKeyIdToMap(data map[string]string) string {
+func generateKeyIdToMap(data map[string]interface{}) string {
 	keyValuesList := make([]string, 0)
 	for _, value := range data {
-		keyValuesList = append(keyValuesList, value)
+		valueStr := fmt.Sprintf("%s", value)
+		keyValuesList = append(keyValuesList, valueStr)
 	}
 	return strings.Join(keyValuesList, "$$")
 }
 
-func extractRowKeyData(table schemareader.Table, itemToProcess processItem) map[string]string {
-	keyColumnData := make(map[string]string)
+func extractRowKeyData(table schemareader.Table, itemToProcess processItem) map[string]interface{} {
+	keyColumnData := make(map[string]interface{})
 	if len(table.PKColumns) > 0 {
 		for pkColumn, _ := range table.PKColumns {
-			keyColumnData[pkColumn] = formatField(itemToProcess.row[table.ColumnIndexes[pkColumn]])
+			keyColumnData[pkColumn] = itemToProcess.row[table.ColumnIndexes[pkColumn]].value
 		}
 	} else {
 		for _, pkColumn := range table.UniqueIndexes[table.MainUniqueIndexName].Columns {
-			keyColumnData[pkColumn] = formatField(itemToProcess.row[table.ColumnIndexes[pkColumn]])
+			keyColumnData[pkColumn] = itemToProcess.row[table.ColumnIndexes[pkColumn]].value
 		}
 	}
 	return keyColumnData

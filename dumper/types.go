@@ -1,7 +1,7 @@
 package dumper
 
 type TableKey struct {
-	key map[string]string
+	key map[string]interface{}
 }
 
 type TableDump struct {

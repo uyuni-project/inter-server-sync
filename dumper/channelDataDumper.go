@@ -120,20 +120,23 @@ func processAndInsertProducts(db *sql.DB, writter *bufio.Writer) {
 	dumpAllTablesData(db, writter, schemaMetadata, startingTables, whereFilterClause)
 }
 
-func processAndInsertChannels(db *sql.DB, channelLabels []string, writter *bufio.Writer) DataDumper{
+func processAndInsertChannels(db *sql.DB, channelLabels []string, writter *bufio.Writer) []DataDumper {
 	schemaMetadata := schemareader.ReadTablesSchema(db, SoftwareChannelTableNames())
-
+	tableDumper := make([]DataDumper, 0)
 	initalDataSet := make([]processItem, 0)
 	for _, channelLabel := range channelLabels {
+		log.Printf("Processing...%s", channelLabel)
+		initalDataSet = initalDataSet[:0]
 		whereFilter := fmt.Sprintf("label = '%s'", channelLabel)
 		sql := fmt.Sprintf(`SELECT * FROM rhnchannel where %s ;`, whereFilter)
 		rows := executeQueryWithResults(db, sql)
 		for _, row := range rows {
 			initalDataSet = append(initalDataSet, processItem{schemaMetadata["rhnchannel"].Name, row, []string{"rhnchannel"}})
 		}
-
+		tableData := dataCrawler(db, schemaMetadata, initalDataSet)
+		PrintTableDataOrdered(db, writter, schemaMetadata, schemaMetadata["rhnchannel"], tableData, channelLabel)
+		tableDumper = append(tableDumper, tableData)
 	}
-	tableData := dataCrawler(db, schemaMetadata, initalDataSet)
-	PrintTableDataOrdered(db, writter, schemaMetadata, schemaMetadata["rhnchannel"], tableData)
-	return tableData
+	return tableDumper
+
 }

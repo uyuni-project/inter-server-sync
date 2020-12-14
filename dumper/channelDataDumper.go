@@ -14,15 +14,15 @@ import (
 var tablesToClean = []string{"rhnreleasechannelmap", "rhndistchannelmap", "rhnchannelerrata", "rhnchannelpackage", "rhnerratapackage", "rhnerratafile",
 	"rhnerratafilechannel", "rhnerratafilepackage", "rhnerratafilepackagesource", "rhnerratabuglist", "rhnerratacve", "rhnerratakeyword", "susemddata", "susemdkeyword"}
 
+// OnlyIfParentExistsTables represents Tables for which only records needs to be insterted only if parent record exists
+var OnlyIfParentExistsTables = []string{"rhnchannelcloned", "rhnerratacloned", "suseproductchannel"}
+
 // SoftwareChannelTableNames is the list of names of tables relevant for exporting software channels
 func SoftwareChannelTableNames() []string {
 	return []string{
 		// software channel data tables
 		"rhnchannel",
-		// FIXME This table needs a special treatement to check if channels exists. Inser to into.. select .. were
-		//"rhnchannelcloned", // add only if there are corresponding rows in rhnchannel
-		// FIXME This table needs a special treatement to check if channels exists. Inser to into.. select .. were
-		// shouldn't this table be parte of channel export tables?
+		"rhnchannelcloned", // add only if there are corresponding rows in rhnchannel
 		"suseproductchannel",       // add only if there are corresponding rows in rhnchannel // clean
 		"rhnproductname",
 		"rhnchannelproduct",
@@ -34,7 +34,7 @@ func SoftwareChannelTableNames() []string {
 		"rhnpublicchannelfamily",
 		"rhnerrata",
 		// FIXME This table needs a special treatement to check if channels exists. Inser to into.. select .. were
-		//"rhnerratacloned", // add only if there are corresponding rows in rhnerrata
+		"rhnerratacloned",  // add only if there are corresponding rows in rhnerrata
 		"rhnchannelerrata", // clean
 		"rhnpackagenevra",
 		"rhnpackagename",
@@ -108,7 +108,7 @@ func DumpChannelData(db *sql.DB, channelLabels []string, outputFolder string) []
 
 func processAndInsertProducts(db *sql.DB, writter *bufio.Writer) {
 	schemaMetadata := schemareader.ReadTablesSchema(db, ProductsTableNames())
-	startingTables := []schemareader.Table {schemaMetadata["suseproducts"]}
+	startingTables := []schemareader.Table{schemaMetadata["suseproducts"]}
 
 	var whereFilterClause = func(table schemareader.Table) string {
 		filterOrg := ""

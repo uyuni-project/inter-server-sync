@@ -398,8 +398,9 @@ func generateInsertStatement(values []rowDataStructure, table schemareader.Table
 	columnNames := prepareColumnNames(table)
 	valueFiltered := filterRowData(values, table)
 
-	if strings.Compare(table.MainUniqueIndexName, schemareader.VirtualIndexName) == 0 {
+	if strings.Compare(table.MainUniqueIndexName, schemareader.VirtualIndexName) == 0 || utils.Contains(OnlyIfParentExistsTables, table.Name) {
 		whereClauseList := make([]string, 0)
+		parentsRecordsCheckList := make([]string, 0)
 		for _, indexColumn := range table.UniqueIndexes[table.MainUniqueIndexName].Columns {
 			for _, value := range values {
 				if strings.Compare(indexColumn, value.columnName) == 0 {
@@ -408,13 +409,23 @@ func generateInsertStatement(values []rowDataStructure, table schemareader.Table
 					} else {
 						whereClauseList = append(whereClauseList, fmt.Sprintf(" %s = %s",
 							value.columnName, formatField(value)))
+						parentsRecordsCheckList = append(parentsRecordsCheckList, fmt.Sprintf("exists %s",
+							formatField(value)))
 					}
 				}
 			}
 		}
 		whereClause := strings.Join(whereClauseList, " and ")
+		parentRecordsExistsClause := strings.Join(parentsRecordsCheckList, " and ")
+
+		if utils.Contains(OnlyIfParentExistsTables, table.Name) {
+			return fmt.Sprintf(`INSERT INTO %s (%s)	select %s  where  not exists (select 1 from %s where %s) and %s;`,
+				tableName, columnNames, formatValue(valueFiltered), tableName, whereClause, parentRecordsExistsClause)
+		}
+
 		return fmt.Sprintf(`INSERT INTO %s (%s)	select %s  where  not exists (select 1 from %s where %s);`,
 			tableName, columnNames, formatValue(valueFiltered), tableName, whereClause)
+
 	} else {
 		onConflictFormated := formatOnConflict(values, table)
 		return fmt.Sprintf(`INSERT INTO %s (%s)	VALUES (%s)  ON CONFLICT %s ;`,

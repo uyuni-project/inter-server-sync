@@ -30,7 +30,7 @@ func main() {
 			log.Fatal("could not start CPU profile: ", err)
 		}
 		defer pprof.StopCPUProfile()
-    }
+	}
 
 	db := schemareader.GetDBconnection(parsedArgs.Config)
 	defer db.Close()
@@ -46,16 +46,20 @@ func main() {
 		tableData := dumper.DumpChannelData(db, channelLabels, outputFolder)
 
 		if parsedArgs.Debug {
-			for path := range tableData.Paths {
-				println(path)
+			for index, channelTableData := range tableData {
+				fmt.Printf("###Processing channe%d...", index)
+				for path := range channelTableData.Paths {
+					println(path)
+				}
+				count := 0
+				for _, value := range channelTableData.TableData {
+					fmt.Printf("%s number inserts: %d \n\t %s keys: %s\n", value.TableName, len(value.Keys),
+						value.TableName, value.Keys)
+					count = count + len(value.Keys)
+				}
+				fmt.Printf("IDS############%d\n\n", count)
 			}
-			count := 0
-			for _, value := range tableData.TableData {
-				fmt.Printf("%s number inserts: %d \n\t %s keys: %s\n", value.TableName, len(value.Keys),
-					value.TableName, value.Keys)
-				count = count + len(value.Keys)
-			}
-			fmt.Printf("IDS############%d\n\n", count)
+
 		}
 	}
 	if parsedArgs.Memprofile != "" {

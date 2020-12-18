@@ -305,10 +305,17 @@ func filterRowData(value []rowDataStructure, table schemareader.Table) []rowData
 	return value
 }
 func buildQueryToGetExistingRecords(path []string, table schemareader.Table, schemaMetadata map[string]schemareader.Table, channelLabel string) string {
-	mainUniqueColumns := strings.Join(table.UniqueIndexes[table.MainUniqueIndexName].Columns, ",")
+	mainUniqueColumns := ""
+	for _, column := range table.UniqueIndexes[table.MainUniqueIndexName].Columns{
+		if len(mainUniqueColumns) > 0 {
+			mainUniqueColumns = mainUniqueColumns +", "
+		}
+		mainUniqueColumns = mainUniqueColumns + table.Name + "." + column
+	}
+
 	joinsClause := getJoinsClause(path, table, schemaMetadata)
 	whereClause := fmt.Sprintf(`WHERE rhnchannel.id = (SELECT id FROM rhnchannel WHERE label = '%s')`, channelLabel)
-	return fmt.Sprintf(`SELECT %s.%s FROM %s %s %s`, table.Name, mainUniqueColumns, table.Name, joinsClause, whereClause)
+	return fmt.Sprintf(`SELECT %s FROM %s %s %s`, mainUniqueColumns, table.Name, joinsClause, whereClause)
 }
 
 func getJoinsClause(path []string, table schemareader.Table, schemaMetadata map[string]schemareader.Table) string {

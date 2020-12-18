@@ -12,7 +12,8 @@ import (
 
 // TablesToClean represents Tables which needs to be cleaned in case on client side there is a record that doesn't exist anymore on master side
 var tablesToClean = []string{"rhnreleasechannelmap", "rhndistchannelmap", "rhnchannelerrata", "rhnchannelpackage", "rhnerratapackage", "rhnerratafile",
-	"rhnerratafilechannel", "rhnerratafilepackage", "rhnerratafilepackagesource", "rhnerratabuglist", "rhnerratacve", "rhnerratakeyword", "susemddata", "susemdkeyword"}
+	"rhnerratafilechannel", "rhnerratafilepackage", "rhnerratafilepackagesource", "rhnerratabuglist", "rhnerratacve", "rhnerratakeyword", "susemddata", "susemdkeyword",
+	"suseproductchannel"}
 
 // OnlyIfParentExistsTables represents Tables for which only records needs to be insterted only if parent record exists
 var OnlyIfParentExistsTables = []string{"rhnchannelcloned", "rhnerratacloned", "suseproductchannel"}
@@ -78,7 +79,6 @@ func ProductsTableNames() []string {
 	return []string{
 		// product data tables
 		"suseproducts",             // clean
-
 		"suseproductextension",     // clean
 		"suseproductsccrepository", // clean
 		"susesccrepository",        // clean

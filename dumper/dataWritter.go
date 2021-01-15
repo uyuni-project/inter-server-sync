@@ -240,7 +240,7 @@ func formatField(col rowDataStructure) string {
 func formatColumnAssignment(table schemareader.Table) string {
 	assignments := make([]string, 0)
 	for _, column := range table.Columns {
-		if !table.PKColumns[column] {
+		if !table.PKColumns[column] && !table.UnexportColumns[column]{
 			assignments = append(assignments, fmt.Sprintf("%s = excluded.%s", column, column))
 		}
 	}
@@ -273,9 +273,9 @@ func formatOnConflict(row []rowDataStructure, table schemareader.Table) string {
 			}
 		}
 		if epoch == nil {
-			return "(version, release) WHERE epoch IS NULL DO NOTHING"
+			return "(version, release, ((evr).type)) WHERE epoch IS NULL DO NOTHING"
 		} else {
-			return "(version, release, epoch) WHERE epoch IS NOT NULL DO NOTHING"
+			return "(version, release, epoch, ((evr).type)) WHERE epoch IS NOT NULL DO NOTHING"
 		}
 	case "rhnpackagecapability":
 		var version interface{} = nil
@@ -301,6 +301,16 @@ func filterRowData(value []rowDataStructure, table schemareader.Table) []rowData
 				value[i].value = value[i].initialValue
 			}
 		}
+	}
+	if table.UnexportColumns != nil{
+		returnValues := make ([]rowDataStructure, 0)
+		for _, row := range value {
+			_, ok := table.UnexportColumns[row.columnName]
+			if !ok {
+				returnValues = append(returnValues, row)
+			}
+		}
+		return returnValues
 	}
 	return value
 }
@@ -354,9 +364,24 @@ func findRelationInfo(References []schemareader.Reference, tableToFind string) m
 	return nil
 }
 
+func prepareColumnNames(table schemareader.Table) string{
+	returnColumn := ""
+	for _, column := range table.Columns {
+		_, ignore := table.UnexportColumns[column]
+		if ! ignore {
+			if len(returnColumn) == 0{
+				returnColumn = returnColumn + column
+			}else{
+				returnColumn = returnColumn + ", " + column
+			}
+		}
+	}
+	return returnColumn
+}
+
 func generateInsertStatement(values []rowDataStructure, table schemareader.Table) string {
 	tableName := table.Name
-	columnNames := strings.Join(table.Columns, ", ")
+	columnNames := prepareColumnNames(table)
 	valueFiltered := filterRowData(values, table)
 
 	if strings.Compare(table.MainUniqueIndexName, schemareader.VirtualIndexName) == 0 {
@@ -387,13 +412,14 @@ func generateInsertWithClean(values [][]rowDataStructure, table schemareader.Tab
 
 	var valueFiltered []string
 	for _, rowValue := range values {
-		valueFiltered = append(valueFiltered, "("+formatValue(rowValue)+")")
+		filteredRowValue := filterRowData(rowValue, table)
+		valueFiltered = append(valueFiltered, "("+formatValue(filteredRowValue)+")")
 
 	}
 	allValues := strings.Join(valueFiltered, ", ")
 
 	tableName := table.Name
-	columnNames := strings.Join(table.Columns, ", ")
+	columnNames := prepareColumnNames(table)
 	onConflictFormated := formatOnConflict(values[0], table)
 
 	mainUniqueColumns := strings.Join(table.UniqueIndexes[table.MainUniqueIndexName].Columns, ",")

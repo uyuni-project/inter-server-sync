@@ -18,6 +18,13 @@ func applyTableFilters(table Table) Table {
 	case "rhnpackageevr":
 		// constraint: rhn_pe_id_pk
 		table.PKSequence = "rhn_pkg_evr_seq"
+		unexportColumns := make(map[string]bool)
+		unexportColumns["type"] = true
+		table.UnexportColumns = unexportColumns
+		table.UniqueIndexes["rhn_pe_v_r_e_uq"] = UniqueIndex{Name: "rhn_pe_v_r_e_uq",
+			Columns: append(table.UniqueIndexes["rhn_pe_v_r_e_uq"].Columns, "type")}
+		table.UniqueIndexes["rhn_pe_v_r_uq"] = UniqueIndex{Name: "rhn_pe_v_r_uq",
+			Columns: append(table.UniqueIndexes["rhn_pe_v_r_uq"].Columns, "type")}
 	case "rhnpackage":
 		// We need to add a virtual unique constraint
 		table.PKSequence = "RHN_PACKAGE_ID_SEQ"

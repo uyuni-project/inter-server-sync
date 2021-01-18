@@ -21,6 +21,9 @@ func SoftwareChannelTableNames() []string {
 		"rhnchannel",
 		// FIXME This table needs a special treatement to check if channels exists. Inser to into.. select .. were
 		//"rhnchannelcloned", // add only if there are corresponding rows in rhnchannel
+		// FIXME This table needs a special treatement to check if channels exists. Inser to into.. select .. were
+		// shouldn't this table be parte of channel export tables?
+		"suseproductchannel",       // add only if there are corresponding rows in rhnchannel // clean
 		"rhnproductname",
 		"rhnchannelproduct",
 		"rhnreleasechannelmap", // clean
@@ -75,9 +78,7 @@ func ProductsTableNames() []string {
 	return []string{
 		// product data tables
 		"suseproducts",             // clean
-		// FIXME This table needs a special treatement to check if channels exists. Inser to into.. select .. were
-		// shouldn't this table be parte of channel export tables?
-		//"suseproductchannel",       // add only if there are corresponding rows in rhnchannel // clean
+
 		"suseproductextension",     // clean
 		"suseproductsccrepository", // clean
 		"susesccrepository",        // clean

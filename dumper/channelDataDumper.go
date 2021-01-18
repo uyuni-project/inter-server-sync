@@ -11,7 +11,7 @@ import (
 )
 
 // TablesToClean represents Tables which needs to be cleaned in case on client side there is a record that doesn't exist anymore on master side
-var TablesToClean = []string{"rhnreleasechannelmap", "rhndistchannelmap", "rhnchannelerrata", "rhnchannelpackage", "rhnerratapackage", "rhnerratafile",
+var tablesToClean = []string{"rhnreleasechannelmap", "rhndistchannelmap", "rhnchannelerrata", "rhnchannelpackage", "rhnerratapackage", "rhnerratafile",
 	"rhnerratafilechannel", "rhnerratafilepackage", "rhnerratafilepackagesource", "rhnerratabuglist", "rhnerratacve", "rhnerratakeyword", "susemddata", "susemdkeyword"}
 
 // SoftwareChannelTableNames is the list of names of tables relevant for exporting software channels
@@ -124,18 +124,18 @@ func processAndInsertProducts(db *sql.DB, writter *bufio.Writer) {
 func processAndInsertChannels(db *sql.DB, channelLabels []string, writter *bufio.Writer) []DataDumper {
 	schemaMetadata := schemareader.ReadTablesSchema(db, SoftwareChannelTableNames())
 	tableDumper := make([]DataDumper, 0)
-	initalDataSet := make([]processItem, 0)
 	for _, channelLabel := range channelLabels {
 		log.Printf("Processing...%s", channelLabel)
-		initalDataSet = initalDataSet[:0]
 		whereFilter := fmt.Sprintf("label = '%s'", channelLabel)
 		sql := fmt.Sprintf(`SELECT * FROM rhnchannel where %s ;`, whereFilter)
 		rows := executeQueryWithResults(db, sql)
+		initialDataSet := make([]processItem, 0)
 		for _, row := range rows {
-			initalDataSet = append(initalDataSet, processItem{schemaMetadata["rhnchannel"].Name, row, []string{"rhnchannel"}})
+			initialDataSet = append(initialDataSet, processItem{schemaMetadata["rhnchannel"].Name, row, []string{"rhnchannel"}})
 		}
-		tableData := dataCrawler(db, schemaMetadata, initalDataSet)
-		PrintTableDataOrdered(db, writter, schemaMetadata, schemaMetadata["rhnchannel"], tableData, channelLabel)
+		tableData := dataCrawler(db, schemaMetadata, initialDataSet)
+		cleanWhereClause := fmt.Sprintf(`WHERE rhnchannel.id = (SELECT id FROM rhnchannel WHERE label = '%s')`, channelLabel)
+		PrintTableDataOrdered(db, writter, schemaMetadata, schemaMetadata["rhnchannel"], tableData, cleanWhereClause, tablesToClean)
 		tableDumper = append(tableDumper, tableData)
 	}
 	return tableDumper

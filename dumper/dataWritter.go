@@ -15,12 +15,15 @@ import (
 
 var cache = make(map[string]string)
 
-func PrintTableDataOrdered(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string]schemareader.Table, startingTable schemareader.Table, data DataDumper, channelLabel string) int {
-	result := printTableData(db, writter, schemaMetadata, data, startingTable, make(map[string]bool), make([]string, 0), channelLabel)
+func PrintTableDataOrdered(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string]schemareader.Table,
+	startingTable schemareader.Table, data DataDumper, cleanWhereClause string, tablesToClean []string) int {
+
+	result := printTableData(db, writter, schemaMetadata, data, startingTable, make(map[string]bool), make([]string, 0), cleanWhereClause, tablesToClean)
 	return result
 }
 
-func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string]schemareader.Table, data DataDumper, table schemareader.Table, processedTables map[string]bool, path []string, channelLabel string) int {
+func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string]schemareader.Table, data DataDumper,
+	table schemareader.Table, processedTables map[string]bool, path []string, cleanWhereClause string, tablesToClean []string) int {
 
 	result := 0
 	_, tableProcessed := processedTables[table.Name]
@@ -38,10 +41,10 @@ func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string
 		if !ok || !tableReference.Export {
 			continue
 		}
-		result = result + printTableData(db, writter, schemaMetadata, data, tableReference, processedTables, path, channelLabel)
+		result = result + printTableData(db, writter, schemaMetadata, data, tableReference, processedTables, path, cleanWhereClause, tablesToClean)
 	}
 
-	if utils.Contains(TablesToClean, table.Name) {
+	if utils.Contains(tablesToClean, table.Name) {
 		rowsValues := make([][]rowDataStructure, 0)
 		for _, key := range tableData.Keys {
 			rows := getRows(db, table, key)
@@ -51,7 +54,7 @@ func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string
 				rowsValues = append(rowsValues, values)
 			}
 		}
-		rowToInsert := generateInsertWithClean(rowsValues, table, path, schemaMetadata, channelLabel)
+		rowToInsert := generateInsertWithClean(rowsValues, table, path, schemaMetadata, cleanWhereClause)
 		writter.WriteString(rowToInsert + "\n")
 	} else {
 		for _, key := range tableData.Keys {
@@ -73,7 +76,7 @@ func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string
 		if !shouldFollowReferenceToLink(path, table, tableReference) {
 			continue
 		}
-		result = result + printTableData(db, writter, schemaMetadata, data, tableReference, processedTables, path, channelLabel)
+		result = result + printTableData(db, writter, schemaMetadata, data, tableReference, processedTables, path, cleanWhereClause, tablesToClean)
 	}
 	return result
 }
@@ -314,7 +317,8 @@ func filterRowData(value []rowDataStructure, table schemareader.Table) []rowData
 	}
 	return value
 }
-func buildQueryToGetExistingRecords(path []string, table schemareader.Table, schemaMetadata map[string]schemareader.Table, channelLabel string) string {
+
+func buildQueryToGetExistingRecords(path []string, table schemareader.Table, schemaMetadata map[string]schemareader.Table, cleanWhereClause string) string {
 	mainUniqueColumns := ""
 	for _, column := range table.UniqueIndexes[table.MainUniqueIndexName].Columns{
 		if len(mainUniqueColumns) > 0 {
@@ -324,8 +328,7 @@ func buildQueryToGetExistingRecords(path []string, table schemareader.Table, sch
 	}
 
 	joinsClause := getJoinsClause(path, schemaMetadata)
-	whereClause := fmt.Sprintf(`WHERE rhnchannel.id = (SELECT id FROM rhnchannel WHERE label = '%s')`, channelLabel)
-	return fmt.Sprintf(`SELECT %s FROM %s %s %s`, mainUniqueColumns, table.Name, joinsClause, whereClause)
+	return fmt.Sprintf(`SELECT %s FROM %s %s %s`, mainUniqueColumns, table.Name, joinsClause, cleanWhereClause)
 }
 
 func getJoinsClause(path []string, schemaMetadata map[string]schemareader.Table) string {
@@ -408,7 +411,8 @@ func generateInsertStatement(values []rowDataStructure, table schemareader.Table
 	}
 
 }
-func generateInsertWithClean(values [][]rowDataStructure, table schemareader.Table, path []string, schemaMetadata map[string]schemareader.Table, channelLabel string) string {
+
+func generateInsertWithClean(values [][]rowDataStructure, table schemareader.Table, path []string, schemaMetadata map[string]schemareader.Table, cleanWhereClause string) string {
 
 	var valueFiltered []string
 	for _, rowValue := range values {
@@ -424,14 +428,18 @@ func generateInsertWithClean(values [][]rowDataStructure, table schemareader.Tab
 
 	mainUniqueColumns := strings.Join(table.UniqueIndexes[table.MainUniqueIndexName].Columns, ",")
 
-	insertPart := fmt.Sprintf(`WITH new_records_%s AS (INSERT INTO %s (%s) VALUES %s  ON CONFLICT %s RETURNING %s)`,
-		tableName, tableName, columnNames, allValues, onConflictFormated, mainUniqueColumns)
+	insertPart := fmt.Sprintf(`INSERT INTO %s (%s) VALUES %s  ON CONFLICT %s RETURNING %s`,
+		tableName, columnNames, allValues, onConflictFormated, mainUniqueColumns)
 
-	existingRecords := buildQueryToGetExistingRecords(path, table, schemaMetadata, channelLabel)
+	existingRecords := buildQueryToGetExistingRecords(path, table, schemaMetadata, cleanWhereClause)
 
-	deletePart := fmt.Sprintf("\nDELETE FROM %s WHERE (%s) IN (SELECT * FROM existing_records_%s EXCEPT ALL SELECT * FROM new_records_%s);", tableName, mainUniqueColumns, tableName, tableName)
-	finalQuery := fmt.Sprintf(`%s, existing_records_%s as (%s) %s`, insertPart, tableName, existingRecords, deletePart)
-	log.Printf(finalQuery)
+	deletePart := fmt.Sprintf("\nDELETE FROM %s WHERE (%s) IN (SELECT * FROM existing_records_%s EXCEPT ALL SELECT * FROM new_records_%s);",
+		tableName, mainUniqueColumns, tableName, tableName)
+
+	finalQuery := fmt.Sprintf(`WITH new_records_%s AS (%s), existing_records_%s as (%s) %s`,
+		tableName, insertPart, tableName, existingRecords, deletePart)
+
+	//log.Printf(finalQuery)
 	return finalQuery
 
 }

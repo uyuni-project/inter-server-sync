@@ -323,12 +323,12 @@ func buildQueryToGetExistingRecords(path []string, table schemareader.Table, sch
 		mainUniqueColumns = mainUniqueColumns + table.Name + "." + column
 	}
 
-	joinsClause := getJoinsClause(path, table, schemaMetadata)
+	joinsClause := getJoinsClause(path, schemaMetadata)
 	whereClause := fmt.Sprintf(`WHERE rhnchannel.id = (SELECT id FROM rhnchannel WHERE label = '%s')`, channelLabel)
 	return fmt.Sprintf(`SELECT %s FROM %s %s %s`, mainUniqueColumns, table.Name, joinsClause, whereClause)
 }
 
-func getJoinsClause(path []string, table schemareader.Table, schemaMetadata map[string]schemareader.Table) string {
+func getJoinsClause(path []string, schemaMetadata map[string]schemareader.Table) string {
 	var result strings.Builder
 	utils.ReverseArray(path)
 	log.Printf("%s", path)

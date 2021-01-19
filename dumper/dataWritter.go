@@ -333,11 +333,13 @@ func buildQueryToGetExistingRecords(path []string, table schemareader.Table, sch
 
 func getJoinsClause(path []string, schemaMetadata map[string]schemareader.Table) string {
 	var result strings.Builder
-	utils.ReverseArray(path)
-	log.Printf("%s", path)
-	for i := 0; i < len(path)-1; i++ {
-		firstTable := path[i]
-		secondTable := path[i+1]
+	reversePath := make([]string, len(path))
+	copy(reversePath, path)
+	utils.ReverseArray(reversePath)
+	log.Printf("%s", reversePath)
+	for i := 0; i < len(reversePath)-1; i++ {
+		firstTable := reversePath[i]
+		secondTable := reversePath[i+1]
 		reverseRelationLookup := false
 		relationFound := findRelationInfo(schemaMetadata[firstTable].ReferencedBy, secondTable)
 		if relationFound == nil {

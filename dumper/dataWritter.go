@@ -32,8 +32,17 @@ func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string
 
 	currentTable := schemaMetadata[table.Name]
 	tableData, dataOK := data.TableData[table.Name]
-	if !dataOK || tableProcessed || !currentTable.Export {
+	if tableProcessed || !currentTable.Export {
 		return result
+	}
+	if !dataOK{
+		if utils.Contains(tablesToClean, table.Name) {
+			cleanEmptyTable := generateClearEmptyTable(table, path, schemaMetadata, cleanWhereClause)
+			writter.WriteString(cleanEmptyTable + "\n")
+			return result
+		}else{
+			return result
+		}
 	}
 
 	for _, reference := range table.References {
@@ -444,4 +453,11 @@ func generateInsertWithClean(values [][]rowDataStructure, table schemareader.Tab
 	//log.Printf(finalQuery)
 	return finalQuery
 
+}
+
+func generateClearEmptyTable(table schemareader.Table, path []string, schemaMetadata map[string]schemareader.Table, cleanWhereClause string) string {
+	existingRecords := buildQueryToGetExistingRecords(path, table, schemaMetadata, cleanWhereClause)
+	mainUniqueColumns := strings.Join(table.UniqueIndexes[table.MainUniqueIndexName].Columns, ",")
+	return fmt.Sprintf("\nDELETE FROM %s WHERE (%s) IN (%s);",
+		table.Name, mainUniqueColumns, existingRecords)
 }

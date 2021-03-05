@@ -37,8 +37,8 @@ For debug purposes it's also possible to generate debug information about the ge
 
 ## After export
 
-Copy file to target machine and run `sql-statements.sql`
-Import can be done with `spacewalk-sql sql-statements.sql`
+Copy file to target machine and run `sql_statements.sql`
+Import can be done with `spacewalk-sql sql_statements.sql`
 
 ## Profile
 Run with profile: `go run . -cpuprofile=cpu.prof -memprofile=mem.prof ...`

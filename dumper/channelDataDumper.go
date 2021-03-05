@@ -34,7 +34,6 @@ func SoftwareChannelTableNames() []string {
 		"rhnchannelfamilymembers",
 		"rhnpublicchannelfamily",
 		"rhnerrata",
-		// FIXME This table needs a special treatement to check if channels exists. Inser to into.. select .. were
 		"rhnerratacloned",  // add only if there are corresponding rows in rhnerrata
 		"rhnchannelerrata", // clean
 		"rhnpackagenevra",

@@ -15,8 +15,8 @@ var tablesToClean = []string{"rhnreleasechannelmap", "rhndistchannelmap", "rhnch
 	"rhnerratafilechannel", "rhnerratafilepackage", "rhnerratafilepackagesource", "rhnerratabuglist", "rhnerratacve", "rhnerratakeyword", "susemddata", "susemdkeyword",
 	"suseproductchannel"}
 
-// OnlyIfParentExistsTables represents Tables for which only records needs to be insterted only if parent record exists
-var OnlyIfParentExistsTables = []string{"rhnchannelcloned", "rhnerratacloned", "suseproductchannel"}
+// onlyIfParentExistsTables represents Tables for which only records needs to be insterted only if parent record exists
+var onlyIfParentExistsTables = []string{"rhnchannelcloned", "rhnerratacloned", "suseproductchannel"}
 
 // SoftwareChannelTableNames is the list of names of tables relevant for exporting software channels
 func SoftwareChannelTableNames() []string {
@@ -117,7 +117,7 @@ func processAndInsertProducts(db *sql.DB, writter *bufio.Writer) {
 		return filterOrg
 	}
 
-	dumpAllTablesData(db, writter, schemaMetadata, startingTables, whereFilterClause)
+	dumpAllTablesData(db, writter, schemaMetadata, startingTables, whereFilterClause, onlyIfParentExistsTables)
 }
 
 func processAndInsertChannels(db *sql.DB, channelLabels []string, writter *bufio.Writer) []DataDumper {
@@ -134,7 +134,7 @@ func processAndInsertChannels(db *sql.DB, channelLabels []string, writter *bufio
 		}
 		tableData := dataCrawler(db, schemaMetadata, initialDataSet)
 		cleanWhereClause := fmt.Sprintf(`WHERE rhnchannel.id = (SELECT id FROM rhnchannel WHERE label = '%s')`, channelLabel)
-		PrintTableDataOrdered(db, writter, schemaMetadata, schemaMetadata["rhnchannel"], tableData, cleanWhereClause, tablesToClean)
+		PrintTableDataOrdered(db, writter, schemaMetadata, schemaMetadata["rhnchannel"], tableData, cleanWhereClause, tablesToClean, onlyIfParentExistsTables)
 		tableDumper = append(tableDumper, tableData)
 	}
 	return tableDumper

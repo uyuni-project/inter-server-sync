@@ -9,12 +9,12 @@ import (
 )
 
 func dumpAllTablesData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string]schemareader.Table,
-	startingTables []schemareader.Table, whereFilterClause func(table schemareader.Table) string) {
+	startingTables []schemareader.Table, whereFilterClause func(table schemareader.Table) string, onlyIfParentExistsTables []string) {
 
 	processedTables := make(map[string]bool)
 	// exporting from the starting tables.
 	for _, startingTable := range startingTables{
-		processedTables = printAllTableData(db, writter, schemaMetadata, startingTable, whereFilterClause, processedTables, make([]string, 0))
+		processedTables = printAllTableData(db, writter, schemaMetadata, startingTable, whereFilterClause, processedTables, make([]string, 0), onlyIfParentExistsTables)
 	}
 	// Export tables not touch by the starting tables
 	for schemaTableName, schemaTable := range schemaMetadata{
@@ -25,11 +25,12 @@ func dumpAllTablesData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[str
 		if ok {
 			continue
 		}
-		exportAllTableData(db, writter, schemaMetadata, schemaTable, whereFilterClause)
+		exportAllTableData(db, writter, schemaMetadata, schemaTable, whereFilterClause, onlyIfParentExistsTables)
 	}
 }
 
-func printAllTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string]schemareader.Table, table schemareader.Table, whereFilterClause func(table schemareader.Table) string, processedTables map[string]bool, path []string) map[string]bool {
+func printAllTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string]schemareader.Table, table schemareader.Table,
+	whereFilterClause func(table schemareader.Table) string, processedTables map[string]bool, path []string, onlyIfParentExistsTables[]string) map[string]bool {
 
 	_, tableProcessed := processedTables[table.Name]
 	currentTable := schemaMetadata[table.Name]
@@ -44,11 +45,11 @@ func printAllTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[str
 		if !ok || !tableReference.Export{
 			continue
 		}
-		printAllTableData(db, writter, schemaMetadata, tableReference, whereFilterClause, processedTables, path)
+		printAllTableData(db, writter, schemaMetadata, tableReference, whereFilterClause, processedTables, path, onlyIfParentExistsTables)
 
 	}
 
-	exportAllTableData(db, writter, schemaMetadata, table, whereFilterClause)
+	exportAllTableData(db, writter, schemaMetadata, table, whereFilterClause, onlyIfParentExistsTables)
 
 	for _, reference := range table.ReferencedBy {
 		tableReference, ok := schemaMetadata[reference.TableName]
@@ -58,19 +59,20 @@ func printAllTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[str
 		if !shouldFollowReferenceToLink(path, table, tableReference) {
 			continue
 		}
-		printAllTableData(db, writter, schemaMetadata, tableReference, whereFilterClause, processedTables, path)
+		printAllTableData(db, writter, schemaMetadata, tableReference, whereFilterClause, processedTables, path, onlyIfParentExistsTables)
 
 	}
 	return processedTables
 }
 
-func exportAllTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string]schemareader.Table, table schemareader.Table, whereFilterClause func(table schemareader.Table) string) {
+func exportAllTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string]schemareader.Table, table schemareader.Table,
+	whereFilterClause func(table schemareader.Table) string, onlyIfParentExistsTables []string) {
 	formattedColumns := strings.Join(table.Columns, ", ")
 	sql := fmt.Sprintf(`SELECT %s FROM %s %s;`, formattedColumns, table.Name, whereFilterClause(table))
 	rows := executeQueryWithResults(db, sql)
 
 	for _, row := range rows {
-		writter.WriteString(prepareRowInsert(db, table, row, schemaMetadata) + "\n")
+		writter.WriteString(prepareRowInsert(db, table, row, schemaMetadata, onlyIfParentExistsTables) + "\n")
 	}
 
 }

@@ -16,14 +16,16 @@ import (
 var cache = make(map[string]string)
 
 func PrintTableDataOrdered(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string]schemareader.Table,
-	startingTable schemareader.Table, data DataDumper, cleanWhereClause string, tablesToClean []string) int {
+	startingTable schemareader.Table, data DataDumper, cleanWhereClause string, tablesToClean []string, onlyIfParentExistsTables [] string) int {
 
-	result := printTableData(db, writter, schemaMetadata, data, startingTable, make(map[string]bool), make([]string, 0), cleanWhereClause, tablesToClean)
+	result := printTableData(db, writter, schemaMetadata, data, startingTable, make(map[string]bool), make([]string, 0),
+		cleanWhereClause, tablesToClean, onlyIfParentExistsTables)
 	return result
 }
 
 func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string]schemareader.Table, data DataDumper,
-	table schemareader.Table, processedTables map[string]bool, path []string, cleanWhereClause string, tablesToClean []string) int {
+	table schemareader.Table, processedTables map[string]bool, path []string, cleanWhereClause string,
+	tablesToClean []string, onlyIfParentExistsTables []string) int {
 
 	result := 0
 	_, tableProcessed := processedTables[table.Name]
@@ -50,7 +52,7 @@ func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string
 		if !ok || !tableReference.Export {
 			continue
 		}
-		result = result + printTableData(db, writter, schemaMetadata, data, tableReference, processedTables, path, cleanWhereClause, tablesToClean)
+		result = result + printTableData(db, writter, schemaMetadata, data, tableReference, processedTables, path, cleanWhereClause, tablesToClean,onlyIfParentExistsTables)
 	}
 
 	if utils.Contains(tablesToClean, table.Name) {
@@ -70,7 +72,7 @@ func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string
 			rows := getRows(db, table, key)
 			for _, row := range rows {
 				result++
-				rowToInsert := prepareRowInsert(db, table, row, schemaMetadata)
+				rowToInsert := prepareRowInsert(db, table, row, schemaMetadata, onlyIfParentExistsTables)
 				writter.WriteString(rowToInsert + "\n")
 			}
 		}
@@ -85,7 +87,7 @@ func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string
 		if !shouldFollowReferenceToLink(path, table, tableReference) {
 			continue
 		}
-		result = result + printTableData(db, writter, schemaMetadata, data, tableReference, processedTables, path, cleanWhereClause, tablesToClean)
+		result = result + printTableData(db, writter, schemaMetadata, data, tableReference, processedTables, path, cleanWhereClause, tablesToClean, onlyIfParentExistsTables)
 	}
 	return result
 }
@@ -111,9 +113,9 @@ func substituteKeys(db *sql.DB, table schemareader.Table, row []rowDataStructure
 	return values
 }
 
-func prepareRowInsert(db *sql.DB, table schemareader.Table, row []rowDataStructure, tableMap map[string]schemareader.Table) string {
+func prepareRowInsert(db *sql.DB, table schemareader.Table, row []rowDataStructure, tableMap map[string]schemareader.Table, onlyIfParentExistsTables []string) string {
 	values := substituteKeys(db, table, row, tableMap)
-	return generateInsertStatement(values, table)
+	return generateInsertStatement(values, table, onlyIfParentExistsTables)
 }
 
 func substitutePrimaryKey(table schemareader.Table, row []rowDataStructure) []rowDataStructure {
@@ -393,12 +395,12 @@ func prepareColumnNames(table schemareader.Table) string{
 	return returnColumn
 }
 
-func generateInsertStatement(values []rowDataStructure, table schemareader.Table) string {
+func generateInsertStatement(values []rowDataStructure, table schemareader.Table, onlyIfParentExistsTables []string) string {
 	tableName := table.Name
 	columnNames := prepareColumnNames(table)
 	valueFiltered := filterRowData(values, table)
 
-	if strings.Compare(table.MainUniqueIndexName, schemareader.VirtualIndexName) == 0 || utils.Contains(OnlyIfParentExistsTables, table.Name) {
+	if strings.Compare(table.MainUniqueIndexName, schemareader.VirtualIndexName) == 0 || utils.Contains(onlyIfParentExistsTables, table.Name) {
 		whereClauseList := make([]string, 0)
 		parentsRecordsCheckList := make([]string, 0)
 		for _, indexColumn := range table.UniqueIndexes[table.MainUniqueIndexName].Columns {
@@ -418,7 +420,7 @@ func generateInsertStatement(values []rowDataStructure, table schemareader.Table
 		whereClause := strings.Join(whereClauseList, " and ")
 		parentRecordsExistsClause := strings.Join(parentsRecordsCheckList, " and ")
 
-		if utils.Contains(OnlyIfParentExistsTables, table.Name) {
+		if utils.Contains(onlyIfParentExistsTables, table.Name) {
 			return fmt.Sprintf(`INSERT INTO %s (%s)	select %s  where  not exists (select 1 from %s where %s) and %s;`,
 				tableName, columnNames, formatValue(valueFiltered), tableName, whereClause, parentRecordsExistsClause)
 		}

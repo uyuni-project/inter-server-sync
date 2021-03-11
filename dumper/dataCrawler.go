@@ -10,11 +10,11 @@ import (
 // dataCrawler will go through all the elements in the initialDataSet an extract related data
 // for all tables presented in the schemaMetadata by following foreign keys and references to the table row
 // The result will be a structure containing ID of each row which should be exported per table
-func dataCrawler(db *sql.DB, schemaMetadata map[string]schemareader.Table, initialDataSet []processItem) DataDumper {
+func dataCrawler(db *sql.DB, schemaMetadata map[string]schemareader.Table, startTable schemareader.Table, startQueryFilter string) DataDumper {
 
 	result := DataDumper{make(map[string]TableDump, 0), make(map[string]bool)}
 
-	itemsToProcess := initialDataSet
+	itemsToProcess := initialDataSet(db, startTable, startQueryFilter)
 
 IterateItemsLoop:
 	for len(itemsToProcess) > 0 {
@@ -53,6 +53,16 @@ IterateItemsLoop:
 
 	}
 	return result
+}
+
+func initialDataSet(db *sql.DB, startTable schemareader.Table, whereFilter string) []processItem {
+	sql := fmt.Sprintf(`SELECT * FROM %s where %s ;`, startTable.Name, whereFilter)
+	rows := executeQueryWithResults(db, sql)
+	initialDataSet := make([]processItem, 0)
+	for _, row := range rows {
+		initialDataSet = append(initialDataSet, processItem{startTable.Name, row, []string{startTable.Name}})
+	}
+	return initialDataSet
 }
 
 func generateKeyIdToMap(data map[string]interface{}) string {

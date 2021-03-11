@@ -126,13 +126,7 @@ func processAndInsertChannels(db *sql.DB, channelLabels []string, writter *bufio
 	for _, channelLabel := range channelLabels {
 		log.Printf("Processing...%s", channelLabel)
 		whereFilter := fmt.Sprintf("label = '%s'", channelLabel)
-		sql := fmt.Sprintf(`SELECT * FROM rhnchannel where %s ;`, whereFilter)
-		rows := executeQueryWithResults(db, sql)
-		initialDataSet := make([]processItem, 0)
-		for _, row := range rows {
-			initialDataSet = append(initialDataSet, processItem{schemaMetadata["rhnchannel"].Name, row, []string{"rhnchannel"}})
-		}
-		tableData := dataCrawler(db, schemaMetadata, initialDataSet)
+		tableData := dataCrawler(db, schemaMetadata, schemaMetadata["rhnchannel"],whereFilter )
 		cleanWhereClause := fmt.Sprintf(`WHERE rhnchannel.id = (SELECT id FROM rhnchannel WHERE label = '%s')`, channelLabel)
 		PrintTableDataOrdered(db, writter, schemaMetadata, schemaMetadata["rhnchannel"], tableData, cleanWhereClause, tablesToClean, onlyIfParentExistsTables)
 		tableDumper = append(tableDumper, tableData)

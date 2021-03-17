@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func dumpAllTablesData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string]schemareader.Table,
+func DumpAllTablesData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string]schemareader.Table,
 	startingTables []schemareader.Table, whereFilterClause func(table schemareader.Table) string, onlyIfParentExistsTables []string) {
 
 	processedTables := make(map[string]bool)

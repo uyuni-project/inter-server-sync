@@ -6,9 +6,8 @@ import (
 	"os"
 	"runtime/pprof"
 
-	_ "github.com/lib/pq"
 	"github.com/uyuni-project/inter-server-sync/cli"
-	"github.com/uyuni-project/inter-server-sync/dumper"
+	"github.com/uyuni-project/inter-server-sync/entityDumper"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
 )
 
@@ -36,14 +35,14 @@ func main() {
 	defer db.Close()
 
 	if parsedArgs.Dot {
-		tables := schemareader.ReadTablesSchema(db, dumper.SoftwareChannelTableNames())
+		tables := schemareader.ReadTablesSchema(db, entityDumper.SoftwareChannelTableNames())
 		schemareader.DumpToGraphviz(tables)
 		return
 	}
 	if len(parsedArgs.ChannleLabels) > 0 {
 		channelLabels := parsedArgs.ChannleLabels
 		outputFolder := parsedArgs.Path
-		tableData := dumper.DumpChannelData(db, channelLabels, outputFolder)
+		tableData := entityDumper.DumpChannelData(db, channelLabels, outputFolder)
 
 		if parsedArgs.Debug {
 			for index, channelTableData := range tableData {

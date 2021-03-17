@@ -1,4 +1,4 @@
-package dumper
+package entityDumper
 
 import (
 	"bufio"
@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 
+	"github.com/uyuni-project/inter-server-sync/dumper"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
 )
 
@@ -88,7 +89,7 @@ func ProductsTableNames() []string {
 	}
 }
 
-func DumpChannelData(db *sql.DB, channelLabels []string, outputFolder string) []DataDumper {
+func DumpChannelData(db *sql.DB, channelLabels []string, outputFolder string) []dumper.DataDumper {
 
 	file, err := os.Create(outputFolder + "/sql_statements.sql")
 	if err != nil {
@@ -117,18 +118,18 @@ func processAndInsertProducts(db *sql.DB, writter *bufio.Writer) {
 		return filterOrg
 	}
 
-	dumpAllTablesData(db, writter, schemaMetadata, startingTables, whereFilterClause, onlyIfParentExistsTables)
+	dumper.DumpAllTablesData(db, writter, schemaMetadata, startingTables, whereFilterClause, onlyIfParentExistsTables)
 }
 
-func processAndInsertChannels(db *sql.DB, channelLabels []string, writter *bufio.Writer) []DataDumper {
+func processAndInsertChannels(db *sql.DB, channelLabels []string, writter *bufio.Writer) []dumper.DataDumper {
 	schemaMetadata := schemareader.ReadTablesSchema(db, SoftwareChannelTableNames())
-	tableDumper := make([]DataDumper, 0)
+	tableDumper := make([]dumper.DataDumper, 0)
 	for _, channelLabel := range channelLabels {
 		log.Printf("Processing...%s", channelLabel)
 		whereFilter := fmt.Sprintf("label = '%s'", channelLabel)
-		tableData := dataCrawler(db, schemaMetadata, schemaMetadata["rhnchannel"],whereFilter )
+		tableData := dumper.DataCrawler(db, schemaMetadata, schemaMetadata["rhnchannel"],whereFilter )
 		cleanWhereClause := fmt.Sprintf(`WHERE rhnchannel.id = (SELECT id FROM rhnchannel WHERE label = '%s')`, channelLabel)
-		PrintTableDataOrdered(db, writter, schemaMetadata, schemaMetadata["rhnchannel"], tableData, cleanWhereClause, tablesToClean, onlyIfParentExistsTables)
+		dumper.PrintTableDataOrdered(db, writter, schemaMetadata, schemaMetadata["rhnchannel"], tableData, cleanWhereClause, tablesToClean, onlyIfParentExistsTables)
 		tableDumper = append(tableDumper, tableData)
 	}
 	return tableDumper

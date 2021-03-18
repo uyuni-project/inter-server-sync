@@ -95,7 +95,7 @@ func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string
 func getRows(db *sql.DB, table schemareader.Table, key TableKey) [][]rowDataStructure {
 	whereParameters := make([]string, 0)
 	scanParameters := make([]interface{}, 0)
-	for column, value := range key.key {
+	for column, value := range key.Key {
 		whereParameters = append(whereParameters, fmt.Sprintf("%s = $%d", column, len(whereParameters)+1))
 		scanParameters = append(scanParameters, value)
 	}

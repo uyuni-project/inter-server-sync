@@ -4,11 +4,10 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
-	"log"
-	"os"
-
 	"github.com/uyuni-project/inter-server-sync/dumper"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
+	"log"
+	"os"
 )
 
 // TablesToClean represents Tables which needs to be cleaned in case on client side there is a record that doesn't exist anymore on master side

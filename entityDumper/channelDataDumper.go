@@ -129,7 +129,9 @@ func processAndInsertChannels(db *sql.DB, channelLabels []string, writter *bufio
 		tableData := dumper.DataCrawler(db, schemaMetadata, schemaMetadata["rhnchannel"], whereFilter )
 		cleanWhereClause := fmt.Sprintf(`WHERE rhnchannel.id = (SELECT id FROM rhnchannel WHERE label = '%s')`, channelLabel)
 		dumper.PrintTableDataOrdered(db, writter, schemaMetadata, schemaMetadata["rhnchannel"],
-			tableData, cleanWhereClause, tablesToClean, onlyIfParentExistsTables)
+			tableData, dumper.PrintSqlOptions{TablesToClean: tablesToClean,
+				CleanWhereClause: cleanWhereClause,
+				OnlyIfParentExistsTables: onlyIfParentExistsTables })
 		tableDumper = append(tableDumper, tableData)
 	}
 	return tableDumper

@@ -73,7 +73,7 @@ func exportAllTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[st
 
 	for _, row := range rows {
 		rowValue := substituteKeys(db, table, row, schemaMetadata)
-		writter.WriteString(generateInsertStatement(rowValue, table, onlyIfParentExistsTables) + "\n")
+		writter.WriteString(generateRowInsertStatement(rowValue, table, onlyIfParentExistsTables) + "\n")
 	}
 
 }

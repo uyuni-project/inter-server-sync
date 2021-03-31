@@ -13,25 +13,23 @@ import (
 	"github.com/uyuni-project/inter-server-sync/utils"
 )
 
-type printSqlOptions struct {
-	tablesToClean []string
-	cleanWhereClause string
-	onlyIfParentExistsTables [] string
+type PrintSqlOptions struct {
+	TablesToClean            []string
+	CleanWhereClause         string
+	OnlyIfParentExistsTables [] string
 }
 
 
 var cache = make(map[string]string)
 
 func PrintTableDataOrdered(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string]schemareader.Table,
-	startingTable schemareader.Table, data DataDumper, cleanWhereClause string, tablesToClean []string, onlyIfParentExistsTables [] string) {
+	startingTable schemareader.Table, data DataDumper, options PrintSqlOptions) {
 
-	printTableData(db, writter, schemaMetadata, data, startingTable, make(map[string]bool), make([]string, 0),
-		cleanWhereClause, tablesToClean, onlyIfParentExistsTables)
+	printTableData(db, writter, schemaMetadata, data, startingTable, make(map[string]bool), make([]string, 0), options)
 }
 
 func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string]schemareader.Table, data DataDumper,
-	table schemareader.Table, processedTables map[string]bool, path []string, cleanWhereClause string,
-	tablesToClean []string, onlyIfParentExistsTables []string) {
+	table schemareader.Table, processedTables map[string]bool, path []string, options PrintSqlOptions) {
 
 	_, tableProcessed := processedTables[table.Name]
 	currentTable := schemaMetadata[table.Name]
@@ -42,8 +40,8 @@ func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string
 	path = append(path, table.Name)
 	tableData, dataOK := data.TableData[table.Name]
 	if !dataOK{
-		if utils.Contains(tablesToClean, table.Name) {
-			cleanEmptyTable := generateClearEmptyTable(table, path, schemaMetadata, cleanWhereClause)
+		if utils.Contains(options.TablesToClean, table.Name) {
+			cleanEmptyTable := generateClearEmptyTable(table, path, schemaMetadata, options)
 			writter.WriteString(cleanEmptyTable + "\n")
 			return
 		}else{
@@ -56,22 +54,16 @@ func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string
 		if !ok || !tableReference.Export {
 			continue
 		}
-		printTableData(db, writter, schemaMetadata, data, tableReference, processedTables, path, cleanWhereClause, tablesToClean,onlyIfParentExistsTables)
+		printTableData(db, writter, schemaMetadata, data, tableReference, processedTables, path, options)
 	}
-	rowsValues := make([][]rowDataStructure, 0)
-	for _, key := range tableData.Keys {
-		rows := getRows(db, table, key)
-		for _, row := range rows {
-			values := substituteKeys(db, table, row, schemaMetadata)
-			rowsValues = append(rowsValues, values)
-		}
-	}
-	if utils.Contains(tablesToClean, table.Name) {
-		rowToInsert := generateInsertWithClean(rowsValues, table, path, schemaMetadata, cleanWhereClause)
+
+	rowsValues := getRowsToExport(db, schemaMetadata, tableData)
+	if utils.Contains(options.TablesToClean, table.Name) {
+		rowToInsert := generateInsertWithClean(rowsValues, table, path, schemaMetadata, options.CleanWhereClause)
 		writter.WriteString(rowToInsert + "\n")
 	} else {
 		for _, rowsValue := range rowsValues {
-			rowToInsert := generateInsertStatement(rowsValue, currentTable, onlyIfParentExistsTables)
+			rowToInsert := generateRowInsertStatement(rowsValue, currentTable, options.OnlyIfParentExistsTables)
 			writter.WriteString(rowToInsert + "\n")
 		}
 	}
@@ -85,23 +77,31 @@ func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string
 		if !shouldFollowReferenceToLink(path, table, tableReference) {
 			continue
 		}
-		printTableData(db, writter, schemaMetadata, data, tableReference, processedTables, path, cleanWhereClause, tablesToClean, onlyIfParentExistsTables)
+		printTableData(db, writter, schemaMetadata, data, tableReference, processedTables, path, options)
 	}
 }
 
-func getRows(db *sql.DB, table schemareader.Table, key TableKey) [][]rowDataStructure {
-	whereParameters := make([]string, 0)
-	scanParameters := make([]interface{}, 0)
-	for column, value := range key.Key {
-		whereParameters = append(whereParameters, fmt.Sprintf("%s = $%d", column, len(whereParameters)+1))
-		scanParameters = append(scanParameters, value)
-	}
-	formattedColumns := strings.Join(table.Columns, ", ")
-	formatedWhereParameters := strings.Join(whereParameters, " and ")
+func getRowsToExport(db *sql.DB, schemaMetadata map[string]schemareader.Table, tableData TableDump) [][]rowDataStructure {
+	rowsValues := make([][]rowDataStructure,0)
+	table := schemaMetadata[tableData.TableName]
+	for _, key := range tableData.Keys {
+		whereParameters := make([]string, 0)
+		scanParameters := make([]interface{}, 0)
+		for column, value := range key.Key {
+			whereParameters = append(whereParameters, fmt.Sprintf("%s = $%d", column, len(whereParameters)+1))
+			scanParameters = append(scanParameters, value)
+		}
+		formattedColumns := strings.Join(table.Columns, ", ")
+		formatedWhereParameters := strings.Join(whereParameters, " and ")
 
-	sql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s;`, formattedColumns, table.Name, formatedWhereParameters)
-	rows := executeQueryWithResults(db, sql, scanParameters...)
-	return rows
+		sql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s;`, formattedColumns, table.Name, formatedWhereParameters)
+		rows := executeQueryWithResults(db, sql, scanParameters...)
+		for _, row := range rows {
+			values := substituteKeys(db, table, row, schemaMetadata)
+			rowsValues = append(rowsValues, values)
+		}
+	}
+	return rowsValues
 }
 
 func substituteKeys(db *sql.DB, table schemareader.Table, row []rowDataStructure, tableMap map[string]schemareader.Table) []rowDataStructure {
@@ -387,7 +387,7 @@ func prepareColumnNames(table schemareader.Table) string{
 	return returnColumn
 }
 
-func generateInsertStatement(values []rowDataStructure, table schemareader.Table, onlyIfParentExistsTables []string) string {
+func generateRowInsertStatement(values []rowDataStructure, table schemareader.Table, onlyIfParentExistsTables []string) string {
 	tableName := table.Name
 	columnNames := prepareColumnNames(table)
 	valueFiltered := filterRowData(values, table)
@@ -458,8 +458,8 @@ func generateInsertWithClean(values [][]rowDataStructure, table schemareader.Tab
 	return finalQuery
 }
 
-func generateClearEmptyTable(table schemareader.Table, path []string, schemaMetadata map[string]schemareader.Table, cleanWhereClause string) string {
-	existingRecords := buildQueryToGetExistingRecords(path, table, schemaMetadata, cleanWhereClause)
+func generateClearEmptyTable(table schemareader.Table, path []string, schemaMetadata map[string]schemareader.Table, options PrintSqlOptions) string {
+	existingRecords := buildQueryToGetExistingRecords(path, table, schemaMetadata, options.CleanWhereClause)
 	mainUniqueColumns := strings.Join(table.UniqueIndexes[table.MainUniqueIndexName].Columns, ",")
 	return fmt.Sprintf("\nDELETE FROM %s WHERE (%s) IN (%s);",
 		table.Name, mainUniqueColumns, existingRecords)

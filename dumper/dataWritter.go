@@ -57,13 +57,14 @@ func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string
 		printTableData(db, writter, schemaMetadata, data, tableReference, processedTables, path, options)
 	}
 
-	rowsValues := getRowsToExport(db, schemaMetadata, tableData)
+	rowsValues := getRowsFromKeys(db, schemaMetadata, tableData)
 	if utils.Contains(options.TablesToClean, table.Name) {
-		rowToInsert := generateInsertWithClean(rowsValues, table, path, schemaMetadata, options.CleanWhereClause)
+		rowToInsert := generateInsertWithClean(db, rowsValues, table, path, schemaMetadata, options.CleanWhereClause)
 		writter.WriteString(rowToInsert + "\n")
 	} else {
 		for _, rowsValue := range rowsValues {
-			rowToInsert := generateRowInsertStatement(rowsValue, currentTable, options.OnlyIfParentExistsTables)
+			rowKeysProcessed := substituteKeys(db, table, rowsValue, schemaMetadata)
+			rowToInsert := generateRowInsertStatement(rowKeysProcessed, currentTable, options.OnlyIfParentExistsTables)
 			writter.WriteString(rowToInsert + "\n")
 		}
 	}
@@ -81,8 +82,8 @@ func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string
 	}
 }
 
-func getRowsToExport(db *sql.DB, schemaMetadata map[string]schemareader.Table, tableData TableDump) [][]rowDataStructure {
-	rowsValues := make([][]rowDataStructure,0)
+func getRowsFromKeys(db *sql.DB, schemaMetadata map[string]schemareader.Table, tableData TableDump) [][]rowDataStructure {
+	rowsResult := make([][]rowDataStructure,0)
 	table := schemaMetadata[tableData.TableName]
 	for _, key := range tableData.Keys {
 		whereParameters := make([]string, 0)
@@ -96,12 +97,13 @@ func getRowsToExport(db *sql.DB, schemaMetadata map[string]schemareader.Table, t
 
 		sql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s;`, formattedColumns, table.Name, formatedWhereParameters)
 		rows := executeQueryWithResults(db, sql, scanParameters...)
-		for _, row := range rows {
-			values := substituteKeys(db, table, row, schemaMetadata)
-			rowsValues = append(rowsValues, values)
-		}
+		rowsResult = append(rowsResult, rows...)
+		//for _, row := range rows {
+		//	values := substituteKeys(db, table, row, schemaMetadata)
+		//	rowsValues = append(rowsValues, values)
+		//}
 	}
-	return rowsValues
+	return rowsResult
 }
 
 func substituteKeys(db *sql.DB, table schemareader.Table, row []rowDataStructure, tableMap map[string]schemareader.Table) []rowDataStructure {
@@ -428,11 +430,12 @@ func generateRowInsertStatement(values []rowDataStructure, table schemareader.Ta
 
 }
 
-func generateInsertWithClean(values [][]rowDataStructure, table schemareader.Table, path []string, schemaMetadata map[string]schemareader.Table, cleanWhereClause string) string {
+func generateInsertWithClean(db *sql.DB, values [][]rowDataStructure, table schemareader.Table, path []string, schemaMetadata map[string]schemareader.Table, cleanWhereClause string) string {
 
 	var valueFiltered []string
 	for _, rowValue := range values {
-		filteredRowValue := filterRowData(rowValue, table)
+		rowKeysProcessed := substituteKeys(db, table, rowValue, schemaMetadata)
+		filteredRowValue := filterRowData(rowKeysProcessed, table)
 		valueFiltered = append(valueFiltered, "("+formatValue(filteredRowValue)+")")
 
 	}

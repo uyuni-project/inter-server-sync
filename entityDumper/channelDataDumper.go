@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/uyuni-project/inter-server-sync/dumper"
+	"github.com/uyuni-project/inter-server-sync/packageFiles"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
 	"log"
 	"os"
@@ -100,7 +101,7 @@ func DumpChannelData(db *sql.DB, channelLabels []string, outputFolder string) []
 
 	bufferWritter.WriteString("BEGIN;\n")
 	processAndInsertProducts(db, bufferWritter)
-	channelsResult := processAndInsertChannels(db, channelLabels, bufferWritter)
+	channelsResult := processAndInsertChannels(db, channelLabels, bufferWritter, outputFolder)
 	bufferWritter.WriteString("COMMIT;\n")
 	return channelsResult
 }
@@ -120,7 +121,7 @@ func processAndInsertProducts(db *sql.DB, writter *bufio.Writer) {
 	dumper.DumpAllTablesData(db, writter, schemaMetadata, startingTables, whereFilterClause, onlyIfParentExistsTables)
 }
 
-func processAndInsertChannels(db *sql.DB, channelLabels []string, writter *bufio.Writer) []dumper.DataDumper {
+func processAndInsertChannels(db *sql.DB, channelLabels []string, writter *bufio.Writer, outputFolder string) []dumper.DataDumper {
 	schemaMetadata := schemareader.ReadTablesSchema(db, SoftwareChannelTableNames())
 	tableDumper := make([]dumper.DataDumper, 0)
 	for _, channelLabel := range channelLabels {
@@ -133,7 +134,9 @@ func processAndInsertChannels(db *sql.DB, channelLabels []string, writter *bufio
 				CleanWhereClause: cleanWhereClause,
 				OnlyIfParentExistsTables: onlyIfParentExistsTables })
 		tableDumper = append(tableDumper, tableData)
+		packageFiles.PrintTableDataOrdered(db, schemaMetadata, tableData, outputFolder)
 	}
+
 	return tableDumper
 
 }

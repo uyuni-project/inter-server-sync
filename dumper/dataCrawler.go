@@ -78,11 +78,11 @@ func extractRowKeyData(table schemareader.Table, itemToProcess processItem) map[
 	keyColumnData := make(map[string]interface{})
 	if len(table.PKColumns) > 0 {
 		for pkColumn, _ := range table.PKColumns {
-			keyColumnData[pkColumn] = itemToProcess.row[table.ColumnIndexes[pkColumn]].value
+			keyColumnData[pkColumn] = itemToProcess.row[table.ColumnIndexes[pkColumn]].Value
 		}
 	} else {
 		for _, pkColumn := range table.UniqueIndexes[table.MainUniqueIndexName].Columns {
-			keyColumnData[pkColumn] = itemToProcess.row[table.ColumnIndexes[pkColumn]].value
+			keyColumnData[pkColumn] = itemToProcess.row[table.ColumnIndexes[pkColumn]].Value
 		}
 	}
 	return keyColumnData
@@ -111,7 +111,7 @@ func followReferencesFrom(db *sql.DB, schemaMetadata map[string]schemareader.Tab
 		scanParameters := make([]interface{}, 0)
 		for localColumn, foreignColumn := range reference.ColumnMapping {
 			whereParameters = append(whereParameters, fmt.Sprintf("%s = $%d", foreignColumn, len(whereParameters)+1))
-			scanParameters = append(scanParameters, row.row[table.ColumnIndexes[localColumn]].value)
+			scanParameters = append(scanParameters, row.row[table.ColumnIndexes[localColumn]].Value)
 		}
 
 		formattedColumns := strings.Join(foreignTable.Columns, ", ")
@@ -191,7 +191,7 @@ func followReferencesTo(db *sql.DB, schemaMetadata map[string]schemareader.Table
 		scanParameters := make([]interface{}, 0)
 		for localColumn, foreignColumn := range reference.ColumnMapping {
 			whereParameters = append(whereParameters, fmt.Sprintf("%s = $%d", localColumn, len(whereParameters)+1))
-			scanParameters = append(scanParameters, row.row[table.ColumnIndexes[foreignColumn]].value)
+			scanParameters = append(scanParameters, row.row[table.ColumnIndexes[foreignColumn]].Value)
 		}
 
 		formattedColumns := strings.Join(referencedTable.Columns, ", ")

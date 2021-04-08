@@ -6,7 +6,7 @@ import (
 	"reflect"
 )
 
-func executeQueryWithResults(db *sql.DB, sql string, scanParameters ...interface{}) [][]rowDataStructure {
+func executeQueryWithResults(db *sql.DB, sql string, scanParameters ...interface{}) [][]RowDataStructure {
 
 	rows, err := db.Query(sql, scanParameters...)
 
@@ -25,39 +25,39 @@ func executeQueryWithResults(db *sql.DB, sql string, scanParameters ...interface
 	// used for allocation & dereferencing
 	rowValues := make([]reflect.Value, len(columnTypes))
 	for i := 0; i < len(columnTypes); i++ {
-		// allocate reflect.Value representing a **T value
+		// allocate reflect.Value representing a **T Value
 		rowValues[i] = reflect.New(reflect.PtrTo(columnTypes[i].ScanType()))
 	}
 
-	computedValues := make([][]rowDataStructure, 0)
+	computedValues := make([][]RowDataStructure, 0)
 	for rows.Next() {
 		// initially will hold pointers for Scan, after scanning the
 		// pointers will be dereferenced so that the slice holds actual values
 		rowResult := make([]interface{}, len(columnTypes))
 		for i := 0; i < len(columnTypes); i++ {
-			// get the **T value from the reflect.Value
+			// get the **T Value from the reflect.Value
 			rowResult[i] = rowValues[i].Interface()
 		}
 
-		// scan each column value into the corresponding **T value
+		// scan each column Value into the corresponding **T Value
 		if err := rows.Scan(rowResult...); err != nil {
 			log.Fatal(err)
 		}
 
 		// dereference pointers
-		rowComputedValues := make([]rowDataStructure, 0)
+		rowComputedValues := make([]RowDataStructure, 0)
 		for i := 0; i < len(rowValues); i++ {
-			// first pointer deref to get reflect.Value representing a *T value,
-			// if rv.IsNil it means column value was NULL
+			// first pointer deref to get reflect.Value representing a *T Value,
+			// if rv.IsNil it means column Value was NULL
 			if rv := rowValues[i].Elem(); rv.IsNil() {
 				rowResult[i] = nil
 			} else {
-				// second deref to get reflect.Value representing the T value
-				// and call Interface to get T value from the reflect.Value
+				// second deref to get reflect.Value representing the T Value
+				// and call Interface to get T Value from the reflect.Value
 				rowResult[i] = rv.Elem().Interface()
 			}
-			rowComputedValues = append(rowComputedValues, rowDataStructure{columnType: columnTypes[i].DatabaseTypeName(),
-				initialValue: rowResult[i], value: rowResult[i], columnName: columnTypes[i].Name()})
+			rowComputedValues = append(rowComputedValues, RowDataStructure{columnType: columnTypes[i].DatabaseTypeName(),
+				initialValue: rowResult[i], Value: rowResult[i], columnName: columnTypes[i].Name()})
 		}
 
 		computedValues = append(computedValues, rowComputedValues)

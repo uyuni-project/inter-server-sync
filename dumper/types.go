@@ -17,13 +17,13 @@ type DataDumper struct {
 
 type processItem struct {
 	tableName string
-	row       []rowDataStructure
+	row       []RowDataStructure
 	path      []string
 }
 
-type rowDataStructure struct {
+type RowDataStructure struct {
 	columnName   string
 	columnType   string
 	initialValue interface{}
-	value        interface{}
+	Value        interface{}
 }

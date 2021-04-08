@@ -27,18 +27,22 @@ Steps:
 
 
 ## Export Data
+### local machine
+- **Build tool**: `go build`
+- **Copy the resulting artifact to the source server**: `scp inter-server-sync root@<SERVER>:~/` 
 
-- run commnad `go run -channels=LABEL1,LABEL2`
+### on source server
+- **Create export dir**: `mkdir ~/export`
+- **Run command**: `./inter-server-sync -config=/etc/rhn/rhn.conf  -path=~/export -channels=channel_label,channel_label`
+- **Copy export directory to target server**: `rsync -r ~/export root@<Target_server>:~/` 
 
-A file named `sql_statements.sql` will be generated on the location defined in `path`.
+### on target server
+- **execute sql script**: `spacewalk-sql sql_statements.sql`
+- **sync packages to the final location**: `rsync -og --chown=wwwrun:www -r packages/ /var/spacewalk/packages/`
 
+## DEBUG flag
 For debug purposes it's also possible to generate debug information about the generated data.
 `go run -channels=LABEL1,LABEL2 -debug`
-
-## After export
-
-Copy file to target machine and run `sql_statements.sql`
-Import can be done with `spacewalk-sql sql_statements.sql`
 
 ## Profile
 Run with profile: `go run . -cpuprofile=cpu.prof -memprofile=mem.prof ...`

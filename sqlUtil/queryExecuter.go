@@ -2,7 +2,7 @@ package sqlUtil
 
 import (
 	"database/sql"
-	"log"
+	"github.com/rs/zerolog/log"
 	"reflect"
 )
 
@@ -23,14 +23,14 @@ func ExecuteQueryWithResults(db *sql.DB, sql string, scanParameters ...interface
 
 	if err != nil {
 		log.Printf("Error : While executing '%s', with parameters %s", sql, scanParameters)
-		log.Fatal(err)
+		log.Error().Err(err)
 	}
 	defer rows.Close()
 
 	// get column type info
 	columnTypes, err := rows.ColumnTypes()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 
 	// used for allocation & dereferencing
@@ -52,7 +52,7 @@ func ExecuteQueryWithResults(db *sql.DB, sql string, scanParameters ...interface
 
 		// scan each column Value into the corresponding **T Value
 		if err := rows.Scan(rowResult...); err != nil {
-			log.Fatal(err)
+			log.Fatal().Err(err)
 		}
 
 		// dereference pointers

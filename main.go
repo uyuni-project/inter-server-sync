@@ -12,7 +12,6 @@ import (
 )
 
 func loginit() {
-	// zerolog.SetGlobalLevel(zerolog.InfoLevel)
 	Logfile := "/tmp/uyuni_iss_log.json"
 	lf, err := os.OpenFile(Logfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
 	if os.IsNotExist(err) {

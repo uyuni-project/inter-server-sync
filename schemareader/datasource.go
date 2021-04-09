@@ -4,7 +4,7 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
-	"log"
+	"github.com/rs/zerolog/log"
 	"os"
 	"strings"
 )
@@ -21,7 +21,7 @@ type dataSource struct {
 func GetConnectionString(configFilePath string) string {
 	file, err := os.Open(configFilePath)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 	defer file.Close()
 
@@ -58,7 +58,7 @@ func GetConnectionString(configFilePath string) string {
 func GetDBconnection(configFilePath string) *sql.DB {
 	db, err := sql.Open("postgres", GetConnectionString(configFilePath))
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 	return db
 }

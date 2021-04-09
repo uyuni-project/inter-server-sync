@@ -4,10 +4,10 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
+	"github.com/rs/zerolog/log"
 	"github.com/uyuni-project/inter-server-sync/dumper"
 	"github.com/uyuni-project/inter-server-sync/dumper/packageDumper"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
-	"log"
 	"os"
 )
 
@@ -93,7 +93,7 @@ func DumpChannelData(db *sql.DB, channelLabels []string, outputFolder string) []
 
 	file, err := os.Create(outputFolder + "/sql_statements.sql")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err)
 	}
 	defer file.Close()
 	bufferWritter := bufio.NewWriter(file)

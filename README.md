@@ -37,6 +37,7 @@ Steps:
 - **Copy export directory to target server**: `rsync -r ~/export root@<Target_server>:~/` 
 
 ### on target server
+Inside folder `export`:
 - **execute sql script**: `spacewalk-sql sql_statements.sql`
 - **sync packages to the final location**: `rsync -og --chown=wwwrun:www -r packages/ /var/spacewalk/packages/`
 

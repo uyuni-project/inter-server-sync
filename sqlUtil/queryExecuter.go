@@ -1,4 +1,4 @@
-package dumper
+package sqlUtil
 
 import (
 	"database/sql"
@@ -6,7 +6,18 @@ import (
 	"reflect"
 )
 
-func executeQueryWithResults(db *sql.DB, sql string, scanParameters ...interface{}) [][]RowDataStructure {
+type RowDataStructure struct {
+	ColumnName   string
+	ColumnType   string
+	initialValue interface{}
+	Value        interface{}
+}
+
+func (row RowDataStructure) GetInitialValue() interface{} {
+	return row.initialValue
+}
+
+func ExecuteQueryWithResults(db *sql.DB, sql string, scanParameters ...interface{}) [][]RowDataStructure {
 
 	rows, err := db.Query(sql, scanParameters...)
 
@@ -56,8 +67,8 @@ func executeQueryWithResults(db *sql.DB, sql string, scanParameters ...interface
 				// and call Interface to get T Value from the reflect.Value
 				rowResult[i] = rv.Elem().Interface()
 			}
-			rowComputedValues = append(rowComputedValues, RowDataStructure{columnType: columnTypes[i].DatabaseTypeName(),
-				initialValue: rowResult[i], Value: rowResult[i], columnName: columnTypes[i].Name()})
+			rowComputedValues = append(rowComputedValues, RowDataStructure{ColumnType: columnTypes[i].DatabaseTypeName(),
+				initialValue: rowResult[i], Value: rowResult[i], ColumnName: columnTypes[i].Name()})
 		}
 
 		computedValues = append(computedValues, rowComputedValues)

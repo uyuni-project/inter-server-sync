@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
+	"github.com/uyuni-project/inter-server-sync/sqlUtil"
 	"strings"
 )
 
@@ -16,7 +17,7 @@ func DumpAllTablesData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[str
 	for _, startingTable := range startingTables{
 		processedTables = printAllTableData(db, writter, schemaMetadata, startingTable, whereFilterClause, processedTables, make([]string, 0), onlyIfParentExistsTables)
 	}
-	// Export tables not touch by the starting tables
+	// Export tables not exported when exporting the starting tables
 	for schemaTableName, schemaTable := range schemaMetadata{
 		if !schemaTable.Export{
 			continue
@@ -67,13 +68,13 @@ func printAllTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[str
 
 func exportAllTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string]schemareader.Table, table schemareader.Table,
 	whereFilterClause func(table schemareader.Table) string, onlyIfParentExistsTables []string) {
+
 	formattedColumns := strings.Join(table.Columns, ", ")
 	sql := fmt.Sprintf(`SELECT %s FROM %s %s;`, formattedColumns, table.Name, whereFilterClause(table))
-	rows := executeQueryWithResults(db, sql)
+	rows := sqlUtil.ExecuteQueryWithResults(db, sql)
 
 	for _, row := range rows {
-		rowValue := substituteKeys(db, table, row, schemaMetadata)
-		writter.WriteString(generateRowInsertStatement(rowValue, table, onlyIfParentExistsTables) + "\n")
+		writter.WriteString(generateRowInsertStatement(db, row, table, schemaMetadata, onlyIfParentExistsTables) + "\n")
 	}
 
 }

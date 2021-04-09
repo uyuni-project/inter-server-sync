@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
+	"github.com/uyuni-project/inter-server-sync/sqlUtil"
 	"strings"
 )
 
@@ -57,7 +58,7 @@ IterateItemsLoop:
 
 func initialDataSet(db *sql.DB, startTable schemareader.Table, whereFilter string) []processItem {
 	sql := fmt.Sprintf(`SELECT * FROM %s where %s ;`, startTable.Name, whereFilter)
-	rows := executeQueryWithResults(db, sql)
+	rows := sqlUtil.ExecuteQueryWithResults(db, sql)
 	initialDataSet := make([]processItem, 0)
 	for _, row := range rows {
 		initialDataSet = append(initialDataSet, processItem{startTable.Name, row, []string{startTable.Name}})
@@ -117,7 +118,7 @@ func followReferencesFrom(db *sql.DB, schemaMetadata map[string]schemareader.Tab
 		formattedColumns := strings.Join(foreignTable.Columns, ", ")
 		formatedWhereParameters := strings.Join(whereParameters, " and ")
 		sql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s;`, formattedColumns, reference.TableName, formatedWhereParameters)
-		followRows := executeQueryWithResults(db, sql, scanParameters...)
+		followRows := sqlUtil.ExecuteQueryWithResults(db, sql, scanParameters...)
 
 		if len(followRows) > 0 {
 			for _, followRow := range followRows {
@@ -197,7 +198,7 @@ func followReferencesTo(db *sql.DB, schemaMetadata map[string]schemareader.Table
 		formattedColumns := strings.Join(referencedTable.Columns, ", ")
 		formatedWhereParameters := strings.Join(whereParameters, " and ")
 		sql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s;`, formattedColumns, reference.TableName, formatedWhereParameters)
-		followRows := executeQueryWithResults(db, sql, scanParameters...)
+		followRows := sqlUtil.ExecuteQueryWithResults(db, sql, scanParameters...)
 
 		if len(followRows) > 0 {
 			for _, followRow := range followRows {

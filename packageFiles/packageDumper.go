@@ -12,7 +12,9 @@ import (
 	"path/filepath"
 )
 
-func PrintTableDataOrdered(db *sql.DB, schemaMetadata map[string]schemareader.Table, data dumper.DataDumper, outputFolder string) {
+var serverDataFolder = "/var/spacewalk"
+
+func DumpPackageFiles(db *sql.DB, schemaMetadata map[string]schemareader.Table, data dumper.DataDumper, outputFolder string) {
 
 	file, err := os.Create(outputFolder + "/copyFiles.log")
 	if err != nil {
@@ -30,7 +32,7 @@ func PrintTableDataOrdered(db *sql.DB, schemaMetadata map[string]schemareader.Ta
 	pathIndex := table.ColumnIndexes["path"]
 	for _, rowPackage := range rows{
 		path := rowPackage[pathIndex]
-		source := fmt.Sprintf("%s/%s", "/var/spacewalk", path.Value)
+		source := fmt.Sprintf("%s/%s", serverDataFolder, path.Value)
 		target := fmt.Sprintf("%s/%s", outputFolder, path.Value)
 		bufferWritter.WriteString(fmt.Sprintf("'%s'---->'%s'\n", source, target))
 		_, error := copy(source, target)
@@ -38,9 +40,7 @@ func PrintTableDataOrdered(db *sql.DB, schemaMetadata map[string]schemareader.Ta
 			log.Fatal("could not Copy File: ", error)
 		}
 	}
-
 }
-
 
 func copy(src, dst string) (int64, error) {
 	sourceFileStat, err := os.Stat(src)

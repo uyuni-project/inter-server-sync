@@ -101,8 +101,12 @@ func DumpChannelData(db *sql.DB, channelLabels []string, outputFolder string) []
 
 	bufferWritter.WriteString("BEGIN;\n")
 	processAndInsertProducts(db, bufferWritter)
-	channelsResult := processAndInsertChannels(db, channelLabels, bufferWritter, outputFolder)
+
+	schemaMetadataChannel := schemareader.ReadTablesSchema(db, SoftwareChannelTableNames())
+	channelsResult := processAndInsertChannels(db, schemaMetadataChannel, channelLabels, bufferWritter)
 	bufferWritter.WriteString("COMMIT;\n")
+	// should we copy the files only in the end? or should we copy on each channel iteration?
+	exportChannelsPackageFiles(db,schemaMetadataChannel,  channelsResult, outputFolder)
 	return channelsResult
 }
 
@@ -121,8 +125,7 @@ func processAndInsertProducts(db *sql.DB, writter *bufio.Writer) {
 	dumper.DumpAllTablesData(db, writter, schemaMetadata, startingTables, whereFilterClause, onlyIfParentExistsTables)
 }
 
-func processAndInsertChannels(db *sql.DB, channelLabels []string, writter *bufio.Writer, outputFolder string) []dumper.DataDumper {
-	schemaMetadata := schemareader.ReadTablesSchema(db, SoftwareChannelTableNames())
+func processAndInsertChannels(db *sql.DB, schemaMetadata map[string]schemareader.Table, channelLabels []string, writter *bufio.Writer) []dumper.DataDumper {
 	tableDumper := make([]dumper.DataDumper, 0)
 	for _, channelLabel := range channelLabels {
 		log.Printf("Processing...%s", channelLabel)
@@ -134,9 +137,14 @@ func processAndInsertChannels(db *sql.DB, channelLabels []string, writter *bufio
 				CleanWhereClause: cleanWhereClause,
 				OnlyIfParentExistsTables: onlyIfParentExistsTables })
 		tableDumper = append(tableDumper, tableData)
-		packageFiles.PrintTableDataOrdered(db, schemaMetadata, tableData, outputFolder)
 	}
-
+	// should we save in memory all datadumper information in memory?
+	// this will not scale in large setups and when exporting several channels at same time.
 	return tableDumper
+}
 
+func exportChannelsPackageFiles(db *sql.DB, schemaMetadata map[string]schemareader.Table, data []dumper.DataDumper, outputFolder string) {
+	for _, tableData := range data {
+		packageFiles.DumpPackageFiles(db, schemaMetadata, tableData, outputFolder)
+	}
 }

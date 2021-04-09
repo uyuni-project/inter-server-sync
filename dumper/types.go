@@ -1,5 +1,7 @@
 package dumper
 
+import "github.com/uyuni-project/inter-server-sync/sqlUtil"
+
 type TableKey struct {
 	Key map[string]interface{}
 }
@@ -17,13 +19,13 @@ type DataDumper struct {
 
 type processItem struct {
 	tableName string
-	row       []RowDataStructure
+	row       []sqlUtil.RowDataStructure
 	path      []string
 }
 
-type RowDataStructure struct {
-	columnName   string
-	columnType   string
-	initialValue interface{}
-	Value        interface{}
+type PrintSqlOptions struct {
+	TablesToClean            []string
+	CleanWhereClause         string
+	OnlyIfParentExistsTables [] string
 }
+

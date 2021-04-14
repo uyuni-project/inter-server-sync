@@ -26,7 +26,7 @@ type Cliargs struct {
 	Debug         bool
 	Cpuprofile    string
 	Memprofile    string
-	Logfile		  string
+	Loglevel		  string
 }
 
 func CliArgs(args []string) (*Cliargs, error) {
@@ -46,7 +46,7 @@ func CliArgs(args []string) (*Cliargs, error) {
 	debug := flag.Bool("debug", false, "debug export data")
 	cpuprofile := flag.String("cpuprofile", "", "write cpu profile to `file`")
 	memprofile := flag.String("memprofile", "", "write memory profile to `file`")
-	logfile := flag.String("logfile", "", "set loglevel")
+	loglevel := flag.String("loglevel", "info", "set loglevel")
 	if len(args) < 2 {
 		flag.Usage()
 		return nil, errors.New("Insufficent arguments")
@@ -54,5 +54,5 @@ func CliArgs(args []string) (*Cliargs, error) {
 
 	flag.Parse()
 
-	return &Cliargs{strings.Split(*channelLabels, ","), *path, *config, *dot, *debug, *cpuprofile, *memprofile, *logfile}, nil
+	return &Cliargs{strings.Split(*channelLabels, ","), *path, *config, *dot, *debug, *cpuprofile, *memprofile, *loglevel}, nil
 }

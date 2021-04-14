@@ -23,7 +23,7 @@ func ExecuteQueryWithResults(db *sql.DB, sql string, scanParameters ...interface
 
 	if err != nil {
 		log.Printf("Error : While executing '%s', with parameters %s", sql, scanParameters)
-		log.Error().Err(err)
+		log.Fatal().Err(err)
 	}
 	defer rows.Close()
 

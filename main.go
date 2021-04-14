@@ -2,31 +2,51 @@ package main
 
 import (
 	"fmt"
-	"log"
-	"os"
-	"runtime/pprof"
-
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"github.com/uyuni-project/inter-server-sync/cli"
 	"github.com/uyuni-project/inter-server-sync/entityDumper"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
+	"os"
+	"runtime/pprof"
 )
 
-func init() { log.SetFlags(log.Lshortfile | log.LstdFlags) }
+func loginit() {
+	// zerolog.SetGlobalLevel(zerolog.InfoLevel)
+	Logfile := "/tmp/uyuni_iss_log.json"
+	lf, err := os.OpenFile(Logfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
+	if os.IsNotExist(err) {
+		f, err := os.Create(Logfile)
+		if err != nil {
+			log.Error().Msg("Unable to create logfile")
+		}
+		lf = f
+	}
+	multi := zerolog.MultiLevelWriter(lf, os.Stdout)
+	log.Logger = zerolog.New(multi).With().Timestamp().Logger()
+
+}
 
 func main() {
+	loginit()
 	parsedArgs, err := cli.CliArgs(os.Args)
 	if err != nil {
+		log.Info().Msg("Not enough arguments")
 		os.Exit(1)
 	}
-
+	level, err := zerolog.ParseLevel(parsedArgs.Logfile)
+	if err != nil {
+		level = zerolog.InfoLevel
+	}
+	zerolog.SetGlobalLevel(level)
 	if parsedArgs.Cpuprofile != "" {
 		f, err := os.Create(parsedArgs.Cpuprofile)
 		if err != nil {
-			log.Fatal("could not create CPU profile: ", err)
+			log.Fatal().Msg("could not create CPU profile: ")
 		}
 		defer f.Close() // error handling omitted for example
 		if err := pprof.StartCPUProfile(f); err != nil {
-			log.Fatal("could not start CPU profile: ", err)
+			log.Fatal().Msg("could not start CPU profile: ")
 		}
 		defer pprof.StopCPUProfile()
 	}
@@ -64,12 +84,12 @@ func main() {
 	if parsedArgs.Memprofile != "" {
 		f, err := os.Create(parsedArgs.Memprofile)
 		if err != nil {
-			log.Fatal("could not create memory profile: ", err)
+			log.Fatal().Msg("could not create memory profile: ")
 		}
 		defer f.Close() // error handling omitted for example
 		//runtime.GC()    // get up-to-date statistics
 		if err := pprof.WriteHeapProfile(f); err != nil {
-			log.Fatal("could not write memory profile: ", err)
+			log.Fatal().Msg("could not write memory profile: ")
 		}
 	}
 

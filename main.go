@@ -33,7 +33,7 @@ func main() {
 		log.Info().Msg("Not enough arguments")
 		os.Exit(1)
 	}
-	level, err := zerolog.ParseLevel(parsedArgs.Logfile)
+	level, err := zerolog.ParseLevel(parsedArgs.Loglevel)
 	if err != nil {
 		level = zerolog.InfoLevel
 	}

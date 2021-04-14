@@ -30,7 +30,7 @@ func main() {
 	loginit()
 	parsedArgs, err := cli.CliArgs(os.Args)
 	if err != nil {
-		log.Info().Msg("Not enough arguments")
+		log.Error().Msg("Not enough arguments")
 		os.Exit(1)
 	}
 	level, err := zerolog.ParseLevel(parsedArgs.Loglevel)

@@ -1,4 +1,4 @@
-package packageFiles
+package packageDumper
 
 import (
 	"bufio"

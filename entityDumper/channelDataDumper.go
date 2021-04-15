@@ -5,7 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/uyuni-project/inter-server-sync/dumper"
-	"github.com/uyuni-project/inter-server-sync/packageFiles"
+	"github.com/uyuni-project/inter-server-sync/dumper/packageDumper"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
 	"log"
 	"os"
@@ -145,6 +145,6 @@ func processAndInsertChannels(db *sql.DB, schemaMetadata map[string]schemareader
 
 func exportChannelsPackageFiles(db *sql.DB, schemaMetadata map[string]schemareader.Table, data []dumper.DataDumper, outputFolder string) {
 	for _, tableData := range data {
-		packageFiles.DumpPackageFiles(db, schemaMetadata, tableData, outputFolder)
+		packageDumper.DumpPackageFiles(db, schemaMetadata, tableData, outputFolder)
 	}
 }

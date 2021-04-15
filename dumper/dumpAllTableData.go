@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
+	"github.com/rs/zerolog/log"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
 	"github.com/uyuni-project/inter-server-sync/sqlUtil"
 	"strings"
@@ -32,7 +33,7 @@ func DumpAllTablesData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[str
 
 func printAllTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string]schemareader.Table, table schemareader.Table,
 	whereFilterClause func(table schemareader.Table) string, processedTables map[string]bool, path []string, onlyIfParentExistsTables[]string) map[string]bool {
-
+	log.Debug().Msgf("%s", "Processing table: " + table.Name)
 	_, tableProcessed := processedTables[table.Name]
 	currentTable := schemaMetadata[table.Name]
 	if tableProcessed || !currentTable.Export {
@@ -46,6 +47,7 @@ func printAllTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[str
 		if !ok || !tableReference.Export{
 			continue
 		}
+		log.Debug().Msgf("%s", "Table processed: " + table.Name)
 		printAllTableData(db, writter, schemaMetadata, tableReference, whereFilterClause, processedTables, path, onlyIfParentExistsTables)
 
 	}

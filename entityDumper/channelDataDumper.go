@@ -89,7 +89,7 @@ func ProductsTableNames() []string {
 	}
 }
 
-func DumpChannelData(db *sql.DB, channelLabels []string, outputFolder string) []dumper.DataDumper {
+func DumpChannelData(db *sql.DB, channelLabels []string, outputFolder string, metadataOnly bool) []dumper.DataDumper {
 
 	file, err := os.Create(outputFolder + "/sql_statements.sql")
 	if err != nil {
@@ -107,7 +107,9 @@ func DumpChannelData(db *sql.DB, channelLabels []string, outputFolder string) []
 	channelsResult := processAndInsertChannels(db, schemaMetadataChannel, channelLabels, bufferWritter)
 	bufferWritter.WriteString("COMMIT;\n")
 	// should we copy the files only in the end? or should we copy on each channel iteration?
-	exportChannelsPackageFiles(db,schemaMetadataChannel,  channelsResult, outputFolder)
+	if !metadataOnly{
+		exportChannelsPackageFiles(db,schemaMetadataChannel,  channelsResult, outputFolder)
+	}
 	return channelsResult
 }
 

@@ -19,6 +19,7 @@ func DumpPackageFiles(db *sql.DB, schemaMetadata map[string]schemareader.Table, 
 	file, err := os.Create(outputFolder + "/copyFiles.log")
 	if err != nil {
 		log.Fatal(err)
+		panic(err)
 	}
 	defer file.Close()
 	bufferWritter := bufio.NewWriter(file)
@@ -28,7 +29,6 @@ func DumpPackageFiles(db *sql.DB, schemaMetadata map[string]schemareader.Table, 
 	table := schemaMetadata[packageKeysData.TableName]
 
 	rows := dumper.GetRowsFromKeys(db, schemaMetadata, packageKeysData)
-
 	pathIndex := table.ColumnIndexes["path"]
 	for _, rowPackage := range rows{
 		path := rowPackage[pathIndex]
@@ -38,6 +38,7 @@ func DumpPackageFiles(db *sql.DB, schemaMetadata map[string]schemareader.Table, 
 		_, error := copy(source, target)
 		if error != nil{
 			log.Fatal("could not Copy File: ", error)
+			panic(error)
 		}
 	}
 }

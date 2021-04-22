@@ -14,7 +14,8 @@ func readTableNames(db *sql.DB) []string {
 
 	rows, err := db.Query(sql)
 	if err != nil {
-		log.Fatal().Err(err)
+		log.Fatal().Err(err).Msg("error executing database query")
+		panic(err)
 	}
 
 	result := make([]string, 0)
@@ -22,7 +23,8 @@ func readTableNames(db *sql.DB) []string {
 		var tableName string
 		err := rows.Scan(&tableName)
 		if err != nil {
-			log.Fatal().Err(err)
+			log.Fatal().Err(err).Msg("error extracting row")
+			panic(err)
 		}
 		result = append(result, tableName)
 	}
@@ -38,7 +40,8 @@ func readColumnNames(db *sql.DB, tableName string) []string {
 
 	rows, err := db.Query(sql, tableName)
 	if err != nil {
-		log.Fatal().Err(err)
+		log.Fatal().Err(err).Msg("error accessing the database")
+		panic(err)
 	}
 	defer rows.Close()
 
@@ -47,7 +50,8 @@ func readColumnNames(db *sql.DB, tableName string) []string {
 		var columnName string
 		err := rows.Scan(&columnName)
 		if err != nil {
-			log.Fatal().Err(err)
+			log.Fatal().Err(err).Msg("error extracting row")
+			panic(err)
 		}
 		result = append(result, columnName)
 	}
@@ -66,7 +70,8 @@ func readPKColumnNames(db *sql.DB, tableName string) []string {
 
 	rows, err := db.Query(sql, tableName)
 	if err != nil {
-		log.Fatal().Err(err)
+		log.Fatal().Err(err).Msg("error executing query")
+		panic(err)
 	}
 	defer rows.Close()
 
@@ -75,7 +80,8 @@ func readPKColumnNames(db *sql.DB, tableName string) []string {
 		var columnName string
 		err := rows.Scan(&columnName)
 		if err != nil {
-			log.Fatal().Err(err)
+			log.Fatal().Err(err).Msg("error getting row data")
+			panic(err)
 		}
 		result = append(result, columnName)
 	}
@@ -93,7 +99,8 @@ func readUniqueIndexNames(db *sql.DB, tableName string) []string {
 
 	rows, err := db.Query(sql, tableName)
 	if err != nil {
-		log.Fatal().Err(err)
+		log.Fatal().Err(err).Msg("error executing query")
+		panic(err)
 	}
 	defer rows.Close()
 
@@ -102,7 +109,8 @@ func readUniqueIndexNames(db *sql.DB, tableName string) []string {
 		var name string
 		err := rows.Scan(&name)
 		if err != nil {
-			log.Fatal().Err(err)
+			log.Fatal().Err(err).Msg("error getting column data")
+			panic(err)
 		}
 		result = append(result, name)
 	}
@@ -119,7 +127,8 @@ func readIndexColumns(db *sql.DB, indexName string) []string {
 
 	rows, err := db.Query(sql, indexName)
 	if err != nil {
-		log.Fatal().Err(err)
+		log.Fatal().Err(err).Msg("error executing query")
+		panic(err)
 	}
 	defer rows.Close()
 
@@ -128,7 +137,8 @@ func readIndexColumns(db *sql.DB, indexName string) []string {
 		var name string
 		err := rows.Scan(&name)
 		if err != nil {
-			log.Fatal().Err(err)
+			log.Fatal().Err(err).Msg("error getting collumn data")
+			panic(err)
 		}
 		result = append(result, name)
 	}
@@ -145,7 +155,8 @@ func readReferenceConstraintNames(db *sql.DB, tableName string) []string {
 
 	rows, err := db.Query(sql, tableName)
 	if err != nil {
-		log.Fatal().Err(err)
+		log.Fatal().Err(err).Msg("error executing query")
+		panic(err)
 	}
 	defer rows.Close()
 
@@ -154,7 +165,8 @@ func readReferenceConstraintNames(db *sql.DB, tableName string) []string {
 		var name string
 		err := rows.Scan(&name)
 		if err != nil {
-			log.Fatal().Err(err)
+			log.Fatal().Err(err).Msg("error getting column data")
+			panic(err)
 		}
 		result = append(result, name)
 	}
@@ -171,7 +183,8 @@ func readReferencedByConstraintNames(db *sql.DB, tableName string) []string {
 
 	rows, err := db.Query(sql, tableName)
 	if err != nil {
-		log.Fatal().Err(err)
+		log.Fatal().Err(err).Msg("error executing query")
+		panic(err)
 	}
 	defer rows.Close()
 
@@ -180,7 +193,8 @@ func readReferencedByConstraintNames(db *sql.DB, tableName string) []string {
 		var name string
 		err := rows.Scan(&name)
 		if err != nil {
-			log.Fatal().Err(err)
+			log.Fatal().Err(err).Msg("error getting column data")
+			panic(err)
 		}
 		result = append(result, name)
 	}
@@ -195,7 +209,8 @@ func readReferencedTable(db *sql.DB, referenceConstraintName string) string {
 
 	rows, err := db.Query(sql, referenceConstraintName)
 	if err != nil {
-		log.Fatal().Err(err)
+		log.Fatal().Err(err).Msg("error executing query")
+		panic(err)
 	}
 	defer rows.Close()
 
@@ -213,7 +228,8 @@ func readReferencedByTable(db *sql.DB, referenceConstraintName string) string {
 
 	rows, err := db.Query(sql, referenceConstraintName)
 	if err != nil {
-		log.Fatal().Err(err)
+		log.Fatal().Err(err).Msg("error executing query")
+		panic(err)
 	}
 	defer rows.Close()
 
@@ -238,7 +254,8 @@ func readReferenceConstraints(db *sql.DB, tableName string, referenceConstraintN
 
 	rows, err := db.Query(sql, tableName, referenceConstraintName)
 	if err != nil {
-		log.Fatal().Err(err)
+		log.Fatal().Err(err).Msg("error executing query")
+		panic(err)
 	}
 	defer rows.Close()
 
@@ -248,7 +265,8 @@ func readReferenceConstraints(db *sql.DB, tableName string, referenceConstraintN
 		var foreignColumnName string
 		err := rows.Scan(&columnName, &foreignColumnName)
 		if err != nil {
-			log.Fatal().Err(err)
+			log.Fatal().Err(err).Msg("error getting column data")
+			panic(err)
 		}
 		result[columnName] = foreignColumnName
 	}
@@ -295,7 +313,8 @@ func readPKSequence(db *sql.DB, tableName string) string {
 
 	rows, err := db.Query(sql, tableName)
 	if err != nil {
-		log.Fatal().Err(err)
+		log.Fatal().Err(err).Msg("error executing query")
+		panic(err)
 	}
 	defer rows.Close()
 

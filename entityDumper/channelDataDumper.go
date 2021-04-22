@@ -93,7 +93,8 @@ func DumpChannelData(db *sql.DB, channelLabels []string, outputFolder string) []
 
 	file, err := os.Create(outputFolder + "/sql_statements.sql")
 	if err != nil {
-		log.Fatal().Err(err)
+		log.Fatal().Err(err).Msg("error creating sql file")
+		panic(err)
 	}
 	defer file.Close()
 	bufferWritter := bufio.NewWriter(file)

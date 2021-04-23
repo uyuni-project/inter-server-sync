@@ -12,7 +12,7 @@
 
 ## Dot graph with schema metadata
 
-`go run . -dot | dot -Tx11`
+`go run . dot --serverConfig=rhn.conf |  dot -Tx11`
 
 ## Database connection configuration
 
@@ -33,7 +33,7 @@ Steps:
 
 ### on source server
 - **Create export dir**: `mkdir ~/export`
-- **Run command**: `./inter-server-sync -config=/etc/rhn/rhn.conf  -path=~/export -channels=channel_label,channel_label`
+- **Run command**: `./inter-server-sync export --serverConfig=/etc/rhn/rhn.conf --outputDir=~/export --channels=channel_label,channel_label`
 - **Copy export directory to target server**: `rsync -r ~/export root@<Target_server>:~/` 
 
 ### on target server

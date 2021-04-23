@@ -32,7 +32,7 @@ func init() {
 		cpuProfileTearDown()
 		memProfileDump()
 	}
-	rootCmd.PersistentFlags().StringVar(&logLevel, "logLevel", "info", "application log level")
+	rootCmd.PersistentFlags().StringVar(&logLevel, "logLevel", "error", "application log level")
 	rootCmd.PersistentFlags().StringVar(&serverConfig, "serverConfig", "/etc/rhn/rhn.conf", "Server configuration file")
 	rootCmd.PersistentFlags().StringVar(&cpuProfile, "cpuProfile", "", "cpuProfile file location")
 	rootCmd.PersistentFlags().StringVar(&memProfile, "memProfile", "", "memProfile file location")

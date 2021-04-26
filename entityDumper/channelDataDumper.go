@@ -89,9 +89,12 @@ func ProductsTableNames() []string {
 	}
 }
 
-func DumpChannelData(db *sql.DB, channelLabels []string, outputFolder string, metadataOnly bool) {
+func DumpChannelData(options ChannelDumperOptions) {
 
-	file, err := os.Create(outputFolder + "/sql_statements.sql")
+	db := schemareader.GetDBconnection(options.ServerConfig)
+	defer db.Close()
+
+	file, err := os.Create(options.OutputFolder + "/sql_statements.sql")
 	if err != nil {
 		log.Fatal().Err(err).Msg("error creating sql file")
 		panic(err)
@@ -103,9 +106,7 @@ func DumpChannelData(db *sql.DB, channelLabels []string, outputFolder string, me
 	bufferWritter.WriteString("BEGIN;\n")
 	processAndInsertProducts(db, bufferWritter)
 
-	schemaMetadataChannel := schemareader.ReadTablesSchema(db, SoftwareChannelTableNames())
-	log.Debug().Msg("channel schema metadata loaded")
-	processAndInsertChannels(db, schemaMetadataChannel, channelLabels, bufferWritter, outputFolder, metadataOnly)
+	processAndInsertChannels(db, bufferWritter, options)
 	bufferWritter.WriteString("COMMIT;\n")
 }
 
@@ -125,21 +126,30 @@ func processAndInsertProducts(db *sql.DB, writter *bufio.Writer) {
 	log.Debug().Msg("products export done")
 }
 
-func processAndInsertChannels(db *sql.DB, schemaMetadata map[string]schemareader.Table, channelLabels []string,
-	writter *bufio.Writer, outputFolder string, metadataOnly bool) {
+func processAndInsertChannels(db *sql.DB, writter *bufio.Writer, options ChannelDumperOptions) {
 
-	for _, channelLabel := range channelLabels {
+	// check for duplicated channels andnot export
+	// add option to export "with-childs"
+
+	schemaMetadata := schemareader.ReadTablesSchema(db, SoftwareChannelTableNames())
+	log.Debug().Msg("channel schema metadata loaded")
+
+	for _, channelLabel := range options.ChannelLabels {
 		log.Debug().Msg(fmt.Sprintf("Processing...%s", channelLabel))
 		whereFilter := fmt.Sprintf("label = '%s'", channelLabel)
+		log.Debug().Msg("starting table data crawler")
 		tableData := dumper.DataCrawler(db, schemaMetadata, schemaMetadata["rhnchannel"], whereFilter )
+		log.Debug().Msg("finished table data crawler")
 		cleanWhereClause := fmt.Sprintf(`WHERE rhnchannel.id = (SELECT id FROM rhnchannel WHERE label = '%s')`, channelLabel)
 		dumper.PrintTableDataOrdered(db, writter, schemaMetadata, schemaMetadata["rhnchannel"],
 			tableData, dumper.PrintSqlOptions{TablesToClean: tablesToClean,
 				CleanWhereClause: cleanWhereClause,
 				OnlyIfParentExistsTables: onlyIfParentExistsTables })
-
-		if !metadataOnly{
-			packageDumper.DumpPackageFiles(db, schemaMetadata, tableData, outputFolder)
+		log.Debug().Msg("finished print table order")
+		if !options.MetadataOnly{
+			log.Debug().Msg("dumping all package files")
+			packageDumper.DumpPackageFiles(db, schemaMetadata, tableData, options.OutputFolder)
 		}
+		log.Debug().Msg("channel export finished")
 	}
 }

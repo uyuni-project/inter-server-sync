@@ -4,7 +4,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/uyuni-project/inter-server-sync/entityDumper"
-	"github.com/uyuni-project/inter-server-sync/schemareader"
 	"strings"
 )
 
@@ -30,8 +29,14 @@ func runExport(cmd *cobra.Command, args []string) {
 	log.Debug().Msg("export called")
 	log.Debug().Msg(strings.Join(channels, ","))
 	log.Debug().Msg(outputDir)
+	// check output dir existance and create it if needed.
 
-	db := schemareader.GetDBconnection(serverConfig)
-	defer db.Close()
-	entityDumper.DumpChannelData(db, channels, outputDir, metadataOnly)
+	options := entityDumper.ChannelDumperOptions{
+		ServerConfig: serverConfig,
+		ChannelLabels: channels,
+		OutputFolder: outputDir,
+		MetadataOnly: metadataOnly,
+	}
+
+	entityDumper.DumpChannelData(options)
 }

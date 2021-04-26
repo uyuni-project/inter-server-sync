@@ -100,17 +100,17 @@ func DumpChannelData(options ChannelDumperOptions) {
 		panic(err)
 	}
 	defer file.Close()
-	bufferWritter := bufio.NewWriter(file)
-	defer bufferWritter.Flush()
+	bufferWriter := bufio.NewWriter(file)
+	defer bufferWriter.Flush()
 
-	bufferWritter.WriteString("BEGIN;\n")
-	processAndInsertProducts(db, bufferWritter)
+	bufferWriter.WriteString("BEGIN;\n")
+	processAndInsertProducts(db, bufferWriter)
 
-	processAndInsertChannels(db, bufferWritter, options)
-	bufferWritter.WriteString("COMMIT;\n")
+	processAndInsertChannels(db, bufferWriter, options)
+	bufferWriter.WriteString("COMMIT;\n")
 }
 
-func processAndInsertProducts(db *sql.DB, writter *bufio.Writer) {
+func processAndInsertProducts(db *sql.DB, writer *bufio.Writer) {
 	schemaMetadata := schemareader.ReadTablesSchema(db, ProductsTableNames())
 	startingTables := []schemareader.Table{schemaMetadata["suseproducts"]}
 
@@ -122,11 +122,11 @@ func processAndInsertProducts(db *sql.DB, writter *bufio.Writer) {
 		return filterOrg
 	}
 
-	dumper.DumpAllTablesData(db, writter, schemaMetadata, startingTables, whereFilterClause, onlyIfParentExistsTables)
+	dumper.DumpAllTablesData(db, writer, schemaMetadata, startingTables, whereFilterClause, onlyIfParentExistsTables)
 	log.Debug().Msg("products export done")
 }
 
-func processAndInsertChannels(db *sql.DB, writter *bufio.Writer, options ChannelDumperOptions) {
+func processAndInsertChannels(db *sql.DB, writer *bufio.Writer, options ChannelDumperOptions) {
 
 	// check for duplicated channels andnot export
 	// add option to export "with-childs"
@@ -135,21 +135,33 @@ func processAndInsertChannels(db *sql.DB, writter *bufio.Writer, options Channel
 	log.Debug().Msg("channel schema metadata loaded")
 
 	for _, channelLabel := range options.ChannelLabels {
-		log.Debug().Msg(fmt.Sprintf("Processing...%s", channelLabel))
-		whereFilter := fmt.Sprintf("label = '%s'", channelLabel)
-		log.Debug().Msg("starting table data crawler")
-		tableData := dumper.DataCrawler(db, schemaMetadata, schemaMetadata["rhnchannel"], whereFilter )
-		log.Debug().Msg("finished table data crawler")
-		cleanWhereClause := fmt.Sprintf(`WHERE rhnchannel.id = (SELECT id FROM rhnchannel WHERE label = '%s')`, channelLabel)
-		dumper.PrintTableDataOrdered(db, writter, schemaMetadata, schemaMetadata["rhnchannel"],
-			tableData, dumper.PrintSqlOptions{TablesToClean: tablesToClean,
-				CleanWhereClause: cleanWhereClause,
-				OnlyIfParentExistsTables: onlyIfParentExistsTables })
-		log.Debug().Msg("finished print table order")
-		if !options.MetadataOnly{
-			log.Debug().Msg("dumping all package files")
-			packageDumper.DumpPackageFiles(db, schemaMetadata, tableData, options.OutputFolder)
-		}
-		log.Debug().Msg("channel export finished")
+		processChannel(db, writer, options, channelLabel, schemaMetadata)
+		writer.Flush()
 	}
+}
+
+func processChannel(db *sql.DB, writer *bufio.Writer, options ChannelDumperOptions,
+	channelLabel string, schemaMetadata map[string]schemareader.Table) {
+
+	log.Debug().Msg(fmt.Sprintf("Processing...%s", channelLabel))
+
+	whereFilter := fmt.Sprintf("label = '%s'", channelLabel)
+	tableData := dumper.DataCrawler(db, schemaMetadata, schemaMetadata["rhnchannel"], whereFilter)
+	log.Debug().Msg("finished table data crawler")
+
+	cleanWhereClause := fmt.Sprintf(`WHERE rhnchannel.id = (SELECT id FROM rhnchannel WHERE label = '%s')`, channelLabel)
+	// memory problem is on pint data ordered.
+	// after data crawller it was 1.5 G, During dump is on 2.5..
+	dumper.PrintTableDataOrdered(db, writer, schemaMetadata, schemaMetadata["rhnchannel"],
+		tableData, dumper.PrintSqlOptions{TablesToClean: tablesToClean,
+			CleanWhereClause:         cleanWhereClause,
+			OnlyIfParentExistsTables: onlyIfParentExistsTables})
+	log.Debug().Msg("finished print table order")
+
+	if !options.MetadataOnly {
+		log.Debug().Msg("dumping all package files")
+		packageDumper.DumpPackageFiles(db, schemaMetadata, tableData, options.OutputFolder)
+	}
+	log.Debug().Msg("channel export finished")
+
 }

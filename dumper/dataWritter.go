@@ -84,20 +84,36 @@ func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string
 // GetRowsFromKeys check if we should move this to a method in the type tableData
 func GetRowsFromKeys(db *sql.DB, schemaMetadata map[string]schemareader.Table, tableData TableDump) [][]sqlUtil.RowDataStructure {
 	rowsResult := make([][]sqlUtil.RowDataStructure,0)
+	if len(tableData.Keys) == 0 {
+		return rowsResult
+	}
 	table := schemaMetadata[tableData.TableName]
-	for _, key := range tableData.Keys {
-		whereParameters := make([]string, 0)
-		scanParameters := make([]interface{}, 0)
-		for column, value := range key.Key {
-			whereParameters = append(whereParameters, fmt.Sprintf("%s = $%d", column, len(whereParameters)+1))
-			scanParameters = append(scanParameters, value)
-		}
-		formattedColumns := strings.Join(table.Columns, ", ")
-		formatedWhereParameters := strings.Join(whereParameters, " and ")
+	formattedColumns := strings.Join(table.Columns, ", ")
 
-		sql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s;`, formattedColumns, table.Name, formatedWhereParameters)
-		rows := sqlUtil.ExecuteQueryWithResults(db, sql, scanParameters...)
-		rowsResult = append(rowsResult, rows...)
+	columnsFilter := make([]string, 0)
+	for column, _ := range tableData.Keys[0].Key {
+		columnsFilter = append(columnsFilter, column)
+	}
+	values := make([]string, 0)
+	for _, key := range tableData.Keys {
+		row := make([]string, 0)
+		for _, c := range columnsFilter {
+			row = append(row, key.Key[c])
+		}
+		values = append(values, "(" + strings.Join(row, ",") + ")")
+		// FIXME the query value should be a parameter
+		if len(values) >= 1000 {
+			// FIXME query should be defined one time, instead of being replicate some lines bellow
+			sql := fmt.Sprintf(`SELECT %s FROM %s WHERE (%s) in (%s);`,
+				formattedColumns, table.Name, strings.Join(columnsFilter, ", "), strings.Join(values, ","))
+			rowsResult = append(rowsResult, sqlUtil.ExecuteQueryWithResults(db, sql)...)
+			values = make([]string, 0)
+		}
+	}
+	if len(values) > 0 {
+		sql := fmt.Sprintf(`SELECT %s FROM %s WHERE (%s) in (%s);`,
+			formattedColumns, table.Name, strings.Join(columnsFilter, ", "), strings.Join(values, ","))
+		rowsResult = append(rowsResult, sqlUtil.ExecuteQueryWithResults(db, sql)...)
 	}
 	return rowsResult
 }

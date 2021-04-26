@@ -66,7 +66,7 @@ func initialDataSet(db *sql.DB, startTable schemareader.Table, whereFilter strin
 	return initialDataSet
 }
 
-func generateKeyIdToMap(data map[string]interface{}) string {
+func generateKeyIdToMap(data map[string]string) string {
 	keyValuesList := make([]string, 0)
 	for _, value := range data {
 		valueStr := fmt.Sprintf("%s", value)
@@ -75,15 +75,15 @@ func generateKeyIdToMap(data map[string]interface{}) string {
 	return strings.Join(keyValuesList, "$$")
 }
 
-func extractRowKeyData(table schemareader.Table, itemToProcess processItem) map[string]interface{} {
-	keyColumnData := make(map[string]interface{})
+func extractRowKeyData(table schemareader.Table, itemToProcess processItem) map[string]string {
+	keyColumnData := make(map[string]string)
 	if len(table.PKColumns) > 0 {
 		for pkColumn, _ := range table.PKColumns {
-			keyColumnData[pkColumn] = itemToProcess.row[table.ColumnIndexes[pkColumn]].Value
+			keyColumnData[pkColumn] = formatField(itemToProcess.row[table.ColumnIndexes[pkColumn]])
 		}
 	} else {
 		for _, pkColumn := range table.UniqueIndexes[table.MainUniqueIndexName].Columns {
-			keyColumnData[pkColumn] = itemToProcess.row[table.ColumnIndexes[pkColumn]].Value
+			keyColumnData[pkColumn] = formatField(itemToProcess.row[table.ColumnIndexes[pkColumn]])
 		}
 	}
 	return keyColumnData

@@ -3,7 +3,7 @@ package dumper
 import "github.com/uyuni-project/inter-server-sync/sqlUtil"
 
 type TableKey struct {
-	Key map[string]interface{}
+	Key map[string]string
 }
 
 type TableDump struct {

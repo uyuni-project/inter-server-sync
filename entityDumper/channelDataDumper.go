@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
+	"os"
+
 	"github.com/rs/zerolog/log"
 	"github.com/uyuni-project/inter-server-sync/dumper"
 	"github.com/uyuni-project/inter-server-sync/dumper/packageDumper"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
-	"os"
 )
 
 // TablesToClean represents Tables which needs to be cleaned in case on client side there is a record that doesn't exist anymore on master side
@@ -24,8 +25,8 @@ func SoftwareChannelTableNames() []string {
 	return []string{
 		// software channel data tables
 		"rhnchannel",
-		"rhnchannelcloned", // add only if there are corresponding rows in rhnchannel
-		"suseproductchannel",       // add only if there are corresponding rows in rhnchannel // clean
+		"rhnchannelcloned",   // add only if there are corresponding rows in rhnchannel
+		"suseproductchannel", // add only if there are corresponding rows in rhnchannel // clean
 		"rhnproductname",
 		"rhnchannelproduct",
 		"rhnreleasechannelmap", // clean
@@ -96,6 +97,7 @@ func DumpChannelData(db *sql.DB, channelLabels []string, outputFolder string, me
 		log.Fatal().Err(err).Msg("error creating sql file")
 		panic(err)
 	}
+
 	defer file.Close()
 	bufferWritter := bufio.NewWriter(file)
 	defer bufferWritter.Flush()
@@ -131,14 +133,14 @@ func processAndInsertChannels(db *sql.DB, schemaMetadata map[string]schemareader
 	for _, channelLabel := range channelLabels {
 		log.Debug().Msg(fmt.Sprintf("Processing...%s", channelLabel))
 		whereFilter := fmt.Sprintf("label = '%s'", channelLabel)
-		tableData := dumper.DataCrawler(db, schemaMetadata, schemaMetadata["rhnchannel"], whereFilter )
+		tableData := dumper.DataCrawler(db, schemaMetadata, schemaMetadata["rhnchannel"], whereFilter)
 		cleanWhereClause := fmt.Sprintf(`WHERE rhnchannel.id = (SELECT id FROM rhnchannel WHERE label = '%s')`, channelLabel)
 		dumper.PrintTableDataOrdered(db, writter, schemaMetadata, schemaMetadata["rhnchannel"],
 			tableData, dumper.PrintSqlOptions{TablesToClean: tablesToClean,
-				CleanWhereClause: cleanWhereClause,
-				OnlyIfParentExistsTables: onlyIfParentExistsTables })
+				CleanWhereClause:         cleanWhereClause,
+				OnlyIfParentExistsTables: onlyIfParentExistsTables})
 
-		if !metadataOnly{
+		if !metadataOnly {
 			packageDumper.DumpPackageFiles(db, schemaMetadata, tableData, outputFolder)
 		}
 	}

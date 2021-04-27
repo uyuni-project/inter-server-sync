@@ -4,11 +4,12 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
+	"os"
+
 	"github.com/rs/zerolog/log"
 	"github.com/uyuni-project/inter-server-sync/dumper"
 	"github.com/uyuni-project/inter-server-sync/dumper/packageDumper"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
-	"os"
 )
 
 // TablesToClean represents Tables which needs to be cleaned in case on client side there is a record that doesn't exist anymore on master side
@@ -24,8 +25,8 @@ func SoftwareChannelTableNames() []string {
 	return []string{
 		// software channel data tables
 		"rhnchannel",
-		"rhnchannelcloned", // add only if there are corresponding rows in rhnchannel
-		"suseproductchannel",       // add only if there are corresponding rows in rhnchannel // clean
+		"rhnchannelcloned",   // add only if there are corresponding rows in rhnchannel
+		"suseproductchannel", // add only if there are corresponding rows in rhnchannel // clean
 		"rhnproductname",
 		"rhnchannelproduct",
 		"rhnreleasechannelmap", // clean
@@ -99,6 +100,7 @@ func DumpChannelData(options ChannelDumperOptions) {
 		log.Fatal().Err(err).Msg("error creating sql file")
 		panic(err)
 	}
+
 	defer file.Close()
 	bufferWriter := bufio.NewWriter(file)
 	defer bufferWriter.Flush()

@@ -4,9 +4,10 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
-	"github.com/rs/zerolog/log"
 	"os"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 type dataSource struct {

@@ -2,8 +2,9 @@ package sqlUtil
 
 import (
 	"database/sql"
-	"github.com/rs/zerolog/log"
 	"reflect"
+
+	"github.com/rs/zerolog/log"
 )
 
 type RowDataStructure struct {
@@ -76,6 +77,5 @@ func ExecuteQueryWithResults(db *sql.DB, sql string, scanParameters ...interface
 
 		computedValues = append(computedValues, rowComputedValues)
 	}
-
 	return computedValues
 }

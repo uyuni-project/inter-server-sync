@@ -19,7 +19,6 @@ func DataCrawler(db *sql.DB, schemaMetadata map[string]schemareader.Table, start
 
 IterateItemsLoop:
 	for len(itemsToProcess) > 0 {
-
 		itemToProcess := itemsToProcess[0]
 		itemsToProcess = itemsToProcess[1:]
 
@@ -49,8 +48,9 @@ IterateItemsLoop:
 			result.Paths[strings.Join(itemToProcess.path, ",")] = true
 		}
 
-		itemsToProcess = append(itemsToProcess, followReferencesFrom(db, schemaMetadata, table, itemToProcess)...)
-		itemsToProcess = append(itemsToProcess, followReferencesTo(db, schemaMetadata, table, itemToProcess)...)
+		newItems := append(followReferencesTo(db, schemaMetadata, table, itemToProcess),
+			followReferencesFrom(db, schemaMetadata, table, itemToProcess)...)
+		itemsToProcess = append(newItems, itemsToProcess...)
 
 	}
 	return result

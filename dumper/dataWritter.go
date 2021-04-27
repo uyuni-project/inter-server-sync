@@ -468,11 +468,11 @@ func generateInsertWithClean(db *sql.DB, values [][]sqlUtil.RowDataStructure, ta
 
 	existingRecords := buildQueryToGetExistingRecords(path, table, schemaMetadata, cleanWhereClause)
 
-	deletePart := fmt.Sprintf("\nDELETE FROM %s WHERE (%s) IN (SELECT * FROM existing_records_%s EXCEPT ALL SELECT * FROM new_records_%s);",
-		tableName, mainUniqueColumns, tableName, tableName)
+	deletePart := fmt.Sprintf("\nDELETE FROM %s WHERE (%s) IN (%s EXCEPT ALL SELECT * FROM new_records_%s);",
+		tableName, mainUniqueColumns, existingRecords, tableName)
 
-	finalQuery := fmt.Sprintf(`WITH new_records_%s AS (%s), existing_records_%s as (%s) %s;`,
-		tableName, insertPart, tableName, existingRecords, deletePart)
+	finalQuery := fmt.Sprintf(`WITH new_records_%s AS (%s) %s;`,
+		tableName, insertPart, deletePart)
 
 	return finalQuery
 }

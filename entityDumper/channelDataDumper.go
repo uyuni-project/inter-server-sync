@@ -13,9 +13,10 @@ import (
 )
 
 // TablesToClean represents Tables which needs to be cleaned in case on client side there is a record that doesn't exist anymore on master side
-var tablesToClean = []string{"rhnreleasechannelmap", "rhndistchannelmap", "rhnchannelerrata", "rhnchannelpackage", "rhnerratapackage", "rhnerratafile",
-	"rhnerratafilechannel", "rhnerratafilepackage", "rhnerratafilepackagesource", "rhnerratabuglist", "rhnerratacve", "rhnerratakeyword", "susemddata", "susemdkeyword",
-	"suseproductchannel"}
+// FIXME problematic: rhnerratafile
+var tablesToClean = []string{"rhnreleasechannelmap", "rhndistchannelmap", "rhnchannelerrata", "rhnchannelpackage",
+	"rhnerratapackage", "rhnerratafile", "rhnerratafilechannel", "rhnerratafilepackage", "rhnerratafilepackagesource",
+	"rhnerratabuglist", "rhnerratacve",	"rhnerratakeyword", "susemddata", "susemdkeyword", "suseproductchannel"}
 
 // onlyIfParentExistsTables represents Tables for which only records needs to be insterted only if parent record exists
 var onlyIfParentExistsTables = []string{"rhnchannelcloned", "rhnerratacloned", "suseproductchannel"}
@@ -154,12 +155,13 @@ func processChannel(db *sql.DB, writer *bufio.Writer, options ChannelDumperOptio
 	log.Debug().Msg("finished table data crawler")
 
 	cleanWhereClause := fmt.Sprintf(`WHERE rhnchannel.id = (SELECT id FROM rhnchannel WHERE label = '%s')`, channelLabel)
-	// memory problem is on pint data ordered.
-	// after data crawller it was 1.5 G, During dump is on 2.5..
+	printOptions := dumper.PrintSqlOptions{
+		TablesToClean: tablesToClean,
+		CleanWhereClause:         cleanWhereClause,
+		OnlyIfParentExistsTables: onlyIfParentExistsTables}
+
 	dumper.PrintTableDataOrdered(db, writer, schemaMetadata, schemaMetadata["rhnchannel"],
-		tableData, dumper.PrintSqlOptions{TablesToClean: tablesToClean,
-			CleanWhereClause:         cleanWhereClause,
-			OnlyIfParentExistsTables: onlyIfParentExistsTables})
+		tableData, printOptions)
 	log.Debug().Msg("finished print table order")
 
 	if !options.MetadataOnly {

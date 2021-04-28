@@ -137,7 +137,7 @@ func readIndexColumns(db *sql.DB, indexName string) []string {
 		var name string
 		err := rows.Scan(&name)
 		if err != nil {
-			log.Fatal().Err(err).Msg("error getting collumn data")
+			log.Fatal().Err(err).Msg("error getting column data")
 			panic(err)
 		}
 		result = append(result, name)

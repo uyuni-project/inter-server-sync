@@ -116,8 +116,8 @@ func followReferencesFrom(db *sql.DB, schemaMetadata map[string]schemareader.Tab
 		}
 
 		formattedColumns := strings.Join(foreignTable.Columns, ", ")
-		formatedWhereParameters := strings.Join(whereParameters, " and ")
-		sql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s;`, formattedColumns, reference.TableName, formatedWhereParameters)
+		formattedWhereParameters := strings.Join(whereParameters, " and ")
+		sql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s;`, formattedColumns, reference.TableName, formattedWhereParameters)
 		followRows := sqlUtil.ExecuteQueryWithResults(db, sql, scanParameters...)
 
 		if len(followRows) > 0 {
@@ -147,9 +147,9 @@ func shouldFollowReferenceToLink(path []string, currentTable schemareader.Table,
 		"rhnpackageevr": {"rhnpackagenevra"},
 	}
 
-	if tableNavegation, ok := forcedNavegations[currentTable.Name]; ok {
-		for _, targetNavegationTable := range tableNavegation{
-			if strings.Compare(targetNavegationTable, referencedTable.Name) == 0{
+	if tableNavigation, ok := forcedNavegations[currentTable.Name]; ok {
+		for _, targetNavigationTable := range tableNavigation{
+			if strings.Compare(targetNavigationTable, referencedTable.Name) == 0{
 				return true
 			}
 		}
@@ -196,8 +196,8 @@ func followReferencesTo(db *sql.DB, schemaMetadata map[string]schemareader.Table
 		}
 
 		formattedColumns := strings.Join(referencedTable.Columns, ", ")
-		formatedWhereParameters := strings.Join(whereParameters, " and ")
-		sql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s;`, formattedColumns, reference.TableName, formatedWhereParameters)
+		formattedWhereParameters := strings.Join(whereParameters, " and ")
+		sql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s;`, formattedColumns, reference.TableName, formattedWhereParameters)
 		followRows := sqlUtil.ExecuteQueryWithResults(db, sql, scanParameters...)
 
 		if len(followRows) > 0 {

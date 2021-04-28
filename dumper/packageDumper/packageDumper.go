@@ -22,8 +22,8 @@ func DumpPackageFiles(db *sql.DB, schemaMetadata map[string]schemareader.Table, 
 		panic(err)
 	}
 	defer file.Close()
-	bufferWritter := bufio.NewWriter(file)
-	defer bufferWritter.Flush()
+	bufferWriter := bufio.NewWriter(file)
+	defer bufferWriter.Flush()
 
 	packageKeysData := data.TableData["rhnpackage"]
 	table := schemaMetadata[packageKeysData.TableName]
@@ -34,7 +34,7 @@ func DumpPackageFiles(db *sql.DB, schemaMetadata map[string]schemareader.Table, 
 		path := rowPackage[pathIndex]
 		source := fmt.Sprintf("%s/%s", serverDataFolder, path.Value)
 		target := fmt.Sprintf("%s/%s", outputFolder, path.Value)
-		bufferWritter.WriteString(fmt.Sprintf("'%s'---->'%s'\n", source, target))
+		bufferWriter.WriteString(fmt.Sprintf("'%s'---->'%s'\n", source, target))
 		_, error := copy(source, target)
 		if error != nil{
 			log.Fatal("could not Copy File: ", error)

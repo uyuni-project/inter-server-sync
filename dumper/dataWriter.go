@@ -17,10 +17,10 @@ import (
 
 var cache = make(map[string]string)
 
-func PrintTableDataOrdered(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string]schemareader.Table,
+func PrintTableDataOrdered(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table,
 	startingTable schemareader.Table, data DataDumper, options PrintSqlOptions) {
 
-	printTableData(db, writter, schemaMetadata, data, startingTable, make(map[string]bool), make([]string, 0), options)
+	printTableData(db, writer, schemaMetadata, data, startingTable, make(map[string]bool), make([]string, 0), options)
 }
 
 func printTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, data DataDumper,

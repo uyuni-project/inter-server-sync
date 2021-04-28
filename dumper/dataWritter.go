@@ -4,10 +4,11 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
-	"github.com/uyuni-project/inter-server-sync/sqlUtil"
 	"log"
 	"strings"
 	"time"
+
+	"github.com/uyuni-project/inter-server-sync/sqlUtil"
 
 	"github.com/lib/pq"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
@@ -22,7 +23,7 @@ func PrintTableDataOrdered(db *sql.DB, writter *bufio.Writer, schemaMetadata map
 	printTableData(db, writter, schemaMetadata, data, startingTable, make(map[string]bool), make([]string, 0), options)
 }
 
-func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string]schemareader.Table, data DataDumper,
+func printTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, data DataDumper,
 	table schemareader.Table, processedTables map[string]bool, path []string, options PrintSqlOptions) {
 
 	_, tableProcessed := processedTables[table.Name]
@@ -36,12 +37,12 @@ func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string
 
 	// this should be moved to section process current table, and we should follow links
 	tableData, dataOK := data.TableData[table.Name]
-	if !dataOK{
+	if !dataOK {
 		if utils.Contains(options.TablesToClean, table.Name) {
 			cleanEmptyTable := generateClearEmptyTable(table, path, schemaMetadata, options)
-			writter.WriteString(cleanEmptyTable + "\n")
+			writer.WriteString(cleanEmptyTable + "\n")
 			return
-		}else{
+		} else {
 			return
 		}
 	}
@@ -52,18 +53,18 @@ func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string
 		if !ok || !tableReference.Export {
 			continue
 		}
-		printTableData(db, writter, schemaMetadata, data, tableReference, processedTables, path, options)
+		printTableData(db, writer, schemaMetadata, data, tableReference, processedTables, path, options)
 	}
 
 	// export current table data
 	rows := GetRowsFromKeys(db, schemaMetadata, tableData)
 	if utils.Contains(options.TablesToClean, table.Name) {
 		rowToInsert := generateInsertWithClean(db, rows, table, path, schemaMetadata, options.CleanWhereClause)
-		writter.WriteString(rowToInsert + "\n")
+		writer.WriteString(rowToInsert + "\n")
 	} else {
 		for _, rowValue := range rows {
 			rowToInsert := generateRowInsertStatement(db, rowValue, table, schemaMetadata, options.OnlyIfParentExistsTables)
-			writter.WriteString(rowToInsert + "\n")
+			writer.WriteString(rowToInsert + "\n")
 		}
 	}
 
@@ -77,13 +78,13 @@ func printTableData(db *sql.DB, writter *bufio.Writer, schemaMetadata map[string
 		if !shouldFollowReferenceToLink(path, table, tableReference) {
 			continue
 		}
-		printTableData(db, writter, schemaMetadata, data, tableReference, processedTables, path, options)
+		printTableData(db, writer, schemaMetadata, data, tableReference, processedTables, path, options)
 	}
 }
 
 // GetRowsFromKeys check if we should move this to a method in the type tableData
 func GetRowsFromKeys(db *sql.DB, schemaMetadata map[string]schemareader.Table, tableData TableDump) [][]sqlUtil.RowDataStructure {
-	rowsResult := make([][]sqlUtil.RowDataStructure,0)
+	rowsResult := make([][]sqlUtil.RowDataStructure, 0)
 	if len(tableData.Keys) == 0 {
 		return rowsResult
 	}
@@ -100,7 +101,8 @@ func GetRowsFromKeys(db *sql.DB, schemaMetadata map[string]schemareader.Table, t
 		for _, c := range columnsFilter {
 			row = append(row, key.Key[c])
 		}
-		values = append(values, "(" + strings.Join(row, ",") + ")")
+
+		values = append(values, "("+strings.Join(row, ",")+")")
 		// FIXME the query value should be a parameter
 		if len(values) >= 1000 {
 			// FIXME query should be defined one time, instead of being replicate some lines bellow
@@ -114,6 +116,7 @@ func GetRowsFromKeys(db *sql.DB, schemaMetadata map[string]schemareader.Table, t
 		sql := fmt.Sprintf(`SELECT %s FROM %s WHERE (%s) in (%s);`,
 			formattedColumns, table.Name, strings.Join(columnsFilter, ", "), strings.Join(values, ","))
 		rowsResult = append(rowsResult, sqlUtil.ExecuteQueryWithResults(db, sql)...)
+
 	}
 	return rowsResult
 }
@@ -126,8 +129,8 @@ func filterRowData(value []sqlUtil.RowDataStructure, table schemareader.Table) [
 			}
 		}
 	}
-	if table.UnexportColumns != nil{
-		returnValues := make ([]sqlUtil.RowDataStructure, 0)
+	if table.UnexportColumns != nil {
+		returnValues := make([]sqlUtil.RowDataStructure, 0)
 		for _, row := range value {
 			_, ok := table.UnexportColumns[row.ColumnName]
 			if !ok {
@@ -188,10 +191,10 @@ func substituteForeignKeyReference(db *sql.DB, table schemareader.Table, tables 
 	}
 
 	formattedColumns := strings.Join(foreignTable.Columns, ", ")
-	formatedWhereParameters := strings.Join(whereParameters, " and ")
+	formattedWhereParameters := strings.Join(whereParameters, " and ")
 
-	sql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s;`, formattedColumns, reference.TableName, formatedWhereParameters)
-	key := fmt.Sprintf("%s,%s,%s", reference.TableName, formatedWhereParameters, scanParameters)
+	sql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s;`, formattedColumns, reference.TableName, formattedWhereParameters)
+	key := fmt.Sprintf("%s,%s,%s", reference.TableName, formattedWhereParameters, scanParameters)
 
 	cachedValue, found := cache[key]
 
@@ -242,10 +245,10 @@ func substituteForeignKeyReference(db *sql.DB, table schemareader.Table, tables 
 
 			}
 			for localColumn, foreignColumn := range reference.ColumnMapping {
-				updatSql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s limit 1`, foreignColumn, reference.TableName, strings.Join(whereParameters, " and "))
-				row[table.ColumnIndexes[localColumn]].Value = updatSql
+				updateSql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s limit 1`, foreignColumn, reference.TableName, strings.Join(whereParameters, " and "))
+				row[table.ColumnIndexes[localColumn]].Value = updateSql
 				row[table.ColumnIndexes[localColumn]].ColumnType = "SQL"
-				cache[key] = updatSql
+				cache[key] = updateSql
 			}
 		}
 	}
@@ -281,7 +284,7 @@ func formatField(col sqlUtil.RowDataStructure) string {
 func formatColumnAssignment(table schemareader.Table) string {
 	assignments := make([]string, 0)
 	for _, column := range table.Columns {
-		if !table.PKColumns[column] && !table.UnexportColumns[column]{
+		if !table.PKColumns[column] && !table.UnexportColumns[column] {
 			assignments = append(assignments, fmt.Sprintf("%s = excluded.%s", column, column))
 		}
 	}
@@ -337,9 +340,9 @@ func formatOnConflict(row []sqlUtil.RowDataStructure, table schemareader.Table) 
 
 func buildQueryToGetExistingRecords(path []string, table schemareader.Table, schemaMetadata map[string]schemareader.Table, cleanWhereClause string) string {
 	mainUniqueColumns := ""
-	for _, column := range table.UniqueIndexes[table.MainUniqueIndexName].Columns{
+	for _, column := range table.UniqueIndexes[table.MainUniqueIndexName].Columns {
 		if len(mainUniqueColumns) > 0 {
-			mainUniqueColumns = mainUniqueColumns +", "
+			mainUniqueColumns = mainUniqueColumns + ", "
 		}
 		mainUniqueColumns = mainUniqueColumns + table.Name + "." + column
 	}
@@ -386,14 +389,14 @@ func findRelationInfo(References []schemareader.Reference, tableToFind string) m
 	return nil
 }
 
-func prepareColumnNames(table schemareader.Table) string{
+func prepareColumnNames(table schemareader.Table) string {
 	returnColumn := ""
 	for _, column := range table.Columns {
 		_, ignore := table.UnexportColumns[column]
-		if ! ignore {
-			if len(returnColumn) == 0{
+		if !ignore {
+			if len(returnColumn) == 0 {
 				returnColumn = returnColumn + column
-			}else{
+			} else {
 				returnColumn = returnColumn + ", " + column
 			}
 		}
@@ -438,9 +441,9 @@ func generateRowInsertStatement(db *sql.DB, values []sqlUtil.RowDataStructure, t
 			tableName, columnNames, formatRowValue(valueFiltered), tableName, whereClause)
 
 	} else {
-		onConflictFormated := formatOnConflict(valueFiltered, table)
+		onConflictFormatted := formatOnConflict(valueFiltered, table)
 		return fmt.Sprintf(`INSERT INTO %s (%s)	VALUES (%s)  ON CONFLICT %s ;`,
-			tableName, columnNames, formatRowValue(valueFiltered), onConflictFormated)
+			tableName, columnNames, formatRowValue(valueFiltered), onConflictFormatted)
 	}
 
 }
@@ -459,12 +462,12 @@ func generateInsertWithClean(db *sql.DB, values [][]sqlUtil.RowDataStructure, ta
 
 	tableName := table.Name
 	columnNames := prepareColumnNames(table)
-	onConflictFormated := formatOnConflict(values[0], table)
+	onConflictFormatted := formatOnConflict(values[0], table)
 
 	mainUniqueColumns := strings.Join(table.UniqueIndexes[table.MainUniqueIndexName].Columns, ",")
 
 	insertPart := fmt.Sprintf(`INSERT INTO %s (%s) VALUES %s  ON CONFLICT %s RETURNING %s`,
-		tableName, columnNames, allValues, onConflictFormated, mainUniqueColumns)
+		tableName, columnNames, allValues, onConflictFormatted, mainUniqueColumns)
 
 	existingRecords := buildQueryToGetExistingRecords(path, table, schemaMetadata, cleanWhereClause)
 

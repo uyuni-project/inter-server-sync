@@ -109,6 +109,7 @@ func DumpChannelData(options ChannelDumperOptions) {
 	processAndInsertProducts(db, bufferWriter)
 
 	processAndInsertChannels(db, bufferWriter, options)
+
 	bufferWriter.WriteString("COMMIT;\n")
 }
 
@@ -139,6 +140,7 @@ func processAndInsertChannels(db *sql.DB, writer *bufio.Writer, options ChannelD
 	for _, channelLabel := range options.ChannelLabels {
 		processChannel(db, writer, options, channelLabel, schemaMetadata)
 		writer.Flush()
+
 	}
 }
 

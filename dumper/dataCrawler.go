@@ -142,9 +142,11 @@ func shouldFollowReferenceToLink(path []string, currentTable schemareader.Table,
 
 	forcedNavegations := map[string] []string {
 		"rhnchannelfamily": {"rhnpublicchannelfamily"},
-		"rhnchannel": {"susemddata", "suseproductchannel"},
+		"rhnchannel": {"susemddata", "suseproductchannel", "rhnreleasechannelmap", "rhndistchannelmap"},
 		"suseproducts": {"suseproductextension", "suseproductsccrepository"},
 		"rhnpackageevr": {"rhnpackagenevra"},
+		"rhnerrata": {"rhnerratafile"},
+		"rhnerratafile": {"rhnerratafilechannel"},
 	}
 
 	if tableNavigation, ok := forcedNavegations[currentTable.Name]; ok {

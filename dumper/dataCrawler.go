@@ -19,8 +19,8 @@ func DataCrawler(db *sql.DB, schemaMetadata map[string]schemareader.Table, start
 
 IterateItemsLoop:
 	for len(itemsToProcess) > 0 {
-		itemToProcess := itemsToProcess[0]
-		itemsToProcess = itemsToProcess[1:]
+		itemToProcess := itemsToProcess[len(itemsToProcess)-1]
+		itemsToProcess = itemsToProcess[0:len(itemsToProcess)-1]
 
 		table, tableExists := schemaMetadata[itemToProcess.tableName]
 		if !tableExists {
@@ -50,7 +50,7 @@ IterateItemsLoop:
 
 		newItems := append(followReferencesTo(db, schemaMetadata, table, itemToProcess),
 			followReferencesFrom(db, schemaMetadata, table, itemToProcess)...)
-		itemsToProcess = append(newItems, itemsToProcess...)
+		itemsToProcess = append(itemsToProcess, newItems...)
 
 	}
 	return result

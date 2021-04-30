@@ -20,7 +20,52 @@ var cache = make(map[string]string)
 func PrintTableDataOrdered(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table,
 	startingTable schemareader.Table, data DataDumper, options PrintSqlOptions) {
 
+	printCleanTables(writer, schemaMetadata,startingTable, make(map[string]bool), make([]string, 0), options)
 	printTableData(db, writer, schemaMetadata, data, startingTable, make(map[string]bool), make([]string, 0), options)
+}
+
+/**
+clear tables need to be printed in reverse order, otherwise it will not work
+ */
+func printCleanTables(writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, table schemareader.Table,
+	processedTables map[string]bool, path []string, options PrintSqlOptions){
+
+	_, tableProcessed := processedTables[table.Name]
+	// if the current table should not be export we are interrupting the crawler process for these table
+	// not exporting other tables relations
+	if tableProcessed || !table.Export {
+		return
+	}
+	processedTables[table.Name] = true
+	path = append(path, table.Name)
+
+	// follow reference by
+	for _, reference := range table.ReferencedBy {
+
+		tableReference, ok := schemaMetadata[reference.TableName]
+		if !ok || !tableReference.Export {
+			continue
+		}
+		if !shouldFollowReferenceToLink(path, table, tableReference) {
+			continue
+		}
+		printCleanTables(writer, schemaMetadata, tableReference, processedTables, path, options)
+	}
+
+	if utils.Contains(options.TablesToClean, table.Name) {
+		cleanEmptyTable := generateClearTable(table, path, schemaMetadata, options)
+		writer.WriteString(cleanEmptyTable + "\n")
+		//result = append(result,cleanEmptyTable)
+	}
+
+	for _, reference := range table.References {
+		tableReference, ok := schemaMetadata[reference.TableName]
+		if !ok || !tableReference.Export {
+			continue
+		}
+		printCleanTables(writer, schemaMetadata, tableReference, processedTables, path, options)
+	}
+
 }
 
 func printTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, data DataDumper,
@@ -35,18 +80,6 @@ func printTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]
 	processedTables[table.Name] = true
 	path = append(path, table.Name)
 
-	// this should be moved to section process current table, and we should follow links
-	tableData, dataOK := data.TableData[table.Name]
-	if !dataOK {
-		if utils.Contains(options.TablesToClean, table.Name) {
-			cleanEmptyTable := generateClearEmptyTable(table, path, schemaMetadata, options)
-			writer.WriteString(cleanEmptyTable + "\n")
-			return
-		} else {
-			return
-		}
-	}
-
 	// follow reference to
 	for _, reference := range table.References {
 		tableReference, ok := schemaMetadata[reference.TableName]
@@ -57,11 +90,9 @@ func printTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]
 	}
 
 	// export current table data
-	rows := GetRowsFromKeys(db, schemaMetadata, tableData)
-	if utils.Contains(options.TablesToClean, table.Name) {
-		rowToInsert := generateInsertWithClean(db, rows, table, path, schemaMetadata, options.CleanWhereClause)
-		writer.WriteString(rowToInsert + "\n")
-	} else {
+	tableData, dataOK := data.TableData[table.Name]
+	if dataOK {
+		rows := GetRowsFromKeys(db, schemaMetadata, tableData)
 		for _, rowValue := range rows {
 			rowToInsert := generateRowInsertStatement(db, rowValue, table, schemaMetadata, options.OnlyIfParentExistsTables)
 			writer.WriteString(rowToInsert + "\n")
@@ -338,6 +369,13 @@ func formatOnConflict(row []sqlUtil.RowDataStructure, table schemareader.Table) 
 	return fmt.Sprintf("%s DO UPDATE SET %s", constraint, columnAssignment)
 }
 
+func generateClearTable(table schemareader.Table, path []string, schemaMetadata map[string]schemareader.Table, options PrintSqlOptions) string {
+	existingRecords := buildQueryToGetExistingRecords(path, table, schemaMetadata, options.CleanWhereClause)
+	mainUniqueColumns := strings.Join(table.UniqueIndexes[table.MainUniqueIndexName].Columns, ",")
+	return fmt.Sprintf("\nDELETE FROM %s WHERE (%s) IN (%s);",
+		table.Name, mainUniqueColumns, existingRecords)
+}
+
 func buildQueryToGetExistingRecords(path []string, table schemareader.Table, schemaMetadata map[string]schemareader.Table, cleanWhereClause string) string {
 	mainUniqueColumns := ""
 	for _, column := range table.UniqueIndexes[table.MainUniqueIndexName].Columns {
@@ -448,41 +486,4 @@ func generateRowInsertStatement(db *sql.DB, values []sqlUtil.RowDataStructure, t
 
 }
 
-func generateInsertWithClean(db *sql.DB, values [][]sqlUtil.RowDataStructure, table schemareader.Table, path []string,
-	schemaMetadata map[string]schemareader.Table, cleanWhereClause string) string {
 
-	var valueFiltered []string
-	for _, rowValue := range values {
-		rowKeysProcessed := substituteKeys(db, table, rowValue, schemaMetadata)
-		filteredRowValue := filterRowData(rowKeysProcessed, table)
-		valueFiltered = append(valueFiltered, "("+formatRowValue(filteredRowValue)+")")
-
-	}
-	allValues := strings.Join(valueFiltered, ", ")
-
-	tableName := table.Name
-	columnNames := prepareColumnNames(table)
-	onConflictFormatted := formatOnConflict(values[0], table)
-
-	mainUniqueColumns := strings.Join(table.UniqueIndexes[table.MainUniqueIndexName].Columns, ",")
-
-	insertPart := fmt.Sprintf(`INSERT INTO %s (%s) VALUES %s  ON CONFLICT %s RETURNING %s`,
-		tableName, columnNames, allValues, onConflictFormatted, mainUniqueColumns)
-
-	existingRecords := buildQueryToGetExistingRecords(path, table, schemaMetadata, cleanWhereClause)
-
-	deletePart := fmt.Sprintf("\nDELETE FROM %s WHERE (%s) IN (%s EXCEPT ALL SELECT * FROM new_records_%s);",
-		tableName, mainUniqueColumns, existingRecords, tableName)
-
-	finalQuery := fmt.Sprintf(`WITH new_records_%s AS (%s) %s;`,
-		tableName, insertPart, deletePart)
-
-	return finalQuery
-}
-
-func generateClearEmptyTable(table schemareader.Table, path []string, schemaMetadata map[string]schemareader.Table, options PrintSqlOptions) string {
-	existingRecords := buildQueryToGetExistingRecords(path, table, schemaMetadata, options.CleanWhereClause)
-	mainUniqueColumns := strings.Join(table.UniqueIndexes[table.MainUniqueIndexName].Columns, ",")
-	return fmt.Sprintf("\nDELETE FROM %s WHERE (%s) IN (%s);",
-		table.Name, mainUniqueColumns, existingRecords)
-}

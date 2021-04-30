@@ -13,10 +13,13 @@ import (
 )
 
 // TablesToClean represents Tables which needs to be cleaned in case on client side there is a record that doesn't exist anymore on master side
-// FIXME problematic: rhnerratafile
 var tablesToClean = []string{"rhnreleasechannelmap", "rhndistchannelmap", "rhnchannelerrata", "rhnchannelpackage",
-	"rhnerratapackage", "rhnerratafile", "rhnerratafilechannel", "rhnerratafilepackage", "rhnerratafilepackagesource",
-	"rhnerratabuglist", "rhnerratacve",	"rhnerratakeyword", "susemddata", "susemdkeyword", "suseproductchannel"}
+	"rhnerratapackage",
+	"rhnerratafile",
+	"rhnerratafilechannel", "rhnerratafilepackage", "rhnerratafilepackagesource",
+	"rhnerratabuglist", "rhnerratacve", "rhnerratakeyword", "susemddata",
+	"susemdkeyword",
+	"suseproductchannel"}
 
 // onlyIfParentExistsTables represents Tables for which only records needs to be insterted only if parent record exists
 var onlyIfParentExistsTables = []string{"rhnchannelcloned", "rhnerratacloned", "suseproductchannel"}
@@ -132,8 +135,8 @@ func processAndInsertProducts(db *sql.DB, writer *bufio.Writer) {
 
 func processAndInsertChannels(db *sql.DB, writer *bufio.Writer, options ChannelDumperOptions) {
 
-	// check for duplicated channels andnot export
-	// add option to export "with-childs"
+	// FIXME check for duplicated channels and not export
+	// FIXME add option to export "with-childs"
 
 	schemaMetadata := schemareader.ReadTablesSchema(db, SoftwareChannelTableNames())
 	log.Debug().Msg("channel schema metadata loaded")
@@ -156,7 +159,7 @@ func processChannel(db *sql.DB, writer *bufio.Writer, options ChannelDumperOptio
 
 	cleanWhereClause := fmt.Sprintf(`WHERE rhnchannel.id = (SELECT id FROM rhnchannel WHERE label = '%s')`, channelLabel)
 	printOptions := dumper.PrintSqlOptions{
-		TablesToClean: tablesToClean,
+		TablesToClean:            tablesToClean,
 		CleanWhereClause:         cleanWhereClause,
 		OnlyIfParentExistsTables: onlyIfParentExistsTables}
 

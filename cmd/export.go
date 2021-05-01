@@ -14,11 +14,12 @@ var exportCmd = &cobra.Command{
 }
 
 var channels []string
+var channelWithChildren []string
 var outputDir string
 var metadataOnly bool
 func init() {
 	exportCmd.Flags().StringSliceVar(&channels, "channels", nil, "Channels to be exported")
-	exportCmd.MarkFlagRequired("channels")
+	exportCmd.Flags().StringSliceVar(&channelWithChildren, "channel-with-children", nil, "Channels to be exported")
 	exportCmd.Flags().StringVar(&outputDir, "outputDir", ".", "Location for generated data")
 	exportCmd.Flags().BoolVar(&metadataOnly, "metadataOnly", false, "export only metadata")
 
@@ -34,6 +35,7 @@ func runExport(cmd *cobra.Command, args []string) {
 	options := entityDumper.ChannelDumperOptions{
 		ServerConfig: serverConfig,
 		ChannelLabels: channels,
+		ChannelWithChildrenLabels: channelWithChildren,
 		OutputFolder: outputDir,
 		MetadataOnly: metadataOnly,
 	}

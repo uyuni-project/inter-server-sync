@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
+	"github.com/uyuni-project/inter-server-sync/sqlUtil"
 	"os"
 
 	"github.com/rs/zerolog/log"
@@ -112,9 +113,36 @@ func DumpChannelData(options ChannelDumperOptions) {
 	bufferWriter.WriteString("BEGIN;\n")
 	processAndInsertProducts(db, bufferWriter)
 
-	processAndInsertChannels(db, bufferWriter, options)
+	processAndInsertChannels(db, bufferWriter, loadChannelsToProcess(db, options), options)
 
 	bufferWriter.WriteString("COMMIT;\n")
+}
+
+var childChannelSql = "select label from rhnchannel " +
+	"where parent_channel = (select id from rhnchannel where label = $1)"
+
+func loadChannelsToProcess(db *sql.DB, options ChannelDumperOptions) []string {
+	channels := channelsProcess{make(map[string]bool), make([]string, 0)}
+	for _, singleChannel := range options.ChannelLabels{
+		if _, ok := channels.channelsMap[singleChannel]; !ok{
+			channels.addChannelLabel(singleChannel)
+		}
+	}
+
+	for _, channelChildren := range options.ChannelWithChildrenLabels{
+		if _, ok := channels.channelsMap[channelChildren]; !ok{
+			channels.addChannelLabel(channelChildren)
+			childrenChannels := sqlUtil.ExecuteQueryWithResults(db, childChannelSql, channelChildren)
+			for _, cChannel := range childrenChannels{
+				cLabel := fmt.Sprintf("%v",cChannel[0].Value)
+				if _, okC := channels.channelsMap[cLabel]; !okC{
+					channels.addChannelLabel(cLabel)
+				}
+			}
+
+		}
+	}
+	return channels.channels
 }
 
 func processAndInsertProducts(db *sql.DB, writer *bufio.Writer) {
@@ -133,18 +161,16 @@ func processAndInsertProducts(db *sql.DB, writer *bufio.Writer) {
 	log.Debug().Msg("products export done")
 }
 
-func processAndInsertChannels(db *sql.DB, writer *bufio.Writer, options ChannelDumperOptions) {
+func processAndInsertChannels(db *sql.DB, writer *bufio.Writer, channels []string, options ChannelDumperOptions) {
 
-	// FIXME check for duplicated channels and not export
-	// FIXME add option to export "with-childs"
+	log.Info().Msg(fmt.Sprintf("%d channels to process", len(channels)))
 
 	schemaMetadata := schemareader.ReadTablesSchema(db, SoftwareChannelTableNames())
 	log.Debug().Msg("channel schema metadata loaded")
 
-	for _, channelLabel := range options.ChannelLabels {
+	for _, channelLabel := range channels {
 		processChannel(db, writer, options, channelLabel, schemaMetadata)
 		writer.Flush()
-
 	}
 }
 

@@ -1,7 +1,6 @@
 package packageDumper
 
 import (
-	"bufio"
 	"database/sql"
 	"fmt"
 	"github.com/uyuni-project/inter-server-sync/dumper"
@@ -16,15 +15,6 @@ var serverDataFolder = "/var/spacewalk"
 
 func DumpPackageFiles(db *sql.DB, schemaMetadata map[string]schemareader.Table, data dumper.DataDumper, outputFolder string) {
 
-	file, err := os.Create(outputFolder + "/copyFiles.log")
-	if err != nil {
-		log.Fatal(err)
-		panic(err)
-	}
-	defer file.Close()
-	bufferWriter := bufio.NewWriter(file)
-	defer bufferWriter.Flush()
-
 	packageKeysData := data.TableData["rhnpackage"]
 	table := schemaMetadata[packageKeysData.TableName]
 
@@ -34,7 +24,6 @@ func DumpPackageFiles(db *sql.DB, schemaMetadata map[string]schemareader.Table, 
 		path := rowPackage[pathIndex]
 		source := fmt.Sprintf("%s/%s", serverDataFolder, path.Value)
 		target := fmt.Sprintf("%s/%s", outputFolder, path.Value)
-		bufferWriter.WriteString(fmt.Sprintf("'%s'---->'%s'\n", source, target))
 		_, error := copy(source, target)
 		if error != nil{
 			log.Fatal("could not Copy File: ", error)

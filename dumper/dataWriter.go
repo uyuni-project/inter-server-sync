@@ -92,10 +92,20 @@ func printTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]
 	// export current table data
 	tableData, dataOK := data.TableData[table.Name]
 	if dataOK {
-		rows := GetRowsFromKeys(db, schemaMetadata, tableData)
-		for _, rowValue := range rows {
-			rowToInsert := generateRowInsertStatement(db, rowValue, table, schemaMetadata, options.OnlyIfParentExistsTables)
-			writer.WriteString(rowToInsert + "\n")
+		exportPoint := 0
+		batch := 100
+		for len(tableData.Keys) > exportPoint {
+			upperLimit := exportPoint + batch
+			if upperLimit > len(tableData.Keys) {
+				upperLimit = len(tableData.Keys)
+			}
+			rows := GetRowsFromKeys(db, table, tableData.Keys[exportPoint:upperLimit])
+			for _, rowValue := range rows {
+				rowToInsert := generateRowInsertStatement(db, rowValue, table, schemaMetadata, options.OnlyIfParentExistsTables)
+				writer.WriteString(rowToInsert + "\n")
+			}
+
+			exportPoint = upperLimit
 		}
 	}
 
@@ -114,42 +124,28 @@ func printTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]
 }
 
 // GetRowsFromKeys check if we should move this to a method in the type tableData
-func GetRowsFromKeys(db *sql.DB, schemaMetadata map[string]schemareader.Table, tableData TableDump) [][]sqlUtil.RowDataStructure {
-	rowsResult := make([][]sqlUtil.RowDataStructure, 0)
-	if len(tableData.Keys) == 0 {
-		return rowsResult
+func GetRowsFromKeys(db *sql.DB, table schemareader.Table, keys []TableKey) [][]sqlUtil.RowDataStructure {
+	if len(keys) == 0 {
+		return make([][]sqlUtil.RowDataStructure, 0)
 	}
-	table := schemaMetadata[tableData.TableName]
 	formattedColumns := strings.Join(table.Columns, ", ")
 
 	columnsFilter := make([]string, 0)
-	for column, _ := range tableData.Keys[0].Key {
+	for column, _ := range keys[0].Key {
 		columnsFilter = append(columnsFilter, column)
 	}
 	values := make([]string, 0)
-	for _, key := range tableData.Keys {
+	for _, key := range keys {
 		row := make([]string, 0)
 		for _, c := range columnsFilter {
 			row = append(row, key.Key[c])
 		}
 
 		values = append(values, "("+strings.Join(row, ",")+")")
-		// FIXME the query value should be a parameter
-		if len(values) >= 1000 {
-			// FIXME query should be defined one time, instead of being replicate some lines bellow
-			sql := fmt.Sprintf(`SELECT %s FROM %s WHERE (%s) in (%s);`,
-				formattedColumns, table.Name, strings.Join(columnsFilter, ", "), strings.Join(values, ","))
-			rowsResult = append(rowsResult, sqlUtil.ExecuteQueryWithResults(db, sql)...)
-			values = make([]string, 0)
-		}
 	}
-	if len(values) > 0 {
-		sql := fmt.Sprintf(`SELECT %s FROM %s WHERE (%s) in (%s);`,
-			formattedColumns, table.Name, strings.Join(columnsFilter, ", "), strings.Join(values, ","))
-		rowsResult = append(rowsResult, sqlUtil.ExecuteQueryWithResults(db, sql)...)
-
-	}
-	return rowsResult
+	sql := fmt.Sprintf(`SELECT %s FROM %s WHERE (%s) in (%s);`,
+		formattedColumns, table.Name, strings.Join(columnsFilter, ", "), strings.Join(values, ","))
+	return sqlUtil.ExecuteQueryWithResults(db, sql)
 }
 
 func filterRowData(value []sqlUtil.RowDataStructure, table schemareader.Table) []sqlUtil.RowDataStructure {

@@ -17,18 +17,27 @@ func DumpPackageFiles(db *sql.DB, schemaMetadata map[string]schemareader.Table, 
 
 	packageKeysData := data.TableData["rhnpackage"]
 	table := schemaMetadata[packageKeysData.TableName]
-
-	rows := dumper.GetRowsFromKeys(db, schemaMetadata, packageKeysData)
 	pathIndex := table.ColumnIndexes["path"]
-	for _, rowPackage := range rows{
-		path := rowPackage[pathIndex]
-		source := fmt.Sprintf("%s/%s", serverDataFolder, path.Value)
-		target := fmt.Sprintf("%s/%s", outputFolder, path.Value)
-		_, error := copy(source, target)
-		if error != nil{
-			log.Fatal("could not Copy File: ", error)
-			panic(error)
+
+	exportPoint := 0
+	batchSize := 500
+	for len(packageKeysData.Keys) > exportPoint {
+		upperLimit := exportPoint + batchSize
+		if upperLimit > len(packageKeysData.Keys) {
+			upperLimit = len(packageKeysData.Keys)
 		}
+		rows := dumper.GetRowsFromKeys(db, table, packageKeysData.Keys[exportPoint:upperLimit])
+		for _, rowPackage := range rows{
+			path := rowPackage[pathIndex]
+			source := fmt.Sprintf("%s/%s", serverDataFolder, path.Value)
+			target := fmt.Sprintf("%s/%s", outputFolder, path.Value)
+			_, error := copy(source, target)
+			if error != nil{
+				log.Fatal("could not Copy File: ", error)
+				panic(error)
+			}
+		}
+		exportPoint = upperLimit
 	}
 }
 

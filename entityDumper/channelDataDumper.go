@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"github.com/uyuni-project/inter-server-sync/sqlUtil"
+	"io"
 	"os"
 
 	"github.com/rs/zerolog/log"
@@ -97,6 +98,7 @@ func ProductsTableNames() []string {
 
 func DumpChannelData(options ChannelDumperOptions) {
 
+	validateExportFolder(options)
 	db := schemareader.GetDBconnection(options.ServerConfig)
 	defer db.Close()
 
@@ -116,6 +118,23 @@ func DumpChannelData(options ChannelDumperOptions) {
 	processAndInsertChannels(db, bufferWriter, loadChannelsToProcess(db, options), options)
 
 	bufferWriter.WriteString("COMMIT;\n")
+}
+
+func validateExportFolder(options ChannelDumperOptions) {
+	outputFolder, err := os.Open(options.OutputFolder)
+	defer outputFolder.Close()
+	if os.IsNotExist(err){
+		os.MkdirAll(options.OutputFolder, 0755)
+		return
+	}
+	folderInfo, _ := outputFolder.Stat()
+	if !folderInfo.IsDir(){
+		log.Fatal().Msg(fmt.Sprintf("export location is not a directory: %s", options.OutputFolder))
+	}
+	_, errEmpty := outputFolder.Readdirnames(1) // Or f.Readdir(1)
+	if errEmpty != io.EOF {
+		log.Fatal().Msg(fmt.Sprintf("export location is empty: %s", options.OutputFolder))
+	}
 }
 
 var childChannelSql = "select label from rhnchannel " +

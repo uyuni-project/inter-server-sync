@@ -93,9 +93,16 @@ func printTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]
 	tableData, dataOK := data.TableData[table.Name]
 	if dataOK {
 		rows := GetRowsFromKeys(db, schemaMetadata, tableData)
-		for _, rowValue := range rows {
-			rowToInsert := generateRowInsertStatement(db, rowValue, table, schemaMetadata, options.OnlyIfParentExistsTables)
-			writer.WriteString(rowToInsert + "\n")
+		if strings.Compare(table.MainUniqueIndexName, schemareader.VirtualIndexName) == 0 ||
+			utils.Contains(options.OnlyIfParentExistsTables, table.Name) ||
+			// FIXME remove this hack and do it in a better way
+			utils.Contains([]string{"rhnerrata", "rhnpackageevr", "rhnpackagecapability"}, table.Name){
+			for _, rowValue := range rows {
+				rowToInsert := generateRowInsertStatement(db, rowValue, table, schemaMetadata, options.OnlyIfParentExistsTables)
+				writer.WriteString(rowToInsert + "\n")
+			}
+		}else{
+			generateBulkInsert(db, writer, rows, table, schemaMetadata)
 		}
 	}
 
@@ -487,3 +494,39 @@ func generateRowInsertStatement(db *sql.DB, values []sqlUtil.RowDataStructure, t
 }
 
 
+func generateBulkInsert(db *sql.DB, writer *bufio.Writer, values [][]sqlUtil.RowDataStructure, table schemareader.Table, schemaMetadata map[string]schemareader.Table) []string {
+	result := make([]string, 0)
+	exportPoint := 0
+	batch := 100
+	for len(values) > exportPoint {
+		upperLimit := exportPoint + batch
+		if upperLimit > len(values) {
+			upperLimit = len(values)
+		}
+		genereatedRows := generateBulkInsertSub(db, values[exportPoint:upperLimit], table, schemaMetadata)
+		writer.WriteString(genereatedRows + "\n")
+		exportPoint = upperLimit
+	}
+	return result
+}
+
+func generateBulkInsertSub(db *sql.DB, values [][]sqlUtil.RowDataStructure, table schemareader.Table,
+	schemaMetadata map[string]schemareader.Table) string {
+	var valueFiltered []string
+	for _, rowValue := range values {
+		rowKeysProcessed := substituteKeys(db, table, rowValue, schemaMetadata)
+		filteredRowValue := filterRowData(rowKeysProcessed, table)
+		valueFiltered = append(valueFiltered, "("+formatRowValue(filteredRowValue)+")")
+
+	}
+	allValues := strings.Join(valueFiltered, ", ")
+
+	tableName := table.Name
+	columnNames := prepareColumnNames(table)
+	onConflictFormatted := formatOnConflict(values[0], table)
+
+	insertStatement := fmt.Sprintf(`INSERT INTO %s (%s) VALUES %s  ON CONFLICT %s;`,
+		tableName, columnNames, allValues, onConflictFormatted)
+
+	return insertStatement
+}

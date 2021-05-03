@@ -7,6 +7,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
 	"github.com/uyuni-project/inter-server-sync/sqlUtil"
+	"github.com/uyuni-project/inter-server-sync/utils"
 	"strings"
 )
 
@@ -75,8 +76,18 @@ func exportAllTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[str
 	sql := fmt.Sprintf(`SELECT %s FROM %s %s;`, formattedColumns, table.Name, whereFilterClause(table))
 	rows := sqlUtil.ExecuteQueryWithResults(db, sql)
 
-	for _, row := range rows {
-		writer.WriteString(generateRowInsertStatement(db, row, table, schemaMetadata, onlyIfParentExistsTables) + "\n")
+	//for _, row := range rows {
+	//	writer.WriteString(generateRowInsertStatement(db, row, table, schemaMetadata, onlyIfParentExistsTables) + "\n")
+	//}
+
+	if strings.Compare(table.MainUniqueIndexName, schemareader.VirtualIndexName) == 0 ||
+		utils.Contains(onlyIfParentExistsTables, table.Name)  {
+		for _, rowValue := range rows {
+			rowToInsert := generateRowInsertStatement(db, rowValue, table, schemaMetadata, onlyIfParentExistsTables)
+			writer.WriteString(rowToInsert + "\n")
+		}
+	}else{
+		generateBulkInsert(db, writer, rows, table, schemaMetadata)
 	}
 
 }

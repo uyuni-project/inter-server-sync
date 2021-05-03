@@ -1,0 +1,6 @@
+db_backend = postgresql
+db_user = spacewalk
+db_password = spacewalk
+db_name = susemanager
+db_host = 192.168.122.177
+db_port = 5432

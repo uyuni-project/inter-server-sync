@@ -187,9 +187,20 @@ func processAndInsertChannels(db *sql.DB, writer *bufio.Writer, channels []strin
 	schemaMetadata := schemareader.ReadTablesSchema(db, SoftwareChannelTableNames())
 	log.Debug().Msg("channel schema metadata loaded")
 
+	fileChannels, err := os.Create(options.OutputFolder + "/exportedChannels.txt")
+	if err != nil {
+		log.Fatal().Err(err).Msg("error creating sql file")
+		panic(err)
+	}
+
+	defer fileChannels.Close()
+	bufferWriterChannels := bufio.NewWriter(fileChannels)
+	defer bufferWriterChannels.Flush()
+
 	for _, channelLabel := range channels {
 		processChannel(db, writer, options, channelLabel, schemaMetadata)
 		writer.Flush()
+		bufferWriterChannels.WriteString(fmt.Sprintf("%s\n", channelLabel))
 	}
 }
 

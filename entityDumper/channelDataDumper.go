@@ -197,7 +197,10 @@ func processAndInsertChannels(db *sql.DB, writer *bufio.Writer, channels []strin
 	bufferWriterChannels := bufio.NewWriter(fileChannels)
 	defer bufferWriterChannels.Flush()
 
+	count := 0
 	for _, channelLabel := range channels {
+		count++
+		log.Info().Msg(fmt.Sprintf("Processing channel [%d/%d] %s", count,len(channels) ,channelLabel))
 		processChannel(db, writer, options, channelLabel, schemaMetadata)
 		writer.Flush()
 		bufferWriterChannels.WriteString(fmt.Sprintf("%s\n", channelLabel))
@@ -206,8 +209,6 @@ func processAndInsertChannels(db *sql.DB, writer *bufio.Writer, channels []strin
 
 func processChannel(db *sql.DB, writer *bufio.Writer, options ChannelDumperOptions,
 	channelLabel string, schemaMetadata map[string]schemareader.Table) {
-
-	log.Debug().Msg(fmt.Sprintf("Processing...%s", channelLabel))
 
 	whereFilter := fmt.Sprintf("label = '%s'", channelLabel)
 	tableData := dumper.DataCrawler(db, schemaMetadata, schemaMetadata["rhnchannel"], whereFilter)

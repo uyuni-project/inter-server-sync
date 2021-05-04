@@ -38,9 +38,7 @@ func SoftwareChannelTableNames() []string {
 		"rhnreleasechannelmap", // clean
 		"rhndistchannelmap",    // clean
 		"rhnchannelcomps",
-		"rhnchannelfamily",
 		"rhnchannelfamilymembers",
-		"rhnpublicchannelfamily",
 		"rhnerrata",
 		"rhnerratacloned",  // add only if there are corresponding rows in rhnerrata
 		"rhnchannelerrata", // clean

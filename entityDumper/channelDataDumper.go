@@ -146,16 +146,14 @@ func validateExportFolder(outputFolderAbs string) {
 			panic(err)
 		}
 		}
-	fmt.Printf("getting folder stats\n")
+	outputFolder, _ = os.Open(outputFolderAbs)
 	folderInfo, err := outputFolder.Stat()
 	if err != nil {
 		log.Fatal().Msg("Error getting folder info")
 		panic(err)
 	}
-	fmt.Printf("Successfully got folder info\n")
 
 	if !folderInfo.IsDir(){
-		fmt.Printf("Is dir? \n")
 		log.Fatal().Msg(fmt.Sprintf("export location is not a directory: %s", outputFolderAbs))
 		panic(err)
 	}
@@ -164,7 +162,6 @@ func validateExportFolder(outputFolderAbs string) {
 	if errEmpty != io.EOF {
 		log.Fatal().Msg(fmt.Sprintf("export location is empty: %s", outputFolderAbs))
 	}
-
 }
 
 var childChannelSql = "select label from rhnchannel " +

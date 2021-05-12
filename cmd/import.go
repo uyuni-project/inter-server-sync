@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"github.com/uyuni-project/inter-server-sync/schemareader"
 	"os"
 	"os/exec"
 )
@@ -69,4 +70,23 @@ func runImportSql() {
 	if err != nil {
 		log.Fatal().Err(err).Msg("error running the sql script")
 	}
+}
+
+func updateNeededCache(channelID int) {
+	db := schemareader.GetDBconnection(serverConfig)
+	cacheQuery := "select rhn_channel.update_needed_cache((select id from rhnchannel where label ='sle-product-suse-manager-server-4.1-pool-x86_64'));"
+	serverIDs := fmt.Sprintf(`SELECT sc.server_id as id FROM rhnServerChannel sc WHERE sc.channel_id = %s order by id asc;`, channelID)
+	rows, err := db.Query(serverIDs)
+	if err != nil {
+		log.Fatal().Err(err).Msg("error executing cache query")
+		panic(err)
+	}
+	for rows.Next() {
+		server, err := db.Query(sql)
+		if err != nil {
+			log.Fatal().Err(err).Msg("error executing server query")
+		}
+
+	}
+
 }

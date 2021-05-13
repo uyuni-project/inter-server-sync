@@ -8,7 +8,6 @@ import (
 	"os/exec"
 )
 
-// importCmd represents the import command
 var importCmd = &cobra.Command{
 	Use:   "import",
 	Short: "Import data to server",
@@ -26,22 +25,15 @@ func init() {
 
 func runImport(cmd *cobra.Command, args []string) {
 	log.Info().Msg(fmt.Sprintf("starting import from dir %s", importDir))
-
 	validateFolder()
-	//Mgr-sync needs to be disabled
-	//Run sql script
-	runImportSql()
-	//Detect it's a channel import with packages and copy package files to final location
 	runPackageFileSync()
-	//Errata cache and repo metadata are regenerated after import (Taskomatic)
-
+	runImportSql()
 	log.Info().Msg("import finished")
 }
 
 func validateFolder() {
-	// FIXME
-	// validate import folder exists
-	// validate all mandatory files exists
+	// FIXME need to be validate
+	// maybe just check the sql file
 }
 
 func runPackageFileSync() {

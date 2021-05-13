@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"github.com/uyuni-project/inter-server-sync/utils"
 	"os"
 	"os/exec"
 )
@@ -19,27 +20,28 @@ var importDir string
 func init() {
 
 	importCmd.Flags().StringVar(&importDir, "importDir", ".", "Location import data from")
-
 	rootCmd.AddCommand(importCmd)
 }
 
 func runImport(cmd *cobra.Command, args []string) {
-	log.Info().Msg(fmt.Sprintf("starting import from dir %s", importDir))
-	validateFolder()
-	runPackageFileSync()
-	runImportSql()
+	absImportDir := utils.GetAbsPath(importDir)
+	log.Info().Msg(fmt.Sprintf("starting import from dir %s", absImportDir))
+	validateFolder(absImportDir)
+	runPackageFileSync(absImportDir)
+	runImportSql(absImportDir)
 	log.Info().Msg("import finished")
 }
 
-func validateFolder() {
-	// FIXME need to be validate
-	// maybe just check the sql file
+func validateFolder(absImportDir string) {
+	_, err := os.Stat(fmt.Sprintf("%s/sql_statements.sql", absImportDir))
+	if os.IsNotExist(err) {
+		log.Fatal().Err(err).Msg("sql file doesn't exists on import directory.")
+	}
 }
 
-func runPackageFileSync() {
-	//rsync -og --chown=wwwrun:www -r packages/ /var/spacewalk/packages/
+func runPackageFileSync(absImportDir string) {
 	cmd := exec.Command("rsync", "-og", "--chown=wwwrun:www", "-r",
-		fmt.Sprintf("%s/packages/", importDir),
+		fmt.Sprintf("%s/packages/", absImportDir),
 		"/var/spacewalk/packages/")
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -51,8 +53,8 @@ func runPackageFileSync() {
 	}
 }
 
-func runImportSql() {
-	cmd := exec.Command("spacewalk-sql", fmt.Sprintf("%s/sql_statements.sql", importDir))
+func runImportSql(absImportDir string) {
+	cmd := exec.Command("spacewalk-sql", fmt.Sprintf("%s/sql_statements.sql", absImportDir))
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

@@ -1,6 +1,12 @@
 package utils
 
-import "reflect"
+import (
+	"github.com/rs/zerolog/log"
+	"os"
+	"path/filepath"
+	"reflect"
+	"strings"
+)
 
 //ReverseArray reverses the array
 func ReverseArray(slice interface{}) {
@@ -19,4 +25,20 @@ func Contains(slice []string, elementToFind string) bool {
 		}
 	}
 	return false
+}
+
+func GetAbsPath(path string) string{
+	result := path
+	if filepath.IsAbs(path) {
+		result, _ = filepath.Abs(path)
+	} else {
+		homedir, err := os.UserHomeDir()
+		if err != nil {
+			log.Fatal().Msg("Couldn't determine the home directory")
+		}
+		if strings.HasPrefix(path, "~") {
+			result = strings.Replace(path, "~", homedir, -1)
+		}
+	}
+	return result
 }

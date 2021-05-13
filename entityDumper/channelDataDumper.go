@@ -231,10 +231,23 @@ func processChannel(db *sql.DB, writer *bufio.Writer, channelLabel string,
 		tableData, printOptions)
 	log.Debug().Msg("finished print table order")
 
+	generateCacheCalculation(channelLabel, writer)
+
 	if !options.MetadataOnly {
 		log.Debug().Msg("dumping all package files")
 		packageDumper.DumpPackageFiles(db, schemaMetadata, tableData, options.getOutputFolderAbsPath())
 	}
 	log.Debug().Msg("channel export finished")
 
+}
+
+func generateCacheCalculation(channelLabel string, writer *bufio.Writer) {
+	serverErrataCache := fmt.Sprintf("select rhn_channel.update_needed_cache((select id from rhnchannel where label ='%s'));", channelLabel)
+	writer.WriteString(serverErrataCache + "\n")
+	repoMetadata := fmt.Sprintf(`
+		INSERT INTO rhnRepoRegenQueue
+		(id, channel_label, client, reason, force, bypass_filters, next_action, created, modified)
+		VALUES (null, '%s', 'inter server sync v2', 'channel sync', 'N', 'N', current_timestamp, current_timestamp, current_timestamp);
+	`, channelLabel)
+	writer.WriteString(repoMetadata + "\n")
 }

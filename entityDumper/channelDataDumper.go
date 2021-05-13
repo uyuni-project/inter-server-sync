@@ -116,12 +116,11 @@ func DumpChannelData(options ChannelDumperOptions) {
 	bufferWriter.WriteString("COMMIT;\n")
 }
 
-
 func validateExportFolder(outputFolderAbs string) {
 	outputFolder, err := os.Open(outputFolderAbs)
 	defer outputFolder.Close()
 	if err != nil {
-		if os.IsNotExist(err){
+		if os.IsNotExist(err) {
 			err := os.MkdirAll(outputFolderAbs, 0755)
 			if err != nil {
 				log.Fatal().Err(err).Msg("Error creating dir")
@@ -137,7 +136,7 @@ func validateExportFolder(outputFolderAbs string) {
 		log.Fatal().Err(err).Msg("Error getting folder info")
 	}
 
-	if !folderInfo.IsDir(){
+	if !folderInfo.IsDir() {
 		log.Fatal().Err(err).Msg(fmt.Sprintf("export location is not a directory: %s", outputFolderAbs))
 	}
 
@@ -152,19 +151,19 @@ var childChannelSql = "select label from rhnchannel " +
 
 func loadChannelsToProcess(db *sql.DB, options ChannelDumperOptions) []string {
 	channels := channelsProcess{make(map[string]bool), make([]string, 0)}
-	for _, singleChannel := range options.ChannelLabels{
-		if _, ok := channels.channelsMap[singleChannel]; !ok{
+	for _, singleChannel := range options.ChannelLabels {
+		if _, ok := channels.channelsMap[singleChannel]; !ok {
 			channels.addChannelLabel(singleChannel)
 		}
 	}
 
-	for _, channelChildren := range options.ChannelWithChildrenLabels{
-		if _, ok := channels.channelsMap[channelChildren]; !ok{
+	for _, channelChildren := range options.ChannelWithChildrenLabels {
+		if _, ok := channels.channelsMap[channelChildren]; !ok {
 			channels.addChannelLabel(channelChildren)
 			childrenChannels := sqlUtil.ExecuteQueryWithResults(db, childChannelSql, channelChildren)
-			for _, cChannel := range childrenChannels{
-				cLabel := fmt.Sprintf("%v",cChannel[0].Value)
-				if _, okC := channels.channelsMap[cLabel]; !okC{
+			for _, cChannel := range childrenChannels {
+				cLabel := fmt.Sprintf("%v", cChannel[0].Value)
+				if _, okC := channels.channelsMap[cLabel]; !okC {
 					channels.addChannelLabel(cLabel)
 				}
 			}
@@ -209,7 +208,7 @@ func processAndInsertChannels(db *sql.DB, writer *bufio.Writer, channels []strin
 	count := 0
 	for _, channelLabel := range channels {
 		count++
-		log.Info().Msg(fmt.Sprintf("Processing channel [%d/%d] %s", count,len(channels) ,channelLabel))
+		log.Info().Msg(fmt.Sprintf("Processing channel [%d/%d] %s", count, len(channels), channelLabel))
 		processChannel(db, writer, channelLabel, schemaMetadata, options)
 		writer.Flush()
 		bufferWriterChannels.WriteString(fmt.Sprintf("%s\n", channelLabel))

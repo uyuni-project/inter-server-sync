@@ -21,22 +21,45 @@ func DumpPackageFiles(db *sql.DB, schemaMetadata map[string]schemareader.Table, 
 
 	exportPoint := 0
 	batchSize := 500
+	jobs := make(chan fileToCopy, batchSize)
+	results := make(chan error, batchSize)
+	for w := 1; w <= 5; w++ {
+		go worker(w, jobs, results)
+	}
+
 	for len(packageKeysData.Keys) > exportPoint {
 		upperLimit := exportPoint + batchSize
 		if upperLimit > len(packageKeysData.Keys) {
 			upperLimit = len(packageKeysData.Keys)
 		}
 		rows := dumper.GetRowsFromKeys(db, table, packageKeysData.Keys[exportPoint:upperLimit])
+
 		for _, rowPackage := range rows{
 			path := rowPackage[pathIndex]
 			source := fmt.Sprintf("%s/%s", serverDataFolder, path.Value)
 			target := fmt.Sprintf("%s/%s", outputFolder, path.Value)
-			error := systemCopy(source, target)
+			jobs <- fileToCopy{source: source, target: target}
+		}
+		for a := 1; a <= len(rows); a++ {
+			error := <-results
 			if error != nil{
-				log.Fatal().Err(error).Msg("could not Copy File: ")
+				log.Fatal().Err(error).Msg("Could not Copy File")
 			}
 		}
 		exportPoint = upperLimit
+	}
+	close(jobs)
+	close(results)
+}
+
+type fileToCopy struct {
+	source, target string
+}
+
+func worker(id int, jobs <-chan fileToCopy, results chan<- error) {
+	fmt.Println("worker", id, "started  job")
+	for j := range jobs {
+		results <- systemCopy(j.source, j.target)
 	}
 }
 
@@ -54,7 +77,6 @@ func systemCopy(src, dest string) error{
 	}
 
 	cmd := exec.Command("cp", src, dest)
-	//cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 

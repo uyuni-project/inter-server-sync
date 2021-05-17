@@ -29,7 +29,7 @@ Steps:
 ## Export Data
 ### local machine
 - **Build tool**: `go build`
-- **Copy the resulting artifact to the source server**: `scp inter-server-sync root@<SERVER>:~/` 
+- **Copy the resulting artifact to source and target servers**: `scp inter-server-sync root@<SERVER>:~/` 
 
 ### on source server
 - **Create export dir**: `mkdir ~/export`
@@ -37,13 +37,7 @@ Steps:
 - **Copy export directory to target server**: `rsync -r ~/export root@<Target_server>:~/` 
 
 ### on target server
-Inside folder `export`:
-- **execute sql script**: `spacewalk-sql sql_statements.sql`
-- **sync packages to the final location**: `rsync -og --chown=wwwrun:www -r packages/ /var/spacewalk/packages/`
-
-## DEBUG flag
-For debug purposes it's also possible to generate debug information about the generated data.
-`go run -channels=LABEL1,LABEL2 -debug`
+- **Run command: `./inter-server-sync import --importDir ~/export/`
 
 ## Profile
 Run with profile: `go run . -cpuprofile=cpu.prof -memprofile=mem.prof ...`

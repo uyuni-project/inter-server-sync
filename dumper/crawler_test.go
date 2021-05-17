@@ -1,10 +1,11 @@
 package dumper
 
 import (
-	"github.com/uyuni-project/inter-server-sync/schemareader"
-	"github.com/uyuni-project/inter-server-sync/tests"
 	"reflect"
 	"testing"
+
+	"github.com/uyuni-project/inter-server-sync/schemareader"
+	"github.com/uyuni-project/inter-server-sync/tests"
 )
 
 // crawlerTestCase lays down a test scenario for the DataCrawler func
@@ -35,7 +36,7 @@ func TestShouldCreateDataDumper(t *testing.T) {
 	testCase := createDataCrawlerTestCase(graph, root)
 
 	// the data repository expect these statements in the exact same order
-	testCase.repo.Expect("SELECT * FROM root where CUSTOM ;", 1)
+	testCase.repo.Expect("SELECT * FROM root WHERE CUSTOM ;", 1)
 	testCase.repo.Expect("SELECT id, fk_id FROM v31 WHERE id = $1;", 1)
 	testCase.repo.Expect("SELECT id, fk_id FROM v32 WHERE id = $1;", 1)
 	testCase.repo.Expect("SELECT id, fk_id FROM v33 WHERE id = $1;", 1)

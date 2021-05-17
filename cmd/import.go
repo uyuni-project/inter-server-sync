@@ -4,10 +4,12 @@ import (
 	"fmt"
 	"os"
 	"os/exec"
+	"path"
 	"strings"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"github.com/uyuni-project/inter-server-sync/dumper/pillarDumper"
 	"github.com/uyuni-project/inter-server-sync/utils"
 	"github.com/uyuni-project/inter-server-sync/xmlrpc"
 )
@@ -16,6 +18,11 @@ var importCmd = &cobra.Command{
 	Use:   "import",
 	Short: "Import data to server",
 	Run:   runImport,
+}
+
+var allowedImports = map[string](string){
+	"CHANNELS": "sql_statements.sql",
+	"IMAGES":   "sql_statements_images.sql",
 }
 
 var importDir string
@@ -36,13 +43,20 @@ func runImport(cmd *cobra.Command, args []string) {
 	absImportDir := utils.GetAbsPath(importDir)
 	log.Info().Msg(fmt.Sprintf("starting import from dir %s", absImportDir))
 	fversion, fproduct := getImportVersionProduct(absImportDir)
-	sversion, sproduct := utils.GetCurrentServerVersion()
+	sversion, sproduct := utils.GetCurrentServerVersion(serverConfig)
 	if fversion != sversion || fproduct != sproduct {
 		log.Panic().Msgf("Wrong version detected. Fileversion = %s ; Serverversion = %s", fversion, sversion)
 	}
-	validateFolder(absImportDir)
-	runPackageFileSync(absImportDir)
-	runImportSql(absImportDir)
+	toImport := validateFolder(absImportDir)
+	if sql, ok := toImport["CHANNELS"]; ok {
+		runPackageFileSync(absImportDir)
+		runImportSql(sql)
+	}
+	if sql, ok := toImport["IMAGES"]; ok {
+		runImageFileSync(absImportDir, serverConfig)
+		runImportSql(sql)
+	}
+
 	log.Info().Msg("import finished")
 }
 
@@ -66,6 +80,7 @@ func validateFolder(absImportDir string) {
 	if os.IsNotExist(err) {
 		log.Fatal().Err(err).Msg("No usable .sql files found in import directory")
 	}
+	return toImport
 }
 
 func hasConfigChannels(absImportDir string) bool {
@@ -102,16 +117,53 @@ func runConfigFilesSync(labels []string, user string, password string) (interfac
 	return client.SyncConfigFiles(labels)
 }
 
+func runImageFileSync(absImportDir string, serverFQDN string) {
+	imagesImportDir := path.Join(absImportDir, "images")
+	err := utils.FolderExists(imagesImportDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			log.Info().Msg("No image files to import")
+			return
+		} else {
+			log.Fatal().Err(err).Msg("Error reading import folder for images")
+		}
+	}
+
+	cmd := exec.Command("rsync", "-og", "--chown=salt:susemanager", "--chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r",
+		"-r", "--exclude=pillars", imagesImportDir+"/", "/srv/www/os-images")
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	log.Info().Msg("Copying image files")
+	err = cmd.Run()
+	if err != nil {
+		log.Fatal().Err(err).Msg("Error importing image files")
+	}
+
+	pillarImportDir := path.Join(absImportDir, "images", "pillars")
+	err = utils.FolderExists(pillarImportDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			log.Warn().Msg("No pillar files to import")
+			return
+		} else {
+			log.Fatal().Err(err).Msg("Error reading import folder for pillars")
+		}
+	}
+
+	log.Info().Msg("Copying image pillar files")
+	pillarDumper.ImportImagePillars(pillarImportDir, serverConfig)
+}
+
 func runImportSql(absImportDir string) {
 
 	cmd := exec.Command("spacewalk-sql", fmt.Sprintf("%s/sql_statements.sql", absImportDir))
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	log.Info().Msg("starting sql import")
+	log.Info().Msg("Starting SQL import")
 	err := cmd.Run()
 	if err != nil {
-		log.Fatal().Err(err).Msg("error running the sql script")
+		log.Fatal().Err(err).Msgf("Error running the SQL script %s", source)
 	}
 
 	if hasConfigChannels(absImportDir) {

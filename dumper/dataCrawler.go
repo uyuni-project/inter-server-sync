@@ -60,7 +60,11 @@ IterateItemsLoop:
 }
 
 func initialDataSet(db *sql.DB, startTable schemareader.Table, whereFilter string) []processItem {
-	sql := fmt.Sprintf(`SELECT * FROM %s where %s ;`, startTable.Name, whereFilter)
+	whereClause := ""
+	if len(whereFilter) > 0 {
+		whereClause = fmt.Sprintf("WHERE %s", whereFilter)
+	}
+	sql := fmt.Sprintf(`SELECT * FROM %s %s ;`, startTable.Name, whereClause)
 	rows := sqlUtil.ExecuteQueryWithResults(db, sql)
 	initialDataSet := make([]processItem, 0)
 	for _, row := range rows {
@@ -164,7 +168,7 @@ func shouldFollowReferenceToLink(path []string, currentTable schemareader.Table,
 		}
 	}
 
-	forcedNavegations := map[string][]string{
+	forcedNavigations := map[string][]string{
 		"rhnchannelfamily": {"rhnpublicchannelfamily"},
 		"rhnchannel":       {"susemddata", "suseproductchannel", "rhnreleasechannelmap", "rhndistchannelmap"},
 		"suseproducts":     {"suseproductextension", "suseproductsccrepository"},
@@ -175,7 +179,7 @@ func shouldFollowReferenceToLink(path []string, currentTable schemareader.Table,
 		"rhnconfigfile":    {"rhnconfigrevision"},
 	}
 
-	if tableNavigation, ok := forcedNavegations[currentTable.Name]; ok {
+	if tableNavigation, ok := forcedNavigations[currentTable.Name]; ok {
 		for _, targetNavigationTable := range tableNavigation {
 			if strings.Compare(targetNavigationTable, referencedTable.Name) == 0 {
 				return true

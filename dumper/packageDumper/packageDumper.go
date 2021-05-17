@@ -3,12 +3,10 @@ package packageDumper
 import (
 	"database/sql"
 	"fmt"
+	"log"
+
 	"github.com/uyuni-project/inter-server-sync/dumper"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
-	"io"
-	"log"
-	"os"
-	"path/filepath"
 )
 
 var serverDataFolder = "/var/spacewalk"
@@ -27,47 +25,15 @@ func DumpPackageFiles(db *sql.DB, schemaMetadata map[string]schemareader.Table, 
 			upperLimit = len(packageKeysData.Keys)
 		}
 		rows := dumper.GetRowsFromKeys(db, table, packageKeysData.Keys[exportPoint:upperLimit])
-		for _, rowPackage := range rows{
+		for _, rowPackage := range rows {
 			path := rowPackage[pathIndex]
 			source := fmt.Sprintf("%s/%s", serverDataFolder, path.Value)
 			target := fmt.Sprintf("%s/%s", outputFolder, path.Value)
-			_, error := copy(source, target)
+			_, error := dumper.Copy(source, target)
 			if error != nil {
 				log.Panic("could not Copy File: ", error)
 			}
 		}
 		exportPoint = upperLimit
 	}
-}
-
-func copy(src, dst string) (int64, error) {
-	sourceFileStat, err := os.Stat(src)
-	if err != nil {
-		return 0, err
-	}
-
-	if !sourceFileStat.Mode().IsRegular() {
-		return 0, fmt.Errorf("%s is not a regular file", src)
-	}
-
-	source, err := os.Open(src)
-	if err != nil {
-		return 0, err
-	}
-	defer source.Close()
-
-	destination, err := create(dst)
-	if err != nil {
-		return 0, err
-	}
-	defer destination.Close()
-	nBytes, err := io.Copy(destination, source)
-	return nBytes, err
-}
-
-func create(p string) (*os.File, error) {
-	if err := os.MkdirAll(filepath.Dir(p), 0770); err != nil {
-		return nil, err
-	}
-	return os.Create(p)
 }

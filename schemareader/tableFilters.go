@@ -1,5 +1,7 @@
 package schemareader
 
+import "strings"
+
 const (
 	VirtualIndexName = "virtual_main_unique_index"
 )
@@ -45,7 +47,6 @@ func applyTableFilters(table Table) Table {
 		table.MainUniqueIndexName = VirtualIndexName
 	case "rhnpackagechangelogrec":
 		table.PKSequence = "rhn_pkg_cl_id_seq"
-
 	case "rhnpackagecapability":
 		// pkid: rhn_pkg_capability_id_pk
 		table.PKSequence = "RHN_PKG_CAPABILITY_ID_SEQ"
@@ -66,6 +67,47 @@ func applyTableFilters(table Table) Table {
 		virtualIndexColumns := []string{"contents", "file_size", "checksum_id", "is_binary", "delim_start", "delim_end", "created"}
 		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
 		table.MainUniqueIndexName = VirtualIndexName
+	case "suseimageinfo":
+		unexportColumns := make(map[string]bool)
+		// Ignore actions relevant only to source server
+		unexportColumns["build_action_id"] = true
+		unexportColumns["inspect_action_id"] = true
+		unexportColumns["build_server_id"] = true
+		table.UnexportColumns = unexportColumns
+		// Unfortunately images have only ID unique and that is not enough for our guessing game.
+		// Create virtual compound index then as close as we can get
+		virtualIndexColumns := []string{"name", "version", "image_type", "image_arch_id", "org_id"}
+		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
+		table.MainUniqueIndexName = VirtualIndexName
+	case "suseimageinfochannel":
+		virtualIndexColumns := []string{"channel_id", "image_info_id"}
+		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
+		table.MainUniqueIndexName = VirtualIndexName
+	case "suseimageprofile":
+		table.PKSequence = "suse_imgprof_prid_seq"
+		// rhnregtoken is completely non-unique standalone, use rhnactivation key instead as reference to the same id
+		references := make([]Reference, 0)
+		for _, r := range table.References {
+			if strings.Compare(r.TableName, "rhnregtoken") == 0 {
+				ref := Reference{}
+				ref.TableName = "rhnactivationkey"
+				ref.ColumnMapping = map[string]string{
+					"token_id": "reg_token_id",
+				}
+				references = append(references, ref)
+			} else {
+				references = append(references, r)
+			}
+		}
+		table.References = references
+	case "susekiwiprofile":
+		virtualIndexColumns := []string{"profile_id"}
+		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
+		table.MainUniqueIndexName = VirtualIndexName
+	case "rhnactivationkey":
+		// Activation keys are to be managed by salt states or XMLRPC API
+		table.Export = false
 	}
+
 	return table
 }

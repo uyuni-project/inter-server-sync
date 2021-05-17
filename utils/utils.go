@@ -14,6 +14,13 @@ import (
 	"github.com/rs/zerolog/log"
 )
 
+// Return default config paths - etc default, web default, package default
+func getDefaultConfigs() []string {
+	return []string{"/etc/rhn/rhn.conf",
+		"/usr/share/rhn/config-defaults/rhn_web.conf",
+		"/usr/share/rhn/config-defaults/rhn.conf"}
+}
+
 //ReverseArray reverses the array
 func ReverseArray(slice interface{}) {
 	size := reflect.ValueOf(slice).Len()
@@ -26,7 +33,7 @@ func ReverseArray(slice interface{}) {
 // Contains is a helper method to check if a string element exist in the string slice
 func Contains(slice []string, elementToFind string) bool {
 	for _, element := range slice {
-		if elementToFind == element {
+		if strings.ToLower(elementToFind) == strings.ToLower(element) {
 			return true
 		}
 	}
@@ -65,13 +72,9 @@ func FolderExists(path string) error {
 	return nil
 }
 
-func GetCurrentServerVersion() (string, string) {
-
-	rhndefault := "/etc/rhn/rhn.conf"
-	webpath := "/usr/share/rhn/config-defaults/rhn_web.conf"
-	altpath := "/usr/share/rhn/config-defaults/rhn.conf"
-
-	files := []string{rhndefault, webpath, altpath}
+func GetCurrentServerVersion(serverConfig string) (string, string) {
+	files := []string{serverConfig}
+	files = append(files, getDefaultConfigs()...)
 	property := []string{"product_name", "web.product_name"}
 	product := "SUSE Manager"
 	p, err := getProperty(files, property)
@@ -89,6 +92,18 @@ func GetCurrentServerVersion() (string, string) {
 		log.Fatal().Msgf("No version found for product %s", product)
 	}
 	return version, product
+}
+
+func GetCurrentServerFQDN(serverConfig string) string {
+	files := []string{serverConfig}
+	files = append(files, getDefaultConfigs()...)
+	property := []string{"cobbler.host"}
+	p, err := getProperty(files, property)
+	if err != nil {
+		log.Error().Msgf("FQDN of server not found, images pillar may not be processed correclty")
+		return ""
+	}
+	return p
 }
 
 func getProperty(filePaths []string, names []string) (string, error) {

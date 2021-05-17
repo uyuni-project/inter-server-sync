@@ -2,12 +2,13 @@ package dumper
 
 import (
 	"fmt"
-	"github.com/uyuni-project/inter-server-sync/schemareader"
-	"github.com/uyuni-project/inter-server-sync/sqlUtil"
-	"github.com/uyuni-project/inter-server-sync/tests"
 	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/uyuni-project/inter-server-sync/schemareader"
+	"github.com/uyuni-project/inter-server-sync/sqlUtil"
+	"github.com/uyuni-project/inter-server-sync/tests"
 )
 
 // writerTestCase is a general object for each dumper's recursive method
@@ -106,30 +107,30 @@ func TestPrintCleanTables(t *testing.T) {
 		PrintSqlOptions{TablesToClean: keys},
 	)
 
-	testCase.repo.Expect("Select * FROM root WHERE (id) IN (SELECT root.id FROM root  );", 1)
+	testCase.repo.Expect("SELECT * FROM root WHERE (id) IN (SELECT root.id FROM root  );", 1)
 	testCase.repo.Expect("SELECT id, fk_id FROM v11 WHERE id = $1;", 1)
 	testCase.repo.Expect("SELECT id, fk_id FROM v12 WHERE id = $1;", 1)
-	testCase.repo.Expect("Select * FROM v11 WHERE (id) IN (SELECT v11.id FROM v11  "+
+	testCase.repo.Expect("SELECT * FROM v11 WHERE (id) IN (SELECT v11.id FROM v11  "+
 		"INNER JOIN root on root.fk_id = v11.id );", 1)
 	testCase.repo.Expect("SELECT id, fk_id FROM v15 WHERE id = $1;", 1)
 	testCase.repo.Expect("SELECT id, fk_id FROM v16 WHERE id = $1;", 1)
-	testCase.repo.Expect("Select * FROM v15 WHERE (id) IN (SELECT v15.id FROM v15  "+
+	testCase.repo.Expect("SELECT * FROM v15 WHERE (id) IN (SELECT v15.id FROM v15  "+
 		"INNER JOIN v11 on v11.fk_id = v15.id "+
 		"INNER JOIN root on root.fk_id = v11.id );", 1)
 	testCase.repo.Expect("SELECT id, fk_id FROM v14 WHERE id = $1;", 1)
-	testCase.repo.Expect("Select * FROM v14 WHERE (id) IN (SELECT v14.id FROM v14  "+
+	testCase.repo.Expect("SELECT * FROM v14 WHERE (id) IN (SELECT v14.id FROM v14  "+
 		"INNER JOIN v15 on v15.fk_id = v14.id "+
 		"INNER JOIN v11 on v11.fk_id = v15.id "+
 		"INNER JOIN root on root.fk_id = v11.id );", 1)
-	testCase.repo.Expect("Select * FROM v16 WHERE (id) IN (SELECT v16.id FROM v16  "+
+	testCase.repo.Expect("SELECT * FROM v16 WHERE (id) IN (SELECT v16.id FROM v16  "+
 		"INNER JOIN v14 on v14.fk_id = v16.id "+
 		"INNER JOIN v15 on v15.fk_id = v14.id "+
 		"INNER JOIN v11 on v11.fk_id = v15.id "+
 		"INNER JOIN root on root.fk_id = v11.id );", 1)
-	testCase.repo.Expect("Select * FROM v12 WHERE (id) IN (SELECT v12.id FROM v12  "+
+	testCase.repo.Expect("SELECT * FROM v12 WHERE (id) IN (SELECT v12.id FROM v12  "+
 		"INNER JOIN root on root.fk_id = v12.id );", 1)
 	testCase.repo.Expect("SELECT id, fk_id FROM v13 WHERE id = $1;", 1)
-	testCase.repo.Expect("Select * FROM v13 WHERE (id) IN (SELECT v13.id FROM v13  "+
+	testCase.repo.Expect("SELECT * FROM v13 WHERE (id) IN (SELECT v13.id FROM v13  "+
 		"INNER JOIN v12 on v12.fk_id = v13.id "+
 		"INNER JOIN root on root.fk_id = v12.id );", 1)
 
@@ -139,26 +140,26 @@ func TestPrintCleanTables(t *testing.T) {
 			"DELETE FROM root WHERE (id) IN (SELECT root.id FROM root  );" +
 			"\n" +
 			"INSERT INTO root (id, fk_id)\t" +
-			"select (SELECT id FROM v12 WHERE id = '0001' limit 1),'0001'  " +
-			"where  not exists (select 1 from root where  id = (SELECT id FROM v12 WHERE id = '0001' limit 1))" +
-			" and exists (SELECT id FROM v12 WHERE id = '0001' limit 1);" +
+			"SELECT (SELECT id FROM v12 WHERE id = '0001' LIMIT 1),'0001' " +
+			"WHERE NOT EXISTS (SELECT 1 FROM root WHERE  id = (SELECT id FROM v12 WHERE id = '0001' LIMIT 1))" +
+			" AND EXISTS (SELECT id FROM v12 WHERE id = '0001' LIMIT 1);" +
 			"\n" +
 			"\n" +
 			"DELETE FROM v11 WHERE (id) IN (SELECT v11.id FROM v11  INNER JOIN root on root.fk_id = v11.id );" +
 			"\n" +
 			"INSERT INTO v11 (id, fk_id)\t" +
-			"select (SELECT id FROM v16 WHERE id = '0001' limit 1),'0001'  " +
-			"where  not exists (select 1 from v11 where  id = (SELECT id FROM v16 WHERE id = '0001' limit 1)) " +
-			"and exists (SELECT id FROM v16 WHERE id = '0001' limit 1);" +
+			"SELECT (SELECT id FROM v16 WHERE id = '0001' LIMIT 1),'0001' " +
+			"WHERE NOT EXISTS (SELECT 1 FROM v11 WHERE  id = (SELECT id FROM v16 WHERE id = '0001' LIMIT 1)) " +
+			"AND EXISTS (SELECT id FROM v16 WHERE id = '0001' LIMIT 1);" +
 			"\n" +
 			"\n" +
 			"DELETE FROM v15 WHERE (id) IN " +
 			"(SELECT v15.id FROM v15  INNER JOIN v11 on v11.fk_id = v15.id INNER JOIN root on root.fk_id = v11.id );" +
 			"\n" +
 			"INSERT INTO v15 (id, fk_id)\t" +
-			"select (SELECT id FROM v14 WHERE id = '0001' limit 1),'0001'  " +
-			"where  not exists (select 1 from v15 where  id = (SELECT id FROM v14 WHERE id = '0001' limit 1)) " +
-			"and exists (SELECT id FROM v14 WHERE id = '0001' limit 1);" +
+			"SELECT (SELECT id FROM v14 WHERE id = '0001' LIMIT 1),'0001' " +
+			"WHERE NOT EXISTS (SELECT 1 FROM v15 WHERE  id = (SELECT id FROM v14 WHERE id = '0001' LIMIT 1)) " +
+			"AND EXISTS (SELECT id FROM v14 WHERE id = '0001' LIMIT 1);" +
 			"\n" +
 			"\n" +
 			"DELETE FROM v14 WHERE (id) IN " +
@@ -168,9 +169,9 @@ func TestPrintCleanTables(t *testing.T) {
 			"INNER JOIN root on root.fk_id = v11.id );" +
 			"\n" +
 			"INSERT INTO v14 (id, fk_id)\t" +
-			"select (SELECT id FROM v16 WHERE id = '0001' limit 1),'0001'  " +
-			"where  not exists (select 1 from v14 where  id = (SELECT id FROM v16 WHERE id = '0001' limit 1)) " +
-			"and exists (SELECT id FROM v16 WHERE id = '0001' limit 1);" +
+			"SELECT (SELECT id FROM v16 WHERE id = '0001' LIMIT 1),'0001' " +
+			"WHERE NOT EXISTS (SELECT 1 FROM v14 WHERE  id = (SELECT id FROM v16 WHERE id = '0001' LIMIT 1)) " +
+			"AND EXISTS (SELECT id FROM v16 WHERE id = '0001' LIMIT 1);" +
 			"\n" +
 			"\n" +
 			"DELETE FROM v16 WHERE (id) IN " +
@@ -181,9 +182,9 @@ func TestPrintCleanTables(t *testing.T) {
 			"INNER JOIN root on root.fk_id = v11.id );" +
 			"\n" +
 			"INSERT INTO v16 (id, fk_id)\t" +
-			"select '0001','0001'  " +
-			"where  not exists (select 1 from v16 where  id = '0001') " +
-			"and ;" +
+			"SELECT '0001','0001' " +
+			"WHERE NOT EXISTS (SELECT 1 FROM v16 WHERE  id = '0001') " +
+			"AND ;" +
 			"\n" +
 			"\n" +
 			"DELETE FROM v12 WHERE (id) IN " +
@@ -191,9 +192,9 @@ func TestPrintCleanTables(t *testing.T) {
 			"INNER JOIN root on root.fk_id = v12.id );" +
 			"\n" +
 			"INSERT INTO v12 (id, fk_id)\t" +
-			"select (SELECT id FROM v13 WHERE id = '0001' limit 1),'0001'  " +
-			"where  not exists (select 1 from v12 where  id = (SELECT id FROM v13 WHERE id = '0001' limit 1)) " +
-			"and exists (SELECT id FROM v13 WHERE id = '0001' limit 1);" +
+			"SELECT (SELECT id FROM v13 WHERE id = '0001' LIMIT 1),'0001' " +
+			"WHERE NOT EXISTS (SELECT 1 FROM v12 WHERE  id = (SELECT id FROM v13 WHERE id = '0001' LIMIT 1)) " +
+			"AND EXISTS (SELECT id FROM v13 WHERE id = '0001' LIMIT 1);" +
 			"\n" +
 			"\n" +
 			"DELETE FROM v13 WHERE (id) IN " +
@@ -202,9 +203,9 @@ func TestPrintCleanTables(t *testing.T) {
 			"INNER JOIN root on root.fk_id = v12.id );" +
 			"\n" +
 			"INSERT INTO v13 (id, fk_id)\t" +
-			"select (SELECT id FROM v14 WHERE id = '0001' limit 1),'0001'  " +
-			"where  not exists (select 1 from v13 where  id = (SELECT id FROM v14 WHERE id = '0001' limit 1)) " +
-			"and exists (SELECT id FROM v14 WHERE id = '0001' limit 1);" +
+			"SELECT (SELECT id FROM v14 WHERE id = '0001' LIMIT 1),'0001' " +
+			"WHERE NOT EXISTS (SELECT 1 FROM v13 WHERE  id = (SELECT id FROM v14 WHERE id = '0001' LIMIT 1)) " +
+			"AND EXISTS (SELECT id FROM v14 WHERE id = '0001' LIMIT 1);" +
 			"\n",
 	}
 
@@ -260,17 +261,17 @@ func TestPrintTableData(t *testing.T) {
 	testCase := createTestCase(graph, root, PrintSqlOptions{PostOrderCallback: createCallback()})
 
 	// the data repository expect these statements in the exact same order
-	testCase.repo.Expect("SELECT id, fk_id FROM v26 WHERE (id) in (('0001'));", 1)
-	testCase.repo.Expect("SELECT id, fk_id FROM v24 WHERE (id) in (('0001'));", 1)
+	testCase.repo.Expect("SELECT id, fk_id FROM v26 WHERE (id) IN (('0001'));", 1)
+	testCase.repo.Expect("SELECT id, fk_id FROM v24 WHERE (id) IN (('0001'));", 1)
 	testCase.repo.Expect("SELECT id, fk_id FROM v25 WHERE id = $1;", 1)
 	testCase.repo.Expect("SELECT id, fk_id FROM v26 WHERE id = $1;", 1)
-	testCase.repo.Expect("SELECT id, fk_id FROM v25 WHERE (id) in (('0001'));", 1)
+	testCase.repo.Expect("SELECT id, fk_id FROM v25 WHERE (id) IN (('0001'));", 1)
 	testCase.repo.Expect("SELECT id, fk_id FROM v24 WHERE id = $1;", 1)
-	testCase.repo.Expect("SELECT id, fk_id FROM v21 WHERE (id) in (('0001'));", 1)
-	testCase.repo.Expect("SELECT id, fk_id FROM v23 WHERE (id) in (('0001'));", 1)
-	testCase.repo.Expect("SELECT id, fk_id FROM v22 WHERE (id) in (('0001'));", 1)
+	testCase.repo.Expect("SELECT id, fk_id FROM v21 WHERE (id) IN (('0001'));", 1)
+	testCase.repo.Expect("SELECT id, fk_id FROM v23 WHERE (id) IN (('0001'));", 1)
+	testCase.repo.Expect("SELECT id, fk_id FROM v22 WHERE (id) IN (('0001'));", 1)
 	testCase.repo.Expect("SELECT id, fk_id FROM v23 WHERE id = $1;", 1)
-	testCase.repo.Expect("SELECT id, fk_id FROM root WHERE (id) in (('0001'));", 1)
+	testCase.repo.Expect("SELECT id, fk_id FROM root WHERE (id) IN (('0001'));", 1)
 	testCase.repo.Expect("SELECT id, fk_id FROM v21 WHERE id = $1;", 1)
 	testCase.repo.Expect("SELECT id, fk_id FROM v22 WHERE id = $1;", 1)
 

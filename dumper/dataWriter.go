@@ -63,7 +63,6 @@ func printCleanTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[strin
 		}
 		printCleanTables(db, writer, schemaMetadata, tableReference, processedTables, path, options)
 	}
-
 }
 
 func printTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, data DataDumper,
@@ -144,8 +143,14 @@ func GetRowsFromKeys(db *sql.DB, table schemareader.Table, keys []TableKey) [][]
 
 		values = append(values, "("+strings.Join(row, ",")+")")
 	}
-	sql := fmt.Sprintf(`SELECT %s FROM %s WHERE (%s) in (%s);`,
-		formattedColumns, table.Name, strings.Join(columnsFilter, ", "), strings.Join(values, ","))
+	// when columnsFilter is empty, do not append any where clause to prevent sql syntax error
+	// TODO: how it can happen to have no columnFilter when keys check at the beginning?
+	where_clause := ""
+	if len(columnsFilter) > 0 {
+		where_clause = fmt.Sprintf("WHERE (%s) IN (%s)", strings.Join(columnsFilter, ", "), strings.Join(values, ","))
+	}
+
+	sql := fmt.Sprintf(`SELECT %s FROM %s %s;`, formattedColumns, table.Name, where_clause)
 	return sqlUtil.ExecuteQueryWithResults(db, sql)
 }
 
@@ -183,7 +188,7 @@ func substitutePrimaryKey(table schemareader.Table, row []sqlUtil.RowDataStructu
 		pkSequence = true
 	}
 	for _, column := range row {
-		if pkSequence && strings.Compare(column.ColumnName, "id") == 0 {
+		if pkSequence && table.PKColumns[column.ColumnName] {
 			column.ColumnType = "SQL"
 			column.Value = fmt.Sprintf("SELECT nextval('%s')", table.PKSequence)
 			rowResult = append(rowResult, column)
@@ -219,7 +224,7 @@ func substituteForeignKeyReference(db *sql.DB, table schemareader.Table, tables 
 	}
 
 	formattedColumns := strings.Join(foreignTable.Columns, ", ")
-	formattedWhereParameters := strings.Join(whereParameters, " and ")
+	formattedWhereParameters := strings.Join(whereParameters, " AND ")
 
 	sql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s;`, formattedColumns, reference.TableName, formattedWhereParameters)
 	key := fmt.Sprintf("%s,%s,%s", reference.TableName, formattedWhereParameters, scanParameters)
@@ -244,7 +249,7 @@ func substituteForeignKeyReference(db *sql.DB, table schemareader.Table, tables 
 				for _, c := range rows[0] {
 					if strings.Compare(c.ColumnName, foreignColumn) == 0 {
 						if c.Value == nil {
-							whereParameters = append(whereParameters, fmt.Sprintf("%s is null",
+							whereParameters = append(whereParameters, fmt.Sprintf("%s IS NULL",
 								foreignColumn))
 						} else {
 							foreignReference := foreignTable.GetFirstReferenceFromColumn(foreignColumn)
@@ -270,10 +275,10 @@ func substituteForeignKeyReference(db *sql.DB, table schemareader.Table, tables 
 						break
 					}
 				}
-
 			}
+
 			for localColumn, foreignColumn := range reference.ColumnMapping {
-				updateSql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s limit 1`, foreignColumn, reference.TableName, strings.Join(whereParameters, " and "))
+				updateSql := fmt.Sprintf(`SELECT %s FROM %s WHERE %s LIMIT 1`, foreignColumn, reference.TableName, strings.Join(whereParameters, " AND "))
 				row[table.ColumnIndexes[localColumn]].Value = updateSql
 				row[table.ColumnIndexes[localColumn]].ColumnType = "SQL"
 				cache[key] = updateSql
@@ -398,7 +403,7 @@ func generateClearTable(db *sql.DB, writer *bufio.Writer, table schemareader.Tab
 	writer.WriteString(cleanEmptyTable + "\n")
 
 	// repopulate all pre-existing data
-	allTableRecordsSql := fmt.Sprintf("Select * FROM %s WHERE (%s) IN (%s);",
+	allTableRecordsSql := fmt.Sprintf("SELECT * FROM %s WHERE (%s) IN (%s);",
 		table.Name, mainUniqueColumns, existingRecords)
 	allTableRecords := sqlUtil.ExecuteQueryWithResults(db, allTableRecordsSql)
 	for _, record := range allTableRecords {
@@ -493,27 +498,27 @@ func generateRowInsertStatement(db *sql.DB, values []sqlUtil.RowDataStructure, t
 						whereClauseList = append(whereClauseList, fmt.Sprintf(" %s = %s",
 							value.ColumnName, formatField(value)))
 						if value.ColumnType == "SQL" {
-							parentsRecordsCheckList = append(parentsRecordsCheckList, fmt.Sprintf("exists %s",
+							parentsRecordsCheckList = append(parentsRecordsCheckList, fmt.Sprintf("EXISTS %s",
 								formatField(value)))
 						}
 					}
 				}
 			}
 		}
-		whereClause := strings.Join(whereClauseList, " and ")
-		parentRecordsExistsClause := strings.Join(parentsRecordsCheckList, " and ")
+		whereClause := strings.Join(whereClauseList, " AND ")
+		parentRecordsExistsClause := strings.Join(parentsRecordsCheckList, " AND ")
 
 		if utils.Contains(onlyIfParentExistsTables, table.Name) {
-			return fmt.Sprintf(`INSERT INTO %s (%s)	select %s  where  not exists (select 1 from %s where %s) and %s;`,
+			return fmt.Sprintf(`INSERT INTO %s (%s)	SELECT %s WHERE NOT EXISTS (SELECT 1 FROM %s WHERE %s) AND %s;`,
 				tableName, columnNames, formatRowValue(valueFiltered), tableName, whereClause, parentRecordsExistsClause)
 		}
 
-		return fmt.Sprintf(`INSERT INTO %s (%s)	select %s  where  not exists (select 1 from %s where %s);`,
+		return fmt.Sprintf(`INSERT INTO %s (%s)	SELECT %s WHERE NOT EXISTS (SELECT 1 FROM %s WHERE %s);`,
 			tableName, columnNames, formatRowValue(valueFiltered), tableName, whereClause)
 
 	} else {
 		onConflictFormatted := formatOnConflict(valueFiltered, table)
-		return fmt.Sprintf(`INSERT INTO %s (%s)	VALUES (%s)  ON CONFLICT %s ;`,
+		return fmt.Sprintf(`INSERT INTO %s (%s)	VALUES (%s) ON CONFLICT %s;`,
 			tableName, columnNames, formatRowValue(valueFiltered), onConflictFormatted)
 	}
 

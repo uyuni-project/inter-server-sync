@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"os"
+	"path"
 	"strings"
 
 	"github.com/rs/zerolog/log"
@@ -22,6 +23,9 @@ var configChannels []string
 var outputDir string
 var metadataOnly bool
 var startingDate string
+var includeImages bool
+var includeContainers bool
+var orgidOnly uint
 
 func init() {
 	exportCmd.Flags().StringSliceVar(&channels, "channels", nil, "Channels to be exported")
@@ -30,6 +34,9 @@ func init() {
 	exportCmd.Flags().BoolVar(&metadataOnly, "metadataOnly", false, "export only metadata")
 	exportCmd.Flags().StringVar(&startingDate, "packagesOnlyAfter", "", "Only export packages added or modified after the specified date (date format can be 'YYYY-MM-DD' or 'YYYY-MM-DD hh:mm:ss')")
 	exportCmd.Flags().StringSliceVar(&configChannels, "configChannels", nil, "Configuration Channels to be exported")
+	exportCmd.Flags().BoolVar(&includeImages, "images", false, "Export OS images and associated metadata")
+	exportCmd.Flags().BoolVar(&includeContainers, "containers", false, "Export containers metadata")
+	exportCmd.Flags().UintVar(&orgidOnly, "orgId", 0, "Export only for organization id")
 	exportCmd.Args = cobra.NoArgs
 
 	rootCmd.AddCommand(exportCmd)
@@ -58,7 +65,7 @@ func runExport(cmd *cobra.Command, args []string) {
 	}
 	entityDumper.DumpAllEntities(options)
 	var versionfile string
-	versionfile = options.GetOutputFolderAbsPath() + "/version.txt"
+	versionfile = path.Join(utils.GetAbsPath(outputDir), "version.txt")
 	vf, err := os.Open(versionfile)
 	defer vf.Close()
 	if os.IsNotExist(err) {
@@ -68,6 +75,32 @@ func runExport(cmd *cobra.Command, args []string) {
 		}
 		vf = f
 	}
-	version, product := utils.GetCurrentServerVersion()
+	version, product := utils.GetCurrentServerVersion(serverConfig)
 	vf.WriteString("product_name = " + product + "\n" + "version = " + version + "\n")
+
+	if len(channels) > 0 || len(channelWithChildren) > 0 {
+		options := entityDumper.ChannelDumperOptions{
+			ServerConfig:              serverConfig,
+			ChannelLabels:             channels,
+			ChannelWithChildrenLabels: channelWithChildren,
+			OutputFolder:              outputDir,
+			MetadataOnly:              metadataOnly,
+			StartingDate:              validatedDate,
+		}
+		entityDumper.DumpChannelData(options)
+	}
+
+	if includeImages || includeContainers {
+		imageOptions := entityDumper.ImageDumperOptions{
+			ServerConfig: serverConfig,
+			OutputFolder: outputDir,
+			OSImage:      includeImages,
+			Containers:   includeContainers,
+			OrgID:        orgidOnly,
+			StartingDate: validatedDate,
+		}
+		entityDumper.DumpImageData(imageOptions)
+	}
+
+	log.Info().Msgf("Export done. Directory: %s", outputDir)
 }

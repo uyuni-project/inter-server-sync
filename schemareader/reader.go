@@ -2,8 +2,9 @@ package schemareader
 
 import (
 	"database/sql"
-	"github.com/rs/zerolog/log"
 	"strings"
+
+	"github.com/rs/zerolog/log"
 )
 
 func readTableNames(db *sql.DB) []string {
@@ -328,7 +329,10 @@ func ReadTablesSchema(db *sql.DB, tableNames []string) map[string]Table {
 
 	result := make(map[string]Table, 0)
 	for _, tableName := range tableNames {
-		table := processTable(db, tableName, true)
+		table, err := processTable(db, strings.ToLower(tableName), true)
+		if err {
+			continue
+		}
 		result[table.Name] = table
 	}
 
@@ -346,7 +350,7 @@ func processReferenceTables(db *sql.DB, table Table, currentTables map[string]Ta
 		if ok {
 			continue
 		}
-		tableProcessed := processTable(db, reference.TableName, false)
+		tableProcessed, _ := processTable(db, reference.TableName, false)
 		currentTables[reference.TableName] = tableProcessed
 		currentTables = processReferenceTables(db, tableProcessed, currentTables)
 	}
@@ -354,8 +358,12 @@ func processReferenceTables(db *sql.DB, table Table, currentTables map[string]Ta
 	return currentTables
 }
 
-func processTable(db *sql.DB, tableName string, exportable bool) Table {
+func processTable(db *sql.DB, tableName string, exportable bool) (Table, bool) {
 	columns := readColumnNames(db, tableName)
+	if len(columns) == 0 {
+		log.Info().Msgf("Ignoring nonexisting table %s", tableName)
+		return Table{}, true
+	}
 
 	columnIndexes := make(map[string]int)
 	for i, columnName := range columns {
@@ -385,7 +393,10 @@ func processTable(db *sql.DB, tableName string, exportable bool) Table {
 		if len(mainUniqueIndexName) == 0 {
 			mainUniqueIndexName = findIndex(indexes, "name")
 			if len(mainUniqueIndexName) == 0 {
-				mainUniqueIndexName = findIndexMostColumns(indexes)
+				mainUniqueIndexName = findIndex(indexes, "token")
+				if len(mainUniqueIndexName) == 0 {
+				        mainUniqueIndexName = findIndexMostColumns(indexes)
+				}
 			}
 		}
 	}
@@ -418,5 +429,5 @@ func processTable(db *sql.DB, tableName string, exportable bool) Table {
 		References:          references,
 		ReferencedBy:        referencedBy}
 	table = applyTableFilters(table)
-	return table
+	return table, false
 }

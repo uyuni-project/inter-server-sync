@@ -242,7 +242,7 @@ func processChannel(db *sql.DB, writer *bufio.Writer, channelLabel string,
 }
 
 func generateCacheCalculation(channelLabel string, writer *bufio.Writer) {
-	updateChannelModifyDate := fmt.Sprintf("update rhnchannel set modified = current_timestamp where label = '%s'", channelLabel)
+	updateChannelModifyDate := fmt.Sprintf("update rhnchannel set modified = current_timestamp where label = '%s';", channelLabel)
 	writer.WriteString(updateChannelModifyDate + "\n")
 
 	serverErrataCache := fmt.Sprintf("select rhn_channel.update_needed_cache((select id from rhnchannel where label ='%s'));", channelLabel)

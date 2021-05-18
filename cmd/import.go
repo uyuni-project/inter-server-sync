@@ -12,7 +12,7 @@ import (
 var importCmd = &cobra.Command{
 	Use:   "import",
 	Short: "Import data to server",
-	Run: runImport,
+	Run:   runImport,
 }
 
 var importDir string
@@ -26,10 +26,30 @@ func init() {
 func runImport(cmd *cobra.Command, args []string) {
 	absImportDir := utils.GetAbsPath(importDir)
 	log.Info().Msg(fmt.Sprintf("starting import from dir %s", absImportDir))
+	fversion, fproduct := getImportVersionProduct(absImportDir)
+	sversion, sproduct := utils.GetCurrentServerVersion()
+	if fversion != sversion || fproduct != sproduct {
+		log.Fatal().Msgf("Wrong version detected. Fileversion = %s ; Serverversion = %s", fversion, sversion)
+	}
 	validateFolder(absImportDir)
 	runPackageFileSync(absImportDir)
 	runImportSql(absImportDir)
 	log.Info().Msg("import finished")
+}
+
+func getImportVersionProduct(path string) (string, string) {
+	var versionfile string
+	versionfile = path + "/version.txt"
+	version, err := utils.ScannerFunc(versionfile, "version")
+	if err != nil {
+		log.Error().Msg("Version not found.")
+	}
+	product, err := utils.ScannerFunc(versionfile, "product_name")
+	if err != nil {
+		log.Fatal().Msg("Product not found")
+	}
+	log.Debug().Msgf("Import Product: %s; Version: %s; Uyuni: %s", product, version)
+	return version, product
 }
 
 func validateFolder(absImportDir string) {

@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"bufio"
 	"fmt"
 	"github.com/rs/zerolog/log"
 	"os"
@@ -28,7 +29,7 @@ func Contains(slice []string, elementToFind string) bool {
 	return false
 }
 
-func GetAbsPath(path string) string{
+func GetAbsPath(path string) string {
 	result := path
 	if filepath.IsAbs(path) {
 		result, _ = filepath.Abs(path)
@@ -58,4 +59,65 @@ func FolderExists(path string) error{
 		return fmt.Errorf("path is not a directory: %s", path)
 	}
 	return nil
+}
+
+func GetCurrentServerVersion() (string, string) {
+	rhndefault := "/etc/rhn/rhn.conf"
+	webpath := "/usr/share/rhn/config-defaults/rhn_web.conf"
+	altpath := "/usr/share/rhn/config-defaults/rhn.conf"
+
+	files := []string{rhndefault, webpath, altpath}
+	property := []string{"product_name", "web.product_name"}
+	product := "SUSE Manager"
+	p, err := getProperty(files,property)
+	if err == nil{
+		product = p
+	}
+
+	propertyVersion := []string{"web.version"}
+	if product != "SUSE Manager" {
+		propertyVersion = []string{"web.version.uyuni"}
+		product = "uyuni"
+	}
+	version, err := getProperty(files, propertyVersion)
+	if err != nil {
+		log.Fatal().Msgf("No version found for product %s", product)
+	}
+	return version, product
+}
+
+func getProperty(filePaths []string, names[]string) (string, error) {
+	for _, path:= range filePaths {
+		for _, search := range names {
+			p, err := ScannerFunc(path, search)
+			if err == nil {
+				return p, nil
+			}
+		}
+	}
+	return "", fmt.Errorf("String not found!")
+}
+
+func ScannerFunc(path string, search string) (string, error) {
+	var output string
+	f, err := os.Open(path)
+	if err != nil {
+		log.Fatal().Msg("Couldn't open file")
+	}
+	defer f.Close()
+	scanner := bufio.NewScanner(f)
+	for scanner.Scan() {
+		if strings.Contains(scanner.Text(), search) {
+			splits := strings.Split(scanner.Text(), "=")
+			output = splits[1]
+			if output == " SUSE Manager" {
+				output = strings.Replace(output, " SUSE Manager", "SUSE Manager", 1 )
+			} else {
+				splits = strings.Split(output, " ")
+				output = splits[len(splits)-1]
+			}
+			return output, nil
+		}
+	}
+	return "", fmt.Errorf("String not found!")
 }

@@ -233,15 +233,19 @@ func processChannel(db *sql.DB, writer *bufio.Writer, channelLabel string,
 }
 
 func generateCacheCalculation(channelLabel string, writer *bufio.Writer) {
+	// need to update channel modify since it's use to run repo metadata generation
 	updateChannelModifyDate := fmt.Sprintf("update rhnchannel set modified = current_timestamp where label = '%s';", channelLabel)
 	writer.WriteString(updateChannelModifyDate + "\n")
 
+	// force system updates packages/patches for system using the channel
 	serverErrataCache := fmt.Sprintf("select rhn_channel.update_needed_cache((select id from rhnchannel where label ='%s'));", channelLabel)
 	writer.WriteString(serverErrataCache + "\n")
 
+	// refreshes the package newest page
 	channelNewPackages := fmt.Sprintf("select rhn_channel.refresh_newest_package((select id from rhnchannel where label ='%s'), 'inter-server-sync');", channelLabel)
 	writer.WriteString(channelNewPackages + "\n")
 
+	// generates the repository metadata on disk
 	repoMetadata := fmt.Sprintf(`
 		INSERT INTO rhnRepoRegenQueue
 		(id, channel_label, client, reason, force, bypass_filters, next_action, created, modified)

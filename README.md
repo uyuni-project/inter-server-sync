@@ -47,3 +47,6 @@ View Profile data: `go tool pprof -web mem.prof`
 # Packaging
 
 OBS project: https://build.opensuse.org/project/show/home:RDiasMateus:iss
+
+## Service to create vendor sources
+`osc service rundisabled`

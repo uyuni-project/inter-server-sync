@@ -33,7 +33,7 @@ func DumpAllTablesData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[stri
 
 func printAllTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, table schemareader.Table,
 	whereFilterClause func(table schemareader.Table) string, processedTables map[string]bool, path []string, onlyIfParentExistsTables[]string) map[string]bool {
-	log.Debug().Msgf("%s", "Processing table: " + table.Name)
+	log.Trace().Msgf("%s", "Processing table: " + table.Name)
 	_, tableProcessed := processedTables[table.Name]
 	currentTable := schemaMetadata[table.Name]
 	if tableProcessed || !currentTable.Export {
@@ -47,7 +47,7 @@ func printAllTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[stri
 		if !ok || !tableReference.Export{
 			continue
 		}
-		log.Debug().Msgf("%s", "Table processed: " + table.Name)
+		log.Trace().Msgf("%s", "Table processed: " + table.Name)
 		printAllTableData(db, writer, schemaMetadata, tableReference, whereFilterClause, processedTables, path, onlyIfParentExistsTables)
 
 	}

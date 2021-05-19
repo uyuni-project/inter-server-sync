@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
-	"log"
 	"strings"
 	"time"
 
@@ -390,7 +389,6 @@ func getJoinsClause(path []string, schemaMetadata map[string]schemareader.Table)
 	reversePath := make([]string, len(path))
 	copy(reversePath, path)
 	utils.ReverseArray(reversePath)
-	log.Printf("%s", reversePath)
 	for i := 0; i < len(reversePath)-1; i++ {
 		firstTable := reversePath[i]
 		secondTable := reversePath[i+1]

@@ -40,14 +40,23 @@ func validateFolder(absImportDir string) {
 }
 
 func runPackageFileSync(absImportDir string) {
+	packagesImportDir := fmt.Sprintf("%s/packages/", absImportDir)
+	err := utils.FolderExists(packagesImportDir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			log.Info().Msg("no package files to import")
+			return
+		} else {
+			log.Fatal().Err(err).Msg("Error getting import packages folder")
+		}
+	}
+
 	cmd := exec.Command("rsync", "-og", "--chown=wwwrun:www", "-r",
-		fmt.Sprintf("%s/packages/", absImportDir),
-		"/var/spacewalk/packages/")
-	cmd.Stdin = os.Stdin
+		packagesImportDir, "/var/spacewalk/packages/")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	log.Info().Msg("starting importing package files")
-	err := cmd.Run()
+	err = cmd.Run()
 	if err != nil {
 		log.Fatal().Err(err).Msg("error importing package files")
 	}

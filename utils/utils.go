@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"fmt"
 	"github.com/rs/zerolog/log"
 	"os"
 	"path/filepath"
@@ -41,4 +42,20 @@ func GetAbsPath(path string) string{
 		}
 	}
 	return result
+}
+
+func FolderExists(path string) error{
+	folder, err := os.Open(path)
+	defer folder.Close()
+	if err != nil {
+		return err
+	}
+	folderInfo, err := folder.Stat()
+	if err != nil {
+		return err
+	}
+	if !folderInfo.IsDir() {
+		return fmt.Errorf("path is not a directory: %s", path)
+	}
+	return nil
 }

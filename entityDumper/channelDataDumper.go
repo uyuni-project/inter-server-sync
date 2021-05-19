@@ -9,6 +9,7 @@ import (
 	"github.com/uyuni-project/inter-server-sync/dumper/packageDumper"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
 	"github.com/uyuni-project/inter-server-sync/sqlUtil"
+	"github.com/uyuni-project/inter-server-sync/utils"
 	"io"
 	"os"
 )
@@ -117,29 +118,19 @@ func DumpChannelData(options ChannelDumperOptions) {
 }
 
 func validateExportFolder(outputFolderAbs string) {
-	outputFolder, err := os.Open(outputFolderAbs)
-	defer outputFolder.Close()
+	err := utils.FolderExists(outputFolderAbs)
 	if err != nil {
 		if os.IsNotExist(err) {
 			err := os.MkdirAll(outputFolderAbs, 0755)
 			if err != nil {
-				log.Fatal().Err(err).Msg("Error creating dir")
+				log.Fatal().Err(err).Msg("Error creating directory")
 			}
-			outputFolder, _ = os.Open(outputFolderAbs)
 		} else {
-			log.Fatal().Err(err).Msg("Error getting output foulder")
+			log.Fatal().Err(err).Msg("Error getting output folder")
 		}
-
 	}
-	folderInfo, err := outputFolder.Stat()
-	if err != nil {
-		log.Fatal().Err(err).Msg("Error getting folder info")
-	}
-
-	if !folderInfo.IsDir() {
-		log.Fatal().Err(err).Msg(fmt.Sprintf("export location is not a directory: %s", outputFolderAbs))
-	}
-
+	outputFolder, _ := os.Open(outputFolderAbs)
+	defer outputFolder.Close()
 	_, errEmpty := outputFolder.Readdirnames(1) // Or f.Readdir(1)
 	if errEmpty != io.EOF {
 		log.Fatal().Msg(fmt.Sprintf("export location is not empty: %s", outputFolderAbs))

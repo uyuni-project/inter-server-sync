@@ -43,3 +43,7 @@ Steps:
 Run with profile: `go run . -cpuprofile=cpu.prof -memprofile=mem.prof ...`
 
 View Profile data: `go tool pprof -web mem.prof`
+
+# Packaging
+
+OBS project: https://build.opensuse.org/project/show/home:RDiasMateus:iss

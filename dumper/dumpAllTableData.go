@@ -16,9 +16,9 @@ func DumpAllTablesData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[stri
 	processedTables := make(map[string]bool)
 	// exporting from the starting tables.
 	for _, startingTable := range startingTables{
-		processedTables = printAllTableData(db, writer, schemaMetadata, startingTable, whereFilterClause, processedTables, make([]string, 0), onlyIfParentExistsTables)
+		processedTables = processTableDataWithLinks(db, writer, schemaMetadata, startingTable, whereFilterClause, processedTables, make([]string, 0), onlyIfParentExistsTables)
 	}
-	// Export tables not exported when exporting the starting tables
+	// Export tables not visited when exporting the starting tables
 	for schemaTableName, schemaTable := range schemaMetadata{
 		if !schemaTable.Export{
 			continue
@@ -31,7 +31,7 @@ func DumpAllTablesData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[stri
 	}
 }
 
-func printAllTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, table schemareader.Table,
+func processTableDataWithLinks(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, table schemareader.Table,
 	whereFilterClause func(table schemareader.Table) string, processedTables map[string]bool, path []string, onlyIfParentExistsTables[]string) map[string]bool {
 	log.Trace().Msgf("%s", "Processing table: " + table.Name)
 	_, tableProcessed := processedTables[table.Name]
@@ -48,7 +48,7 @@ func printAllTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[stri
 			continue
 		}
 		log.Trace().Msgf("%s", "Table processed: " + table.Name)
-		printAllTableData(db, writer, schemaMetadata, tableReference, whereFilterClause, processedTables, path, onlyIfParentExistsTables)
+		processTableDataWithLinks(db, writer, schemaMetadata, tableReference, whereFilterClause, processedTables, path, onlyIfParentExistsTables)
 
 	}
 
@@ -62,7 +62,7 @@ func printAllTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[stri
 		if !shouldFollowReferenceToLink(path, table, tableReference) {
 			continue
 		}
-		printAllTableData(db, writer, schemaMetadata, tableReference, whereFilterClause, processedTables, path, onlyIfParentExistsTables)
+		processTableDataWithLinks(db, writer, schemaMetadata, tableReference, whereFilterClause, processedTables, path, onlyIfParentExistsTables)
 
 	}
 	return processedTables

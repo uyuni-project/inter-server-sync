@@ -1,16 +1,18 @@
 package cmd
 
 import (
+	"log/syslog"
+	"os"
+	"runtime/pprof"
+
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
-	"os"
-	"runtime/pprof"
 )
 
 var rootCmd = &cobra.Command{
-	Use:   "inter-server-sync",
-	Short: "Uyuni Inter Server Sync tool",
+	Use:     "inter-server-sync",
+	Short:   "Uyuni Inter Server Sync tool",
 	Version: "0.0.0",
 }
 
@@ -40,16 +42,11 @@ func init() {
 }
 
 func logInit() {
-	Logfile := "/tmp/uyuni_iss_log.json"
-	lf, err := os.OpenFile(Logfile, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0666)
-	if os.IsNotExist(err) {
-		f, err := os.Create(Logfile)
-		if err != nil {
-			log.Error().Msg("Unable to create logfile")
-		}
-		lf = f
-	}
-	multi := zerolog.MultiLevelWriter(lf, os.Stdout)
+	syslogger, err := syslog.New(syslog.LOG_INFO|syslog.LOG_DEBUG|syslog.LOG_WARNING|syslog.LOG_ERR, "inter-server-sync")
+
+	syslogwriter := zerolog.SyslogLevelWriter(syslogger)
+
+	multi := zerolog.MultiLevelWriter(syslogwriter, os.Stdout)
 	log.Logger = zerolog.New(multi).With().Timestamp().Caller().Logger()
 
 	level, err := zerolog.ParseLevel(logLevel)

@@ -1,50 +1,44 @@
 # Inter Server Sync (ISS)
 
-## Available configuration parameters
+## Installation
+Use the repository: https://download.opensuse.org/repositories/home:/RDiasMateus:/iss/
 
-| name       | default value       | description | 
-| ---------- | ------------------- | ----------- |
-| channels   | ""                  | Labels for channels to sync (comma seprated in case of multiple) |
-| path       | "."                 | Location for generated data|
-| config     | "/etc/rhn/rhn.conf" | Path for the config file | 
-| dot        | false               | Output dot format of table metadata for Graphviz |
-| debug      | false               | Output debug information about the export data |
+## Usage
+run the command for more information:
+`inter-server-sync -h`
 
-## Dot graph with schema metadata
 
-`go run . dot --serverConfig=rhn.conf |  dot -Tx11`
+### on source server
+- **Create export dir**: `mkdir ~/export`
+- **Run command**: `inter-server-sync export --serverConfig=/etc/rhn/rhn.conf --outputDir=~/export --channels=channel_label,channel_label`
+- **Copy export directory to target server**: `rsync -r ~/export root@<Target_server>:~/`
+
+### on target server
+- **Run command: `inter-server-sync import --importDir ~/export/`
 
 ## Database connection configuration
 
 Database connection configuration are loaded by default from `/etc/rhn/rhn.conf`.
-File location can be overwritten. 
+File location can be overwritten.
 For development environments one can use a sample file in this project.
 
-Steps:
+Steps to run in locally in development mode:
 1. copy sample file `cp rhn.conf.exaple rhn.conf`
 2. fill all properties in `rhn.conf` with the appropriated values
 3. use this configuration file by specifying the config parameter: `go run . -config=rhn.conf`
 
+## Extra
 
-## Export Data
-### local machine
-- **Build tool**: `go build`
-- **Copy the resulting artifact to source and target servers**: `scp inter-server-sync root@<SERVER>:~/` 
+### Dot graph with schema metadata
 
-### on source server
-- **Create export dir**: `mkdir ~/export`
-- **Run command**: `./inter-server-sync export --serverConfig=/etc/rhn/rhn.conf --outputDir=~/export --channels=channel_label,channel_label`
-- **Copy export directory to target server**: `rsync -r ~/export root@<Target_server>:~/` 
+`go run . dot --serverConfig=rhn.conf |  dot -Tx11`
 
-### on target server
-- **Run command: `./inter-server-sync import --importDir ~/export/`
-
-## Profile
+### Profile
 Run with profile: `go run . -cpuprofile=cpu.prof -memprofile=mem.prof ...`
 
 View Profile data: `go tool pprof -web mem.prof`
 
-# Packaging
+## Packaging
 
 OBS project: https://build.opensuse.org/project/show/home:RDiasMateus:iss
 

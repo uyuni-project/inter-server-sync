@@ -95,7 +95,7 @@ func ProductsTableNames() []string {
 }
 
 func DumpChannelData(options ChannelDumperOptions) {
-	var outputFolderAbs = options.getOutputFolderAbsPath()
+	var outputFolderAbs = options.GetOutputFolderAbsPath()
 	validateExportFolder(outputFolderAbs)
 	db := schemareader.GetDBconnection(options.ServerConfig)
 	defer db.Close()
@@ -186,7 +186,7 @@ func processAndInsertChannels(db *sql.DB, writer *bufio.Writer, channels []strin
 	schemaMetadata := schemareader.ReadTablesSchema(db, SoftwareChannelTableNames())
 	log.Debug().Msg("channel schema metadata loaded")
 
-	fileChannels, err := os.Create(options.getOutputFolderAbsPath() + "/exportedChannels.txt")
+	fileChannels, err := os.Create(options.GetOutputFolderAbsPath() + "/exportedChannels.txt")
 	if err != nil {
 		log.Fatal().Err(err).Msg("error creating sql file")
 		panic(err)
@@ -226,7 +226,7 @@ func processChannel(db *sql.DB, writer *bufio.Writer, channelLabel string,
 
 	if !options.MetadataOnly {
 		log.Debug().Msg("dumping all package files")
-		packageDumper.DumpPackageFiles(db, schemaMetadata, tableData, options.getOutputFolderAbsPath())
+		packageDumper.DumpPackageFiles(db, schemaMetadata, tableData, options.GetOutputFolderAbsPath())
 	}
 	log.Debug().Msg("channel export finished")
 

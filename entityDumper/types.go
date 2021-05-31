@@ -13,7 +13,7 @@ type ChannelDumperOptions struct {
 	MetadataOnly bool
 }
 
-func (opt *ChannelDumperOptions) getOutputFolderAbsPath() string {
+func (opt *ChannelDumperOptions) GetOutputFolderAbsPath() string {
 	if "" == opt.outputFolderAbsPath {
 		opt.outputFolderAbsPath = utils.GetAbsPath(opt.OutputFolder)
 	}

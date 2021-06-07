@@ -13,7 +13,7 @@ import (
 var rootCmd = &cobra.Command{
 	Use:     "inter-server-sync",
 	Short:   "Uyuni Inter Server Sync tool",
-	Version: "0.0.0",
+	Version: "0.0.3",
 }
 
 func Execute() {

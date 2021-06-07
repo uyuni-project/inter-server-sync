@@ -8,6 +8,7 @@ run the command for more information:
 `inter-server-sync -h`
 
 ## Known limitations 
+- Source and target servers need to be on the same version.
 - Export and import organization should have the same name.
 - Export folder needs to be sync by hand to the target server.
 

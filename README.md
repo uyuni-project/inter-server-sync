@@ -9,7 +9,7 @@ run the command for more information:
 
 ## Known limitations 
 - Export and import organization should have the same name.
-- Data needs to be sync by hand to the target server.
+- Export folder needs to be sync by hand to the target server.
 
 ### on source server
 - **Create export dir**: `mkdir ~/export`

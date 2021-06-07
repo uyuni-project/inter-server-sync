@@ -25,6 +25,7 @@ func init() {
 	exportCmd.Flags().StringSliceVar(&channelWithChildren, "channel-with-children", nil, "Channels to be exported")
 	exportCmd.Flags().StringVar(&outputDir, "outputDir", ".", "Location for generated data")
 	exportCmd.Flags().BoolVar(&metadataOnly, "metadataOnly", false, "export only metadata")
+	exportCmd.Args = cobra.NoArgs
 
 	rootCmd.AddCommand(exportCmd)
 }

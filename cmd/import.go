@@ -20,6 +20,8 @@ var importDir string
 func init() {
 
 	importCmd.Flags().StringVar(&importDir, "importDir", ".", "Location import data from")
+	importCmd.Args = cobra.NoArgs
+
 	rootCmd.AddCommand(importCmd)
 }
 

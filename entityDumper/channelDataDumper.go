@@ -99,6 +99,9 @@ func DumpChannelData(options ChannelDumperOptions) {
 	validateExportFolder(outputFolderAbs)
 	db := schemareader.GetDBconnection(options.ServerConfig)
 	defer db.Close()
+
+	channelsExport := loadChannelsToProcess(db, options)
+
 	file, err := os.Create(outputFolderAbs + "/sql_statements.sql")
 	if err != nil {
 		log.Fatal().Err(err).Msg("error creating sql file")
@@ -112,7 +115,7 @@ func DumpChannelData(options ChannelDumperOptions) {
 	bufferWriter.WriteString("BEGIN;\n")
 	processAndInsertProducts(db, bufferWriter)
 
-	processAndInsertChannels(db, bufferWriter, loadChannelsToProcess(db, options), options)
+	processAndInsertChannels(db, bufferWriter, channelsExport, options)
 
 	bufferWriter.WriteString("COMMIT;\n")
 }
@@ -140,16 +143,27 @@ func validateExportFolder(outputFolderAbs string) {
 var childChannelSql = "select label from rhnchannel " +
 	"where parent_channel = (select id from rhnchannel where label = $1)"
 
+var singleChannelSql = "select label from rhnchannel " +
+	"where label = $1"
+
 func loadChannelsToProcess(db *sql.DB, options ChannelDumperOptions) []string {
 	channels := channelsProcess{make(map[string]bool), make([]string, 0)}
 	for _, singleChannel := range options.ChannelLabels {
 		if _, ok := channels.channelsMap[singleChannel]; !ok {
+			dbChannel := sqlUtil.ExecuteQueryWithResults(db, singleChannelSql, singleChannel)
+			if len(dbChannel) == 0{
+				log.Fatal().Msgf("Channel not found: %s", singleChannel)
+			}
 			channels.addChannelLabel(singleChannel)
 		}
 	}
 
 	for _, channelChildren := range options.ChannelWithChildrenLabels {
 		if _, ok := channels.channelsMap[channelChildren]; !ok {
+			dbChannel := sqlUtil.ExecuteQueryWithResults(db, singleChannelSql, channelChildren)
+			if len(dbChannel) == 0{
+				log.Fatal().Msgf("Channel not found: %s", channelChildren)
+			}
 			channels.addChannelLabel(channelChildren)
 			childrenChannels := sqlUtil.ExecuteQueryWithResults(db, childChannelSql, channelChildren)
 			for _, cChannel := range childrenChannels {

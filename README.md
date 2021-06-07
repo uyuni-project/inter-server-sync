@@ -7,6 +7,9 @@ Use the repository: https://download.opensuse.org/repositories/home:/RDiasMateus
 run the command for more information:
 `inter-server-sync -h`
 
+## Known limitations 
+- Export and import organization should have the same name.
+- Data needs to be sync by hand to the target server.
 
 ### on source server
 - **Create export dir**: `mkdir ~/export`

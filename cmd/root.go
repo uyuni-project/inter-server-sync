@@ -4,6 +4,8 @@ import (
 	"log/syslog"
 	"os"
 	"runtime/pprof"
+	"strconv"
+	"strings"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -41,6 +43,26 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&memProfile, "memProfile", "", "memProfile file location")
 }
 
+func logCallerMarshalFunction(file string, line int) string {
+	paths := strings.Split(file, "/")
+	callerFile := file
+	foundSubDir := false
+	for _, currentPath := range paths {
+		if foundSubDir {
+			if callerFile != "" {
+				callerFile = callerFile + "/"
+			}
+			callerFile = callerFile + currentPath
+		}else {
+			if strings.Contains(currentPath, "inter-server-sync") {
+				foundSubDir = true
+				callerFile = ""
+			}
+		}
+	}
+	return callerFile + ":" + strconv.Itoa(line)
+}
+
 func logInit() {
 	syslogger, err := syslog.New(syslog.LOG_INFO|syslog.LOG_DEBUG|syslog.LOG_WARNING|syslog.LOG_ERR, "inter-server-sync")
 
@@ -48,16 +70,13 @@ func logInit() {
 
 	multi := zerolog.MultiLevelWriter(syslogwriter, os.Stdout)
 	log.Logger = zerolog.New(multi).With().Timestamp().Caller().Logger()
-
+	zerolog.CallerMarshalFunc = logCallerMarshalFunction
 	level, err := zerolog.ParseLevel(logLevel)
 	if err != nil {
 		level = zerolog.InfoLevel
 	}
 	zerolog.SetGlobalLevel(level)
-	// TODO remove next lines after some tests
-	log.Info().Msg("Hello Info")
-	log.Debug().Msg("Hello Debug")
-	log.Trace().Msg("Hello Trace")
+	log.Info().Msg("Inter server sync started")
 }
 
 func cpuProfileInit() {

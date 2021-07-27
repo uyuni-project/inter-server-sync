@@ -15,6 +15,10 @@ func applyTableFilters(table Table) Table {
 	case "rhnpackagename":
 		// constraint: rhn_pn_id_pk
 		table.PKSequence = "RHN_PKG_NAME_SEQ"
+	case "rhnpackagenevra":
+		table.PKSequence = "rhn_pkgnevra_id_seq"
+	case "rhnpackagesource":
+		table.PKSequence = "rhn_package_source_id_seq"
 	case "rhnpackageevr":
 		// constraint: rhn_pe_id_pk
 		table.PKSequence = "rhn_pkg_evr_seq"

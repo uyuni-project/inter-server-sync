@@ -102,7 +102,7 @@ func ScannerFunc(path string, search string) (string, error) {
 	var output string
 	f, err := os.Open(path)
 	if err != nil {
-		log.Fatal().Msg("Couldn't open file")
+		log.Fatal().Msgf("Couldn't open file: %s", path)
 	}
 	defer f.Close()
 	scanner := bufio.NewScanner(f)

@@ -35,6 +35,15 @@ func applyTableFilters(table Table) Table {
 		virtualIndexColumns := []string{"name_id", "evr_id", "package_arch_id", "checksum_id", "org_id"}
 		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
 		table.MainUniqueIndexName = VirtualIndexName
+	case "rhnpackagechangelogdata":
+		// We need to add a virtual unique constraint
+		table.PKSequence = "rhn_pkg_cld_id_seq"
+		virtualIndexColumns := []string{"name", "text", "time"}
+		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
+		table.MainUniqueIndexName = VirtualIndexName
+	case "rhnpackagechangelogrec":
+		table.PKSequence = "rhn_pkg_cl_id_seq"
+
 	case "rhnpackagecapability":
 		// pkid: rhn_pkg_capability_id_pk
 		table.PKSequence = "RHN_PKG_CAPABILITY_ID_SEQ"

@@ -26,6 +26,5 @@ type processItem struct {
 type PrintSqlOptions struct {
 	TablesToClean            []string
 	CleanWhereClause         string
-	OnlyIfParentExistsTables [] string
+	OnlyIfParentExistsTables []string
 }
-

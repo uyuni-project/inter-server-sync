@@ -84,6 +84,9 @@ func printTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]
 		if !ok || !tableReference.Export {
 			continue
 		}
+		if strings.Compare(table.Name, "rhnconfigfile") == 0 && strings.Compare(tableReference.Name, "rhnconfigrevision") == 0 {
+			continue
+		}
 		printTableData(db, writer, schemaMetadata, data, tableReference, processedTables, path, options)
 	}
 
@@ -119,6 +122,30 @@ func printTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]
 		}
 		printTableData(db, writer, schemaMetadata, data, tableReference, processedTables, path, options)
 	}
+
+	if strings.Compare(table.Name, "rhnconfigfile") == 0{
+		if dataOK {
+			exportPoint := 0
+			batch := 100
+			for len(tableData.Keys) > exportPoint {
+				upperLimit := exportPoint + batch
+				if upperLimit > len(tableData.Keys) {
+					upperLimit = len(tableData.Keys)
+				}
+				rows := GetRowsFromKeys(db, table, tableData.Keys[exportPoint:upperLimit])
+				for _, rowValue := range rows {
+					rowValue = substituteForeignKey(db, table, schemaMetadata, rowValue)
+					updateString := genUpdateForReference(table, rowValue)
+					writer.WriteString(updateString + "\n")
+				}
+				exportPoint = upperLimit
+			}
+		}
+	}
+}
+
+func genUpdateForReference(table schemareader.Table, value []sqlUtil.RowDataStructure) string {
+	return "update rhnconfigfile set latest_config_revision_id=bla where config_file_name_id=1 and config_channel_id=1;"
 }
 
 // GetRowsFromKeys check if we should move this to a method in the type tableData
@@ -321,12 +348,44 @@ func formatOnConflict(row []sqlUtil.RowDataStructure, table schemareader.Table) 
 	switch table.Name {
 	case "rhnerrataseverity":
 		constraint = "(id)"
+
+	case "rhnconfiginfo":
+		constraint = "(username, groupname, filemode) WHERE username IS NOT NULL AND groupname IS NOT NULL AND filemode IS NOT NULL AND selinux_ctx IS NULL AND symlink_target_filename_id IS NULL"
+		for _, field := range row {
+			if strings.Compare(field.ColumnName, "username") == 0 {
+				if strings.Compare(field.ColumnName, "groupname") == 0 {
+					if strings.Compare(field.ColumnName, "filemode") == 0 {
+						if strings.Compare(field.ColumnName, "selinux_ctx") != 0 {
+							if strings.Compare(field.ColumnName, "symlink_target_filename") != 0 {
+								constraint = "(symlink_target_filename_id, selinux_ctx) WHERE username IS NULL AND groupname IS NULL AND filemode IS NULL AND selinux_ctx IS NOT NULL AND symlink_target_filename_id IS NOT NULL"
+							}
+						} else if strings.Compare(field.ColumnName, "selinux_ctx") == 0 {
+							if strings.Compare(field.ColumnName, "symlink_target_filename") != 0 {
+								constraint = "(symlink_target_filename_id) WHERE username IS NULL AND groupname IS NULL AND filemode IS NULL AND selinux_ctx IS NULL AND symlink_target_filename_id IS NOT NULL"
+							}
+						}
+					}
+				}
+			} else if strings.Compare(field.ColumnName, "username") != 0 {
+				if strings.Compare(field.ColumnName, "groupname") != 0 {
+					if strings.Compare(field.ColumnName, "filemode") != 0 {
+						if strings.Compare(field.ColumnName, "selinux_ctx") != 0 {
+							if strings.Compare(field.ColumnName, "symlink_target_filename") == 0 {
+								constraint = "(username, groupname, filemode, selinux_ctx) WHERE username IS NOT NULL AND groupname IS NOT NULL AND filemode IS NOT NULL AND selinux_ctx IS NOT NULL AND symlink_target_filename_id IS NULL"
+							}
+						}
+					}
+				}
+			}
+		}
+
 	case "rhnerrata":
 		// TODO rhnerrata and rhnpackageevr logic is similar, so we extract to one method on future
 		var orgId interface{} = nil
 		for _, field := range row {
 			if strings.Compare(field.ColumnName, "org_id") == 0 {
 				orgId = field.Value
+				break
 			}
 		}
 		if orgId == nil {
@@ -345,6 +404,19 @@ func formatOnConflict(row []sqlUtil.RowDataStructure, table schemareader.Table) 
 			return "(version, release, ((evr).type)) WHERE epoch IS NULL DO NOTHING"
 		} else {
 			return "(version, release, epoch, ((evr).type)) WHERE epoch IS NOT NULL DO NOTHING"
+		}
+
+	case "rhnpackagecapability":
+		var version interface{} = nil
+		for _, field := range row {
+			if strings.Compare(field.ColumnName, "version") == 0 {
+				version = field.Value
+			}
+		}
+		if version == nil {
+			return "(name) WHERE version IS NULL DO NOTHING"
+		} else {
+			return "(name, version) WHERE version IS NOT NULL DO NOTHING"
 		}
 	}
 	columnAssignment := formatColumnAssignment(table)

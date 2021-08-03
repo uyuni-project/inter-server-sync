@@ -64,6 +64,7 @@ func FolderExists(path string) error {
 }
 
 func GetCurrentServerVersion() (string, string) {
+
 	rhndefault := "/etc/rhn/rhn.conf"
 	webpath := "/usr/share/rhn/config-defaults/rhn_web.conf"
 	altpath := "/usr/share/rhn/config-defaults/rhn.conf"

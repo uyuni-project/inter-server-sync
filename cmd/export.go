@@ -16,11 +16,14 @@ var exportCmd = &cobra.Command{
 	Run:   runExport,
 }
 
+
 var channels []string
 var channelWithChildren []string
 var outputDir string
 var metadataOnly bool
 var startingDate string
+var labels []string
+
 
 func init() {
 	exportCmd.Flags().StringSliceVar(&channels, "channels", nil, "Channels to be exported")
@@ -30,6 +33,7 @@ func init() {
 	exportCmd.Flags().StringVar(&startingDate, "packagesOnlyAfter", "", "Only export packages added or modified after the specified date (date format can be 'YYYY-MM-DD' or 'YYYY-MM-DD hh:mm:ss')")
 	exportCmd.Args = cobra.NoArgs
 
+	exportCmd.Flags().StringSliceVar(&labels, "labels", nil, "Configuration Channels to be exported")
 	rootCmd.AddCommand(exportCmd)
 }
 
@@ -37,7 +41,7 @@ func runExport(cmd *cobra.Command, args []string) {
 	log.Debug().Msg("export called")
 	log.Debug().Msg(strings.Join(channels, ","))
 	log.Debug().Msg(outputDir)
-	// check output dir existance and create it if needed.
+	// check output dir existence and create it if needed.
 
 	// Validate data
 	validatedDate, ok := utils.ValidateDate(startingDate)
@@ -52,7 +56,9 @@ func runExport(cmd *cobra.Command, args []string) {
 		OutputFolder:              outputDir,
 		MetadataOnly:              metadataOnly,
 		StartingDate:              validatedDate,
+		ConfigLabels:			   labels,
 	}
+	utils.ValidateExportFolder(options.GetOutputFolderAbsPath())
 	entityDumper.DumpChannelData(options)
 	var versionfile string
 	versionfile = options.GetOutputFolderAbsPath() + "/version.txt"

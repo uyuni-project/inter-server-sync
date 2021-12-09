@@ -50,7 +50,7 @@ func getImportVersionProduct(path string) (string, string) {
 	if err != nil {
 		log.Fatal().Msg("Product not found")
 	}
-	log.Debug().Msgf("Import Product: %s; Version: %s; Uyuni: %s", product, version)
+	log.Debug().Msgf("Import Product: %s; Version: %s", product, version)
 	return version, product
 }
 

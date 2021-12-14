@@ -22,7 +22,7 @@ func TestShouldCreateDataDumper(t *testing.T) {
 	graph := TablesGraph{
 		// first order
 		"root": []string{"v31", "v32"},
-		"v31":  []string{},
+		"v31":  []string{"v35", "v36"},
 		"v32":  []string{"v33"},
 		// second order
 		"v33": []string{"v34"},
@@ -40,6 +40,9 @@ func TestShouldCreateDataDumper(t *testing.T) {
 	testCase.repo.Expect("SELECT id, fk_id FROM v32 WHERE id = $1;", 1)
 	testCase.repo.Expect("SELECT id, fk_id FROM v33 WHERE id = $1;", 1)
 	testCase.repo.Expect("SELECT id, fk_id FROM v34 WHERE id = $1;", 1)
+	testCase.repo.Expect("SELECT id, fk_id FROM v35 WHERE id = $1;", 1)
+	testCase.repo.Expect("SELECT id, fk_id FROM v36 WHERE id = $1;", 1)
+
 	testCase.repo.Expect("SELECT id, fk_id FROM v35 WHERE id = $1;", 1)
 	testCase.repo.Expect("SELECT id, fk_id FROM v36 WHERE id = $1;", 1)
 

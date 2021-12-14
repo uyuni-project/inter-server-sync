@@ -3,6 +3,7 @@ package dumper
 import (
 	"fmt"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
+	"reflect"
 	"strings"
 )
 
@@ -13,7 +14,7 @@ type MetaDataGraph map[string]schemareader.Table
 // from the given root in different orders to get the desired setup
 func initializeMetaDataGraph(graph TablesGraph, root string) (MetaDataGraph, DataDumper) {
 
-	schemaMetadata, dataDumper := metaDataLevelOrder(graph, root)
+	schemaMetadata, dataDumper := metaDataLevelOrderV2(graph, root)
 	dataDumper.Paths = allPathsPostOrder(graph, root)
 	return schemaMetadata, dataDumper
 }
@@ -82,44 +83,108 @@ func metaDataLevelOrder(graph TablesGraph, root string) (MetaDataGraph, DataDump
 	return schemaMetadata, dataDumper
 }
 
-func allPathsPostOrder(graph TablesGraph, root string) map[string]bool {
-
-	result := map[string]bool{}
-
-	visited := map[string]bool{}
-	var node string
-
-	// Two stacks approach
-	stack := []string{root}
-	var path []string
-
-	for len(stack) > 0 {
-		// pop the next node from the stack
-		node, stack = stack[len(stack)-1], stack[:len(stack)-1]
-
-		// update the current path if we're done with all paths from a branch
-		if len(stack) == 0 && node != root {
-			path = []string{root}
+func metaDataLevelOrderV2(graph TablesGraph, root string) (MetaDataGraph, DataDumper) {
+	schemaMetadata := MetaDataGraph{}
+	dataDumper := DataDumper{
+		TableData: map[string]TableDump{},
+		Paths:     map[string]bool{},
+	}
+	for parent, children := range graph {
+		var table schemareader.Table
+		if _, ok := schemaMetadata[parent]; !ok {
+			// create a table and add a referer if there is any
+			indexName := schemareader.VirtualIndexName
+			table = schemareader.Table{
+				Name:                parent,
+				Export:              true,
+				Columns:             []string{"id", "fk_id"},
+				PKColumns:           map[string]bool{"id": true},
+				MainUniqueIndexName: indexName,
+				UniqueIndexes:       map[string]schemareader.UniqueIndex{indexName: {indexName, []string{"id"}}},
+				References:          []schemareader.Reference{},
+				ReferencedBy:        []schemareader.Reference{},
+			}
+		} else {
+			table = schemaMetadata[parent]
 		}
+		for _, child := range children {
+			table.References = append(
+				table.References,
+				schemareader.Reference{TableName: child, ColumnMapping: map[string]string{"fk_id": "id"}},
+			)
+			var childTable schemareader.Table
+			if _, ok := schemaMetadata[child]; !ok {
+				indexName := schemareader.VirtualIndexName
+				childTable = schemareader.Table{
+					Name:                child,
+					Export:              true,
+					Columns:             []string{"id", "fk_id"},
+					PKColumns:           map[string]bool{"id": true},
+					MainUniqueIndexName: indexName,
+					UniqueIndexes:       map[string]schemareader.UniqueIndex{indexName: {indexName, []string{"id"}}},
+					References:          []schemareader.Reference{},
+					ReferencedBy:        []schemareader.Reference{},
+				}
+			} else {
+				childTable = schemaMetadata[child]
+			}
+			childTable.ReferencedBy = append(
+				childTable.ReferencedBy,
+				schemareader.Reference{TableName: parent, ColumnMapping: map[string]string{"fk_id": "id"}},
+			)
+			schemaMetadata[child] = childTable
+			dataDumper.TableData[child] = TableDump{
+				TableName: child,
+				KeyMap:    map[string]bool{fmt.Sprintf("'%04d'", 1): true},
+				Keys:      []TableKey{{Key: map[string]string{"id": fmt.Sprintf("'%04d'", 1)}}},
+			}
 
-		// there are circular dependencies, so we need to check if we've been there yet
-		if _, ok := visited[node]; ok {
-			continue
 		}
-
-		// process the current node
-		visited[node] = true
-		path = append(path, node)
-		stack = append(stack, graph[node]...)
-
-		result[strings.Join(path, ",")] = true
-
-		// pop from the path stack if we've reached a leaf
-		if len(graph[node]) == 0 {
-			path = path[:len(path)-1]
+		schemaMetadata[parent] = table
+		dataDumper.TableData[parent] = TableDump{
+			TableName: parent,
+			KeyMap:    map[string]bool{fmt.Sprintf("'%04d'", 1): true},
+			Keys:      []TableKey{{Key: map[string]string{"id": fmt.Sprintf("'%04d'", 1)}}},
 		}
 	}
 
+	return schemaMetadata, dataDumper
+}
+
+func allPathsPostOrder(graph TablesGraph, root string) map[string]bool {
+
+	var node string
+	var path []string
+	stack := []string{root}
+	visited := map[string]bool{}
+	result := map[string]bool{}
+	for len(stack) > 0 {
+		// pop the next node from the stack
+		node, stack = stack[0], stack[1:]
+
+		// there are circular dependencies, so we need to check if we've been there yet
+		if _, ok := visited[node]; ok {
+			// rewind from the current depth
+			path = path[:len(stack)]
+			continue
+		}
+
+		visited[node] = true
+		path = append(path, node)
+		result[strings.Join(path, ",")] = true
+
+		children := graph[node]
+
+		// if reached a leaf
+		if len(children) == 0 {
+			// make one step back
+			path = path[:len(path)-1]
+		}
+
+		reverse(children)
+		stack = append(children, stack...)
+
+	}
 	return result
 }
 
@@ -132,4 +197,12 @@ func setNumberOfRecordsForTable(tc *writerTestCase, tableName string, num int) {
 	tableData := tc.dumper.TableData[tableName]
 	tableData.Keys = keys
 	tc.dumper.TableData[tableName] = tableData
+}
+
+func reverse(s interface{}) {
+	n := reflect.ValueOf(s).Len()
+	swap := reflect.Swapper(s)
+	for i, j := 0, n-1; i < j; i, j = i+1, j-1 {
+		swap(i, j)
+	}
 }

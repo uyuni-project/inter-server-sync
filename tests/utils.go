@@ -73,7 +73,7 @@ type MockWriter struct {
 func (mr *MockWriter) Write(p []byte) (n int, err error) {
 
 	mr.data = append(mr.data, string(p))
-	return 4096, nil
+	return len(p), nil
 }
 
 func (mr *MockWriter) GetData() []string {

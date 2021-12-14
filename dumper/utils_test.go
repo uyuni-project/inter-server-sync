@@ -14,88 +14,25 @@ type MetaDataGraph map[string]schemareader.Table
 // from the given root in different orders to get the desired setup
 func initializeMetaDataGraph(graph TablesGraph, root string) (MetaDataGraph, DataDumper) {
 
-	schemaMetadata, dataDumper := metaDataLevelOrderV2(graph, root)
+	schemaMetadata, dataDumper := createMetaDataGraph(graph)
 	dataDumper.Paths = allPathsPostOrder(graph, root)
 	return schemaMetadata, dataDumper
 }
 
-// Breadth-First-Search
-// Iteratively creates a MetaDataGraph map together with a DataDumper object according to a TablesGraph specification
-func metaDataLevelOrder(graph TablesGraph, root string) (MetaDataGraph, DataDumper) {
-
+// createMetaDataGraph iterates over each key in the map, then over each value under this key, creates a table in the
+// MetaDataGraph if it does not exist yet, otherwise updates.
+func createMetaDataGraph(graph TablesGraph) (MetaDataGraph, DataDumper) {
 	schemaMetadata := MetaDataGraph{}
 	dataDumper := DataDumper{
 		TableData: map[string]TableDump{},
 		Paths:     map[string]bool{},
 	}
-
-	node := root
-	queue := []string{root}
-	parentNode := ""
-	levelSize := len(queue)
-	for len(queue) > 0 {
-		// Dequeue, check if visited and decrement the level size
-		node, queue = queue[0], queue[1:]
-		if _, ok := schemaMetadata[node]; ok {
-			continue
-		}
-		levelSize -= 1
-
-		// create a table and add a referer if there is any
-		indexName := schemareader.VirtualIndexName
-		table := schemareader.Table{
-			Name:                node,
-			Export:              true,
-			Columns:             []string{"id", "fk_id"},
-			PKColumns:           map[string]bool{"id": true},
-			MainUniqueIndexName: indexName,
-			UniqueIndexes:       map[string]schemareader.UniqueIndex{indexName: {indexName, []string{"id"}}},
-		}
-		if len(parentNode) > 0 {
-			table.ReferencedBy = []schemareader.Reference{{parentNode, map[string]string{"fk_id": "id"}}}
-		}
-
-		// add referenced tables to the node
-		table.References = []schemareader.Reference{}
-		for _, ref := range graph[node] {
-			table.References = append(
-				table.References,
-				schemareader.Reference{TableName: ref, ColumnMapping: map[string]string{"fk_id": "id"}},
-			)
-		}
-
-		// create a record in MetaDataGraph and TableDump
-		schemaMetadata[node] = table
-		dataDumper.TableData[node] = TableDump{
-			TableName: node,
-			KeyMap:    map[string]bool{fmt.Sprintf("'%04d'", 1): true},
-			Keys:      []TableKey{{Key: map[string]string{"id": fmt.Sprintf("'%04d'", 1)}}},
-		}
-		dataDumper.Paths[node] = true
-
-		// move forward, check if we're done with a level, update the parent if so
-		queue = append(queue, graph[node]...)
-		if levelSize == 0 {
-			levelSize += len(graph[node])
-			parentNode = node
-		}
-	}
-	return schemaMetadata, dataDumper
-}
-
-func metaDataLevelOrderV2(graph TablesGraph, root string) (MetaDataGraph, DataDumper) {
-	schemaMetadata := MetaDataGraph{}
-	dataDumper := DataDumper{
-		TableData: map[string]TableDump{},
-		Paths:     map[string]bool{},
-	}
-	for parent, children := range graph {
-		var table schemareader.Table
-		if _, ok := schemaMetadata[parent]; !ok {
+	var getOrCreateTable = func(name string) schemareader.Table {
+		if _, ok := schemaMetadata[name]; !ok {
 			// create a table and add a referer if there is any
 			indexName := schemareader.VirtualIndexName
-			table = schemareader.Table{
-				Name:                parent,
+			return schemareader.Table{
+				Name:                name,
 				Export:              true,
 				Columns:             []string{"id", "fk_id"},
 				PKColumns:           map[string]bool{"id": true},
@@ -105,29 +42,17 @@ func metaDataLevelOrderV2(graph TablesGraph, root string) (MetaDataGraph, DataDu
 				ReferencedBy:        []schemareader.Reference{},
 			}
 		} else {
-			table = schemaMetadata[parent]
+			return schemaMetadata[name]
 		}
+	}
+	for parent, children := range graph {
+		var parentTable = getOrCreateTable(parent)
 		for _, child := range children {
-			table.References = append(
-				table.References,
+			parentTable.References = append(
+				parentTable.References,
 				schemareader.Reference{TableName: child, ColumnMapping: map[string]string{"fk_id": "id"}},
 			)
-			var childTable schemareader.Table
-			if _, ok := schemaMetadata[child]; !ok {
-				indexName := schemareader.VirtualIndexName
-				childTable = schemareader.Table{
-					Name:                child,
-					Export:              true,
-					Columns:             []string{"id", "fk_id"},
-					PKColumns:           map[string]bool{"id": true},
-					MainUniqueIndexName: indexName,
-					UniqueIndexes:       map[string]schemareader.UniqueIndex{indexName: {indexName, []string{"id"}}},
-					References:          []schemareader.Reference{},
-					ReferencedBy:        []schemareader.Reference{},
-				}
-			} else {
-				childTable = schemaMetadata[child]
-			}
+			childTable := getOrCreateTable(child)
 			childTable.ReferencedBy = append(
 				childTable.ReferencedBy,
 				schemareader.Reference{TableName: parent, ColumnMapping: map[string]string{"fk_id": "id"}},
@@ -138,16 +63,14 @@ func metaDataLevelOrderV2(graph TablesGraph, root string) (MetaDataGraph, DataDu
 				KeyMap:    map[string]bool{fmt.Sprintf("'%04d'", 1): true},
 				Keys:      []TableKey{{Key: map[string]string{"id": fmt.Sprintf("'%04d'", 1)}}},
 			}
-
 		}
-		schemaMetadata[parent] = table
+		schemaMetadata[parent] = parentTable
 		dataDumper.TableData[parent] = TableDump{
 			TableName: parent,
 			KeyMap:    map[string]bool{fmt.Sprintf("'%04d'", 1): true},
 			Keys:      []TableKey{{Key: map[string]string{"id": fmt.Sprintf("'%04d'", 1)}}},
 		}
 	}
-
 	return schemaMetadata, dataDumper
 }
 

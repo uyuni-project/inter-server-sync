@@ -1,5 +1,7 @@
 # Inter Server Sync (ISS)
 
+[![Test](https://github.com/uyuni-project/inter-server-sync/actions/workflows/github-actions-tests.yml/badge.svg)](https://github.com/uyuni-project/inter-server-sync/actions/workflows/github-actions-tests.yml)
+
 ## Installation
 Use the repository: https://download.opensuse.org/repositories/home:/RDiasMateus:/iss/
 

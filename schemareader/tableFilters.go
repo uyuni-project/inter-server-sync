@@ -47,6 +47,11 @@ func applyTableFilters(table Table) Table {
 	case "rhnpackagecapability":
 		// pkid: rhn_pkg_capability_id_pk
 		table.PKSequence = "RHN_PKG_CAPABILITY_ID_SEQ"
+		// table has real unique index, but they are complex and useless, since we do nothing in the conflict
+		// to simplify the code we can create a virtual index that will insure all data exists as supposed
+		virtualIndexColumns := []string{"name", "version"}
+		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
+		table.MainUniqueIndexName = VirtualIndexName
 	}
 	return table
 }

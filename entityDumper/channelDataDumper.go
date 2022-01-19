@@ -55,6 +55,7 @@ func SoftwareChannelTableNames() []string {
 		"rhnerratafilepackage",       // clean
 		"rhnerratafilepackagesource", // clean
 		"rhnpackagekeyassociation",
+		"rhnpackagekey",
 		"rhnerratabuglist", // clean
 		"rhncve",
 		"rhnerratacve",     // clean

@@ -5,12 +5,13 @@ import (
 )
 
 type ChannelDumperOptions struct {
-	ServerConfig string
-	ChannelLabels []string
+	ServerConfig              string
+	ChannelLabels             []string
 	ChannelWithChildrenLabels []string
-	OutputFolder string
-	outputFolderAbsPath string
-	MetadataOnly bool
+	OutputFolder              string
+	outputFolderAbsPath       string
+	MetadataOnly              bool
+	StartingDate              string
 }
 
 func (opt *ChannelDumperOptions) GetOutputFolderAbsPath() string {
@@ -21,11 +22,11 @@ func (opt *ChannelDumperOptions) GetOutputFolderAbsPath() string {
 }
 
 type channelsProcess struct {
-	channelsMap map[string] bool
+	channelsMap map[string]bool
 	channels    []string
 }
 
-func (c *channelsProcess) addChannelLabel(label string)  {
+func (c *channelsProcess) addChannelLabel(label string) {
 	c.channelsMap[label] = true
 	c.channels = append(c.channels, label)
 }

@@ -52,6 +52,7 @@ func TestShouldCreateDataDumper(t *testing.T) {
 		testCase.schemaMetadata,
 		testCase.startTable,
 		testCase.startQueryFilter,
+		"2022-01-01",
 	)
 
 	// Assert

@@ -3,11 +3,13 @@ package utils
 import (
 	"bufio"
 	"fmt"
-	"github.com/rs/zerolog/log"
 	"os"
 	"path/filepath"
 	"reflect"
 	"strings"
+	"time"
+
+	"github.com/rs/zerolog/log"
 )
 
 //ReverseArray reverses the array
@@ -45,7 +47,7 @@ func GetAbsPath(path string) string {
 	return result
 }
 
-func FolderExists(path string) error{
+func FolderExists(path string) error {
 	folder, err := os.Open(path)
 	defer folder.Close()
 	if err != nil {
@@ -69,8 +71,8 @@ func GetCurrentServerVersion() (string, string) {
 	files := []string{rhndefault, webpath, altpath}
 	property := []string{"product_name", "web.product_name"}
 	product := "SUSE Manager"
-	p, err := getProperty(files,property)
-	if err == nil{
+	p, err := getProperty(files, property)
+	if err == nil {
 		product = p
 	}
 
@@ -86,8 +88,8 @@ func GetCurrentServerVersion() (string, string) {
 	return version, product
 }
 
-func getProperty(filePaths []string, names[]string) (string, error) {
-	for _, path:= range filePaths {
+func getProperty(filePaths []string, names []string) (string, error) {
+	for _, path := range filePaths {
 		for _, search := range names {
 			p, err := ScannerFunc(path, search)
 			if err == nil {
@@ -111,7 +113,7 @@ func ScannerFunc(path string, search string) (string, error) {
 			splits := strings.Split(scanner.Text(), "=")
 			output = splits[1]
 			if output == " SUSE Manager" {
-				output = strings.Replace(output, " SUSE Manager", "SUSE Manager", 1 )
+				output = strings.Replace(output, " SUSE Manager", "SUSE Manager", 1)
 			} else {
 				splits = strings.Split(output, " ")
 				output = splits[len(splits)-1]
@@ -120,4 +122,18 @@ func ScannerFunc(path string, search string) (string, error) {
 		}
 	}
 	return "", fmt.Errorf("String not found!")
+}
+
+func ValidateDate(date string) (string, bool) {
+	if date == "" {
+		return "", true
+	}
+
+	for _, layout := range []string{"2006-01-02 15:04:05", "2006-01-02"} {
+		t, err := time.Parse(layout, date)
+		if err == nil {
+			return t.Format(layout), true
+		}
+	}
+	return "", false
 }

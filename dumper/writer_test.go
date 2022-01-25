@@ -106,39 +106,111 @@ func TestPrintCleanTables(t *testing.T) {
 		PrintSqlOptions{TablesToClean: keys},
 	)
 
+	testCase.repo.Expect("Select * FROM root WHERE (id) IN (SELECT root.id FROM root  );", 1)
+	testCase.repo.Expect("SELECT id, fk_id FROM v11 WHERE id = $1;", 1)
+	testCase.repo.Expect("SELECT id, fk_id FROM v12 WHERE id = $1;", 1)
+	testCase.repo.Expect("Select * FROM v11 WHERE (id) IN (SELECT v11.id FROM v11  "+
+		"INNER JOIN root on root.fk_id = v11.id );", 1)
+	testCase.repo.Expect("SELECT id, fk_id FROM v15 WHERE id = $1;", 1)
+	testCase.repo.Expect("SELECT id, fk_id FROM v16 WHERE id = $1;", 1)
+	testCase.repo.Expect("Select * FROM v15 WHERE (id) IN (SELECT v15.id FROM v15  "+
+		"INNER JOIN v11 on v11.fk_id = v15.id "+
+		"INNER JOIN root on root.fk_id = v11.id );", 1)
+	testCase.repo.Expect("SELECT id, fk_id FROM v14 WHERE id = $1;", 1)
+	testCase.repo.Expect("Select * FROM v14 WHERE (id) IN (SELECT v14.id FROM v14  "+
+		"INNER JOIN v15 on v15.fk_id = v14.id "+
+		"INNER JOIN v11 on v11.fk_id = v15.id "+
+		"INNER JOIN root on root.fk_id = v11.id );", 1)
+	testCase.repo.Expect("Select * FROM v16 WHERE (id) IN (SELECT v16.id FROM v16  "+
+		"INNER JOIN v14 on v14.fk_id = v16.id "+
+		"INNER JOIN v15 on v15.fk_id = v14.id "+
+		"INNER JOIN v11 on v11.fk_id = v15.id "+
+		"INNER JOIN root on root.fk_id = v11.id );", 1)
+	testCase.repo.Expect("Select * FROM v12 WHERE (id) IN (SELECT v12.id FROM v12  "+
+		"INNER JOIN root on root.fk_id = v12.id );", 1)
+	testCase.repo.Expect("SELECT id, fk_id FROM v13 WHERE id = $1;", 1)
+	testCase.repo.Expect("Select * FROM v13 WHERE (id) IN (SELECT v13.id FROM v13  "+
+		"INNER JOIN v12 on v12.fk_id = v13.id "+
+		"INNER JOIN root on root.fk_id = v12.id );", 1)
+
 	expectedWrittenBuffer := []string{
 		"" +
-			"\nDELETE FROM root WHERE (id) IN (SELECT root.id FROM root  );" +
 			"\n" +
-			"\nDELETE FROM v11 WHERE (id) IN (SELECT v11.id FROM v11  " +
-			"INNER JOIN root on root.fk_id = v11.id );" +
+			"DELETE FROM root WHERE (id) IN (SELECT root.id FROM root  );" +
 			"\n" +
-			"\nDELETE FROM v15 WHERE (id) IN (SELECT v15.id FROM v15  " +
-			"INNER JOIN v11 on v11.fk_id = v15.id " +
-			"INNER JOIN root on root.fk_id = v11.id );" +
+			"INSERT INTO root (id, fk_id)\t" +
+			"select (SELECT id FROM v12 WHERE id = '0001' limit 1),'0001'  " +
+			"where  not exists (select 1 from root where  id = (SELECT id FROM v12 WHERE id = '0001' limit 1))" +
+			" and exists (SELECT id FROM v12 WHERE id = '0001' limit 1);" +
 			"\n" +
-			"\nDELETE FROM v14 WHERE (id) IN (SELECT v14.id FROM v14  " +
+			"\n" +
+			"DELETE FROM v11 WHERE (id) IN (SELECT v11.id FROM v11  INNER JOIN root on root.fk_id = v11.id );" +
+			"\n" +
+			"INSERT INTO v11 (id, fk_id)\t" +
+			"select (SELECT id FROM v16 WHERE id = '0001' limit 1),'0001'  " +
+			"where  not exists (select 1 from v11 where  id = (SELECT id FROM v16 WHERE id = '0001' limit 1)) " +
+			"and exists (SELECT id FROM v16 WHERE id = '0001' limit 1);" +
+			"\n" +
+			"\n" +
+			"DELETE FROM v15 WHERE (id) IN " +
+			"(SELECT v15.id FROM v15  INNER JOIN v11 on v11.fk_id = v15.id INNER JOIN root on root.fk_id = v11.id );" +
+			"\n" +
+			"INSERT INTO v15 (id, fk_id)\t" +
+			"select (SELECT id FROM v14 WHERE id = '0001' limit 1),'0001'  " +
+			"where  not exists (select 1 from v15 where  id = (SELECT id FROM v14 WHERE id = '0001' limit 1)) " +
+			"and exists (SELECT id FROM v14 WHERE id = '0001' limit 1);" +
+			"\n" +
+			"\n" +
+			"DELETE FROM v14 WHERE (id) IN " +
+			"(SELECT v14.id FROM v14  " +
 			"INNER JOIN v15 on v15.fk_id = v14.id " +
 			"INNER JOIN v11 on v11.fk_id = v15.id " +
 			"INNER JOIN root on root.fk_id = v11.id );" +
 			"\n" +
-			"\nDELETE FROM v16 WHERE (id) IN (SELECT v16.id FROM v16  " +
+			"INSERT INTO v14 (id, fk_id)\t" +
+			"select (SELECT id FROM v16 WHERE id = '0001' limit 1),'0001'  " +
+			"where  not exists (select 1 from v14 where  id = (SELECT id FROM v16 WHERE id = '0001' limit 1)) " +
+			"and exists (SELECT id FROM v16 WHERE id = '0001' limit 1);" +
+			"\n" +
+			"\n" +
+			"DELETE FROM v16 WHERE (id) IN " +
+			"(SELECT v16.id FROM v16  " +
 			"INNER JOIN v14 on v14.fk_id = v16.id " +
 			"INNER JOIN v15 on v15.fk_id = v14.id " +
 			"INNER JOIN v11 on v11.fk_id = v15.id " +
 			"INNER JOIN root on root.fk_id = v11.id );" +
 			"\n" +
-			"\nDELETE FROM v12 WHERE (id) IN (SELECT v12.id FROM v12  " +
+			"INSERT INTO v16 (id, fk_id)\t" +
+			"select '0001','0001'  " +
+			"where  not exists (select 1 from v16 where  id = '0001') " +
+			"and ;" +
+			"\n" +
+			"\n" +
+			"DELETE FROM v12 WHERE (id) IN " +
+			"(SELECT v12.id FROM v12  " +
 			"INNER JOIN root on root.fk_id = v12.id );" +
 			"\n" +
-			"\nDELETE FROM v13 WHERE (id) IN (SELECT v13.id FROM v13  " +
+			"INSERT INTO v12 (id, fk_id)\t" +
+			"select (SELECT id FROM v13 WHERE id = '0001' limit 1),'0001'  " +
+			"where  not exists (select 1 from v12 where  id = (SELECT id FROM v13 WHERE id = '0001' limit 1)) " +
+			"and exists (SELECT id FROM v13 WHERE id = '0001' limit 1);" +
+			"\n" +
+			"\n" +
+			"DELETE FROM v13 WHERE (id) IN " +
+			"(SELECT v13.id FROM v13  " +
 			"INNER JOIN v12 on v12.fk_id = v13.id " +
 			"INNER JOIN root on root.fk_id = v12.id );" +
+			"\n" +
+			"INSERT INTO v13 (id, fk_id)\t" +
+			"select (SELECT id FROM v14 WHERE id = '0001' limit 1),'0001'  " +
+			"where  not exists (select 1 from v13 where  id = (SELECT id FROM v14 WHERE id = '0001' limit 1)) " +
+			"and exists (SELECT id FROM v14 WHERE id = '0001' limit 1);" +
 			"\n",
 	}
 
 	// 02 Act
 	printCleanTables(
+		testCase.repo.DB,
 		testCase.repo.Writer,
 		testCase.schemaMetadata,
 		testCase.startingTable,
@@ -163,7 +235,10 @@ func TestPrintCleanTables(t *testing.T) {
 			t.Errorf(fmt.Sprintf("Node %v is not exported!", node))
 		}
 	}
-	// doesn't make sql calls
+	// checks if all expected statements were indeed executed against the db
+	if err := testCase.repo.ExpectationsWereMet(); err != nil {
+		t.Errorf("Some nodes left unexported. Error message: %s", err)
+	}
 }
 
 func TestPrintTableData(t *testing.T) {

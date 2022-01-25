@@ -3,15 +3,16 @@ package dumper
 import (
 	"database/sql"
 	"fmt"
+	"strings"
+
 	"github.com/uyuni-project/inter-server-sync/schemareader"
 	"github.com/uyuni-project/inter-server-sync/sqlUtil"
-	"strings"
 )
 
 // DataCrawler will go through all the elements in the initialDataSet an extract related data
 // for all tables presented in the schemaMetadata by following foreign keys and references to the table row
 // The result will be a structure containing ID of each row which should be exported per table
-func DataCrawler(db *sql.DB, schemaMetadata map[string]schemareader.Table, startTable schemareader.Table, startQueryFilter string) DataDumper {
+func DataCrawler(db *sql.DB, schemaMetadata map[string]schemareader.Table, startTable schemareader.Table, startQueryFilter string, startingDate string) DataDumper {
 
 	result := DataDumper{make(map[string]TableDump, 0), make(map[string]bool)}
 
@@ -20,7 +21,7 @@ func DataCrawler(db *sql.DB, schemaMetadata map[string]schemareader.Table, start
 IterateItemsLoop:
 	for len(itemsToProcess) > 0 {
 		itemToProcess := itemsToProcess[len(itemsToProcess)-1]
-		itemsToProcess = itemsToProcess[0:len(itemsToProcess)-1]
+		itemsToProcess = itemsToProcess[0 : len(itemsToProcess)-1]
 
 		table, tableExists := schemaMetadata[itemToProcess.tableName]
 		if !tableExists {
@@ -48,8 +49,8 @@ IterateItemsLoop:
 			result.Paths[strings.Join(itemToProcess.path, ",")] = true
 		}
 
-		newItems := append(followReferencesTo(db, schemaMetadata, table, itemToProcess),
-			followReferencesFrom(db, schemaMetadata, table, itemToProcess)...)
+		newItems := append(followReferencesTo(db, schemaMetadata, table, itemToProcess, startingDate),
+			followReferencesFrom(db, schemaMetadata, table, itemToProcess, startingDate)...)
 		itemsToProcess = append(itemsToProcess, newItems...)
 
 	}
@@ -89,7 +90,7 @@ func extractRowKeyData(table schemareader.Table, itemToProcess processItem) map[
 	return keyColumnData
 }
 
-func followReferencesFrom(db *sql.DB, schemaMetadata map[string]schemareader.Table, table schemareader.Table, row processItem) []processItem {
+func followReferencesFrom(db *sql.DB, schemaMetadata map[string]schemareader.Table, table schemareader.Table, row processItem, startingDate string) []processItem {
 	result := make([]processItem, 0)
 
 	for _, reference := range table.References {
@@ -113,6 +114,11 @@ func followReferencesFrom(db *sql.DB, schemaMetadata map[string]schemareader.Tab
 		for localColumn, foreignColumn := range reference.ColumnMapping {
 			whereParameters = append(whereParameters, fmt.Sprintf("%s = $%d", foreignColumn, len(whereParameters)+1))
 			scanParameters = append(scanParameters, row.row[table.ColumnIndexes[localColumn]].Value)
+		}
+
+		if startingDate != "" && (reference.TableName == "rhnchannelerrata" || reference.TableName == "rhnchannelpackage" || reference.TableName == "susemddata") {
+			whereParameters = append(whereParameters, fmt.Sprintf("%s >= '$%d'::timestamp", "modified", len(whereParameters)+1))
+			scanParameters = append(scanParameters, startingDate)
 		}
 
 		formattedColumns := strings.Join(foreignTable.Columns, ", ")
@@ -140,18 +146,18 @@ func shouldFollowReferenceToLink(path []string, currentTable schemareader.Table,
 		}
 	}
 
-	forcedNavegations := map[string] []string {
+	forcedNavegations := map[string][]string{
 		"rhnchannelfamily": {"rhnpublicchannelfamily"},
-		"rhnchannel": {"susemddata", "suseproductchannel", "rhnreleasechannelmap", "rhndistchannelmap"},
-		"suseproducts": {"suseproductextension", "suseproductsccrepository"},
-		"rhnpackageevr": {"rhnpackagenevra"},
-		"rhnerrata": {"rhnerratafile"},
-		"rhnerratafile": {"rhnerratafilechannel"},
+		"rhnchannel":       {"susemddata", "suseproductchannel", "rhnreleasechannelmap", "rhndistchannelmap"},
+		"suseproducts":     {"suseproductextension", "suseproductsccrepository"},
+		"rhnpackageevr":    {"rhnpackagenevra"},
+		"rhnerrata":        {"rhnerratafile"},
+		"rhnerratafile":    {"rhnerratafilechannel"},
 	}
 
 	if tableNavigation, ok := forcedNavegations[currentTable.Name]; ok {
-		for _, targetNavigationTable := range tableNavigation{
-			if strings.Compare(targetNavigationTable, referencedTable.Name) == 0{
+		for _, targetNavigationTable := range tableNavigation {
+			if strings.Compare(targetNavigationTable, referencedTable.Name) == 0 {
 				return true
 			}
 		}
@@ -178,7 +184,7 @@ func shouldFollowReferenceToLink(path []string, currentTable schemareader.Table,
 	return false
 }
 
-func followReferencesTo(db *sql.DB, schemaMetadata map[string]schemareader.Table, table schemareader.Table, row processItem) []processItem {
+func followReferencesTo(db *sql.DB, schemaMetadata map[string]schemareader.Table, table schemareader.Table, row processItem, startingDate string) []processItem {
 	result := make([]processItem, 0)
 
 	for _, reference := range table.ReferencedBy {
@@ -195,6 +201,11 @@ func followReferencesTo(db *sql.DB, schemaMetadata map[string]schemareader.Table
 		for localColumn, foreignColumn := range reference.ColumnMapping {
 			whereParameters = append(whereParameters, fmt.Sprintf("%s = $%d", localColumn, len(whereParameters)+1))
 			scanParameters = append(scanParameters, row.row[table.ColumnIndexes[foreignColumn]].Value)
+		}
+
+		if startingDate != "" && (reference.TableName == "rhnchannelerrata" || reference.TableName == "rhnchannelpackage" || reference.TableName == "susemddata") {
+			whereParameters = append(whereParameters, fmt.Sprintf("%s >= $%d::timestamp", "modified", len(whereParameters)+1))
+			scanParameters = append(scanParameters, startingDate)
 		}
 
 		formattedColumns := strings.Join(referencedTable.Columns, ", ")

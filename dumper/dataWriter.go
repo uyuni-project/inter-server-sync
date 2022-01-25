@@ -19,15 +19,15 @@ var cache = make(map[string]string)
 func PrintTableDataOrdered(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table,
 	startingTable schemareader.Table, data DataDumper, options PrintSqlOptions) {
 
-	printCleanTables(writer, schemaMetadata,startingTable, make(map[string]bool), make([]string, 0), options)
+	printCleanTables(db, writer, schemaMetadata, startingTable, make(map[string]bool), make([]string, 0), options)
 	printTableData(db, writer, schemaMetadata, data, startingTable, make(map[string]bool), make([]string, 0), options)
 }
 
 /**
 clear tables need to be printed in reverse order, otherwise it will not work
- */
-func printCleanTables(writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, table schemareader.Table,
-	processedTables map[string]bool, path []string, options PrintSqlOptions){
+*/
+func printCleanTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, table schemareader.Table,
+	processedTables map[string]bool, path []string, options PrintSqlOptions) {
 
 	_, tableProcessed := processedTables[table.Name]
 	// if the current table should not be export we are interrupting the crawler process for these table
@@ -48,13 +48,11 @@ func printCleanTables(writer *bufio.Writer, schemaMetadata map[string]schemaread
 		if !shouldFollowReferenceToLink(path, table, tableReference) {
 			continue
 		}
-		printCleanTables(writer, schemaMetadata, tableReference, processedTables, path, options)
+		printCleanTables(db, writer, schemaMetadata, tableReference, processedTables, path, options)
 	}
 
 	if utils.Contains(options.TablesToClean, table.Name) {
-		cleanEmptyTable := generateClearTable(table, path, schemaMetadata, options)
-		writer.WriteString(cleanEmptyTable + "\n")
-		//result = append(result,cleanEmptyTable)
+		generateClearTable(db, writer, table, path, schemaMetadata, options)
 	}
 
 	for _, reference := range table.References {
@@ -62,7 +60,7 @@ func printCleanTables(writer *bufio.Writer, schemaMetadata map[string]schemaread
 		if !ok || !tableReference.Export {
 			continue
 		}
-		printCleanTables(writer, schemaMetadata, tableReference, processedTables, path, options)
+		printCleanTables(db, writer, schemaMetadata, tableReference, processedTables, path, options)
 	}
 
 }
@@ -352,11 +350,26 @@ func formatOnConflict(row []sqlUtil.RowDataStructure, table schemareader.Table) 
 	return fmt.Sprintf("%s DO UPDATE SET %s", constraint, columnAssignment)
 }
 
-func generateClearTable(table schemareader.Table, path []string, schemaMetadata map[string]schemareader.Table, options PrintSqlOptions) string {
+func generateClearTable(db *sql.DB, writer *bufio.Writer, table schemareader.Table, path []string,
+	schemaMetadata map[string]schemareader.Table, options PrintSqlOptions) {
+
+	// generates the delete statement for the table
 	existingRecords := buildQueryToGetExistingRecords(path, table, schemaMetadata, options.CleanWhereClause)
 	mainUniqueColumns := strings.Join(table.UniqueIndexes[table.MainUniqueIndexName].Columns, ",")
-	return fmt.Sprintf("\nDELETE FROM %s WHERE (%s) IN (%s);",
+
+	cleanEmptyTable := fmt.Sprintf("\nDELETE FROM %s WHERE (%s) IN (%s);",
 		table.Name, mainUniqueColumns, existingRecords)
+	writer.WriteString(cleanEmptyTable + "\n")
+
+	// repopulate all pre-existing data
+	allTableRecordsSql := fmt.Sprintf("Select * FROM %s WHERE (%s) IN (%s);",
+		table.Name, mainUniqueColumns, existingRecords)
+	allTableRecords := sqlUtil.ExecuteQueryWithResults(db, allTableRecordsSql)
+	for _, record := range allTableRecords {
+		insertStatement := generateRowInsertStatement(db, record, table, schemaMetadata, []string{table.Name})
+		writer.WriteString(insertStatement + "\n")
+		//fmt.Println(insertStatement)
+	}
 }
 
 func buildQueryToGetExistingRecords(path []string, table schemareader.Table, schemaMetadata map[string]schemareader.Table, cleanWhereClause string) string {
@@ -443,8 +456,10 @@ func generateRowInsertStatement(db *sql.DB, values []sqlUtil.RowDataStructure, t
 					} else {
 						whereClauseList = append(whereClauseList, fmt.Sprintf(" %s = %s",
 							value.ColumnName, formatField(value)))
-						parentsRecordsCheckList = append(parentsRecordsCheckList, fmt.Sprintf("exists %s",
-							formatField(value)))
+						if value.ColumnType == "SQL" {
+							parentsRecordsCheckList = append(parentsRecordsCheckList, fmt.Sprintf("exists %s",
+								formatField(value)))
+						}
 					}
 				}
 			}
@@ -467,5 +482,3 @@ func generateRowInsertStatement(db *sql.DB, values []sqlUtil.RowDataStructure, t
 	}
 
 }
-
-

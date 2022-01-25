@@ -4,14 +4,15 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
+	"io"
+	"os"
+
 	"github.com/rs/zerolog/log"
 	"github.com/uyuni-project/inter-server-sync/dumper"
 	"github.com/uyuni-project/inter-server-sync/dumper/packageDumper"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
 	"github.com/uyuni-project/inter-server-sync/sqlUtil"
 	"github.com/uyuni-project/inter-server-sync/utils"
-	"io"
-	"os"
 )
 
 // TablesToClean represents Tables which needs to be cleaned in case on client side there is a record that doesn't exist anymore on master side
@@ -19,9 +20,9 @@ var tablesToClean = []string{"rhnreleasechannelmap", "rhndistchannelmap", "rhnch
 	"rhnerratapackage",
 	"rhnerratafile",
 	"rhnerratafilechannel", "rhnerratafilepackage", "rhnerratafilepackagesource",
-	"rhnerratabuglist", "rhnerratacve", "rhnerratakeyword", "susemddata",
-	"susemdkeyword",
-	"suseproductchannel"}
+	"rhnerratabuglist", "rhnerratacve",
+	"rhnerratakeyword",
+	"susemddata", "suseproductchannel"}
 
 // onlyIfParentExistsTables represents Tables for which only records needs to be insterted only if parent record exists
 var onlyIfParentExistsTables = []string{"rhnchannelcloned", "rhnerratacloned", "suseproductchannel"}
@@ -152,7 +153,7 @@ func loadChannelsToProcess(db *sql.DB, options ChannelDumperOptions) []string {
 	for _, singleChannel := range options.ChannelLabels {
 		if _, ok := channels.channelsMap[singleChannel]; !ok {
 			dbChannel := sqlUtil.ExecuteQueryWithResults(db, singleChannelSql, singleChannel)
-			if len(dbChannel) == 0{
+			if len(dbChannel) == 0 {
 				log.Fatal().Msgf("Channel not found: %s", singleChannel)
 			}
 			channels.addChannelLabel(singleChannel)
@@ -162,7 +163,7 @@ func loadChannelsToProcess(db *sql.DB, options ChannelDumperOptions) []string {
 	for _, channelChildren := range options.ChannelWithChildrenLabels {
 		if _, ok := channels.channelsMap[channelChildren]; !ok {
 			dbChannel := sqlUtil.ExecuteQueryWithResults(db, singleChannelSql, channelChildren)
-			if len(dbChannel) == 0{
+			if len(dbChannel) == 0 {
 				log.Fatal().Msgf("Channel not found: %s", channelChildren)
 			}
 			channels.addChannelLabel(channelChildren)
@@ -224,7 +225,7 @@ func processAndInsertChannels(db *sql.DB, writer *bufio.Writer, channels []strin
 func processChannel(db *sql.DB, writer *bufio.Writer, channelLabel string,
 	schemaMetadata map[string]schemareader.Table, options ChannelDumperOptions) {
 	whereFilter := fmt.Sprintf("label = '%s'", channelLabel)
-	tableData := dumper.DataCrawler(db, schemaMetadata, schemaMetadata["rhnchannel"], whereFilter)
+	tableData := dumper.DataCrawler(db, schemaMetadata, schemaMetadata["rhnchannel"], whereFilter, options.StartingDate)
 	log.Debug().Msg("finished table data crawler")
 
 	cleanWhereClause := fmt.Sprintf(`WHERE rhnchannel.id = (SELECT id FROM rhnchannel WHERE label = '%s')`, channelLabel)

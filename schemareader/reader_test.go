@@ -8,12 +8,11 @@ import (
 )
 
 const (
-	TableName          = "TableName"
-	PKColumnName       = "PKColumnName"
-	UniqueIndexName01  = "UniqueIndexName01"
-	UniqueIndexName02  = "UniqueIndexName02"
-	IndexColumnName    = "IndexColumnName"
-	NonIndexColumnName = "NonIndexColumnName"
+	TableName         = "TableName"
+	PKColumnName      = "PKColumnName"
+	UniqueIndexName01 = "UniqueIndexName01"
+	UniqueIndexName02 = "UniqueIndexName02"
+	IndexColumnName   = "IndexColumnName"
 )
 
 func TestProcessTable(t *testing.T) {
@@ -28,30 +27,15 @@ func TestProcessTable(t *testing.T) {
 	// Assert
 	indexesEqual := reflect.DeepEqual(table.MainUniqueIndexName, UniqueIndexName02)
 	if !indexesEqual {
-		t.Errorf("UniqueIndexes are not expected.")
+		t.Errorf("UniqueIndexes do not match: expected %s, got %s", UniqueIndexName02, table.MainUniqueIndexName)
 	}
 }
 
 func UniqueIndexMostColumnsCase(repo *tests.DataRepository) {
-	repo.ExpectWithRecords(
-		ReadColumnNames,
-		sqlmock.NewRows([]string{"column_name"}).
-			AddRow(PKColumnName).
-			AddRow(NonIndexColumnName).
-			AddRow(IndexColumnName),
-		TableName,
-	)
-	repo.ExpectWithRecords(
-		ReadPkColumnNames,
-		sqlmock.NewRows([]string{"attname"}).
-			AddRow(PKColumnName),
-		TableName,
-	)
-	repo.ExpectWithRecords(
-		ReadPkSequence,
-		sqlmock.NewRows([]string{"sequence_name"}),
-		TableName,
-	)
+
+	repo.ExpectWithRecords(ReadColumnNames, sqlmock.NewRows([]string{"column_name"}), TableName)
+	repo.ExpectWithRecords(ReadPkColumnNames, sqlmock.NewRows([]string{"attname"}), TableName)
+	repo.ExpectWithRecords(ReadPkSequence, sqlmock.NewRows([]string{"sequence_name"}), TableName)
 
 	// Read indexes information
 	repo.ExpectWithRecords(
@@ -77,14 +61,6 @@ func UniqueIndexMostColumnsCase(repo *tests.DataRepository) {
 		UniqueIndexName02,
 	)
 
-	repo.ExpectWithRecords(
-		ReadReferenceConstraintNames,
-		sqlmock.NewRows([]string{"constraint_name"}),
-		TableName,
-	)
-	repo.ExpectWithRecords(
-		ReadReferencedByConstraintNames,
-		sqlmock.NewRows([]string{"constraint_name"}),
-		TableName,
-	)
+	repo.ExpectWithRecords(ReadReferenceConstraintNames, sqlmock.NewRows([]string{"constraint_name"}), TableName)
+	repo.ExpectWithRecords(ReadReferencedByConstraintNames, sqlmock.NewRows([]string{"constraint_name"}), TableName)
 }

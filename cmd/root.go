@@ -15,7 +15,7 @@ import (
 var rootCmd = &cobra.Command{
 	Use:     "inter-server-sync",
 	Short:   "Uyuni Inter Server Sync tool",
-	Version: "0.0.6",
+	Version: "0.0.7",
 }
 
 func Execute() {
@@ -53,7 +53,7 @@ func logCallerMarshalFunction(file string, line int) string {
 				callerFile = callerFile + "/"
 			}
 			callerFile = callerFile + currentPath
-		}else {
+		} else {
 			if strings.Contains(currentPath, "inter-server-sync") {
 				foundSubDir = true
 				callerFile = ""

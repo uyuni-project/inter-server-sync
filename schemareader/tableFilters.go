@@ -8,8 +8,8 @@ func applyTableFilters(table Table) Table {
 	switch table.Name {
 	case "rhnchecksumtype":
 		table.PKSequence = "rhn_checksum_id_seq"
-	case "rhnChecksum":
-		table.PKSequence = "rhnChecksum_seq"
+	case "rhnchecksum":
+		table.PKSequence = "rhnchecksum_seq"
 	case "rhnpackagearch":
 		table.PKSequence = "rhn_package_arch_id_seq"
 	case "rhnchannelarch":

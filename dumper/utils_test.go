@@ -4,9 +4,10 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
-	"github.com/uyuni-project/inter-server-sync/schemareader"
 	"reflect"
 	"strings"
+
+	"github.com/uyuni-project/inter-server-sync/schemareader"
 )
 
 type TablesGraph map[string][]string
@@ -60,17 +61,19 @@ func createMetaDataGraph(graph TablesGraph) (MetaDataGraph, DataDumper) {
 				schemareader.Reference{TableName: parent, ColumnMapping: map[string]string{"fk_id": "id"}},
 			)
 			schemaMetadata[child] = childTable
+			k := []RowKey{{"id", fmt.Sprintf("'%04d'", 1)}}
 			dataDumper.TableData[child] = TableDump{
 				TableName: child,
 				KeyMap:    map[string]bool{fmt.Sprintf("'%04d'", 1): true},
-				Keys:      []TableKey{{Key: map[string]string{"id": fmt.Sprintf("'%04d'", 1)}}},
+				Keys:      []TableKey{{Key: k}},
 			}
 		}
 		schemaMetadata[parent] = parentTable
+		k := []RowKey{{"id", fmt.Sprintf("'%04d'", 1)}}
 		dataDumper.TableData[parent] = TableDump{
 			TableName: parent,
 			KeyMap:    map[string]bool{fmt.Sprintf("'%04d'", 1): true},
-			Keys:      []TableKey{{Key: map[string]string{"id": fmt.Sprintf("'%04d'", 1)}}},
+			Keys:      []TableKey{{Key: k}},
 		}
 	}
 	return schemaMetadata, dataDumper
@@ -117,7 +120,8 @@ func allPathsPostOrder(graph TablesGraph, root string) map[string]bool {
 func setNumberOfRecordsForTable(tc *writerTestCase, tableName string, num int) {
 	var keys []TableKey
 	for i := 0; i < num; i++ {
-		keys = append(keys, TableKey{Key: map[string]string{"id": fmt.Sprintf("%04d", i+1)}})
+		k := []RowKey{{"id", fmt.Sprintf("%04d", i+1)}}
+		keys = append(keys, TableKey{Key: k})
 	}
 	tableData := tc.dumper.TableData[tableName]
 	tableData.Keys = keys

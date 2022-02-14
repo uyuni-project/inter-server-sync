@@ -276,14 +276,13 @@ func TestPrintTableData(t *testing.T) {
 	testCase.repo.Expect("SELECT id, fk_id FROM v22 WHERE id = $1;", 1)
 
 	// 02 Act
-	printTableData(
+	orderedTables := getTablesExportOrder(testCase.schemaMetadata, testCase.startingTable, testCase.processedTables, testCase.path)
+	exportTableData(
 		testCase.repo.DB,
 		testCase.repo.Writer,
 		testCase.schemaMetadata,
+		orderedTables,
 		testCase.dumper,
-		testCase.startingTable,
-		testCase.processedTables,
-		testCase.path,
 		testCase.options,
 	)
 

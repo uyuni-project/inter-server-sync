@@ -7,8 +7,13 @@ import (
 	"github.com/uyuni-project/inter-server-sync/sqlUtil"
 )
 
+type RowKey struct {
+	Column string
+	Value  string
+}
+
 type TableKey struct {
-	Key map[string]string
+	Key []RowKey
 }
 
 type TableDump struct {

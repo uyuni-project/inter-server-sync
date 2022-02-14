@@ -28,12 +28,11 @@ func runExportConfigs(cmd *cobra.Command, args []string) {
 	log.Debug().Msg(outputDir)
 
 	options := entityDumper.ChannelDumperOptions{
-		ServerConfig:              serverConfig,
-		OutputFolder:              outputDir,
-		MetadataOnly:              metadataOnly,
-		ConfigLabels:              labels,
+		ServerConfig: serverConfig,
+		OutputFolder: outputDir,
+		MetadataOnly: metadataOnly,
+		ConfigLabels: labels,
 	}
-	utils.ValidateExportFolder(options.GetOutputFolderAbsPath())
 	entityDumper.DumpConfigs(options)
 	var versionfile string
 	versionfile = options.GetOutputFolderAbsPath() + "/version.txt"

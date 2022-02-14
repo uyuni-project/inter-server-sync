@@ -284,6 +284,7 @@ func TestPrintTableData(t *testing.T) {
 		testCase.processedTables,
 		testCase.path,
 		testCase.options,
+		createPostOrderCallback(),
 	)
 
 	// 03 Assert
@@ -322,6 +323,7 @@ func TestPrintTableDataRhnConfigFileCase(t *testing.T) {
 
 	// the data repository expect these statements in the exact same order
 	testCase.repo.Expect(fmt.Sprintf("SELECT id, fk_id FROM rhnconfigfile %s", whereClause), 1)
+	testCase.repo.Expect(fmt.Sprintf("SELECT id, fk_id FROM rhnconfigfile %s", whereClause), 1)
 	testCase.repo.Expect("SELECT id, fk_id FROM root WHERE (id) in (('0001'));", 1)
 	testCase.repo.Expect("SELECT id, fk_id FROM rhnconfigfile WHERE id = $1;", 1)
 
@@ -335,6 +337,7 @@ func TestPrintTableDataRhnConfigFileCase(t *testing.T) {
 		testCase.processedTables,
 		testCase.path,
 		testCase.options,
+		createPostOrderCallback(),
 	)
 
 	// 03 Assert

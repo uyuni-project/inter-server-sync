@@ -19,8 +19,9 @@ var cache = make(map[string]string)
 func PrintTableDataOrdered(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table,
 	startingTable schemareader.Table, data DataDumper, options PrintSqlOptions) {
 
+	postOrderCallback := createPostOrderCallback()
 	printCleanTables(db, writer, schemaMetadata, startingTable, make(map[string]bool), make([]string, 0), options)
-	printTableData(db, writer, schemaMetadata, data, startingTable, make(map[string]bool), make([]string, 0), options)
+	printTableData(db, writer, schemaMetadata, data, startingTable, make(map[string]bool), make([]string, 0), options, postOrderCallback)
 	cache = make(map[string]string)
 }
 
@@ -67,7 +68,7 @@ func printCleanTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[strin
 }
 
 func printTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, data DataDumper,
-	table schemareader.Table, processedTables map[string]bool, path []string, options PrintSqlOptions) {
+	table schemareader.Table, processedTables map[string]bool, path []string, options PrintSqlOptions, callback PostOrderCallback) {
 
 	_, tableProcessed := processedTables[table.Name]
 	// if the current table should not be export we are interrupting the crawler process for these table
@@ -87,10 +88,30 @@ func printTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]
 		if strings.Compare(table.Name, "rhnconfigfile") == 0 && strings.Compare(tableReference.Name, "rhnconfigrevision") == 0 {
 			continue
 		}
-		printTableData(db, writer, schemaMetadata, data, tableReference, processedTables, path, options)
+		printTableData(db, writer, schemaMetadata, data, tableReference, processedTables, path, options, callback)
 	}
 
-	// export current table data
+	exportCurrentTableData(db, writer, schemaMetadata, table, data, options)
+
+	// follow reference by
+	for _, reference := range table.ReferencedBy {
+
+		tableReference, ok := schemaMetadata[reference.TableName]
+		if !ok || !tableReference.Export {
+			continue
+		}
+		if !shouldFollowReferenceToLink(path, table, tableReference) {
+			continue
+		}
+		printTableData(db, writer, schemaMetadata, data, tableReference, processedTables, path, options, callback)
+	}
+
+	callback(db, writer, schemaMetadata, table, data)
+}
+
+func exportCurrentTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table,
+	table schemareader.Table, data DataDumper, options PrintSqlOptions) {
+
 	tableData, dataOK := data.TableData[table.Name]
 	if dataOK {
 		exportPoint := 0
@@ -105,47 +126,54 @@ func printTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]
 				rowToInsert := generateRowInsertStatement(db, rowValue, table, schemaMetadata, options.OnlyIfParentExistsTables)
 				writer.WriteString(rowToInsert + "\n")
 			}
-
 			exportPoint = upperLimit
 		}
 	}
+}
 
-	// follow reference by
-	for _, reference := range table.ReferencedBy {
+func createPostOrderCallback() PostOrderCallback {
+	return func(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table,
+		table schemareader.Table, data DataDumper) {
 
-		tableReference, ok := schemaMetadata[reference.TableName]
-		if !ok || !tableReference.Export {
-			continue
-		}
-		if !shouldFollowReferenceToLink(path, table, tableReference) {
-			continue
-		}
-		printTableData(db, writer, schemaMetadata, data, tableReference, processedTables, path, options)
-	}
-
-	if strings.Compare(table.Name, "rhnconfigfile") == 0{
-		if dataOK {
-			exportPoint := 0
-			batch := 100
-			for len(tableData.Keys) > exportPoint {
-				upperLimit := exportPoint + batch
-				if upperLimit > len(tableData.Keys) {
-					upperLimit = len(tableData.Keys)
+		tableData, dataOK := data.TableData[table.Name]
+		if strings.Compare(table.Name, "rhnconfigfile") == 0 {
+			if dataOK {
+				exportPoint := 0
+				batch := 100
+				for len(tableData.Keys) > exportPoint {
+					upperLimit := exportPoint + batch
+					if upperLimit > len(tableData.Keys) {
+						upperLimit = len(tableData.Keys)
+					}
+					rows := GetRowsFromKeys(db, table, tableData.Keys[exportPoint:upperLimit])
+					for _, rowValue := range rows {
+						rowValue = substituteForeignKey(db, table, schemaMetadata, rowValue)
+						updateString := genUpdateForReference(table, rowValue)
+						writer.WriteString(updateString + "\n")
+					}
+					exportPoint = upperLimit
 				}
-				rows := GetRowsFromKeys(db, table, tableData.Keys[exportPoint:upperLimit])
-				for _, rowValue := range rows {
-					rowValue = substituteForeignKey(db, table, schemaMetadata, rowValue)
-					updateString := genUpdateForReference(table, rowValue)
-					writer.WriteString(updateString + "\n")
-				}
-				exportPoint = upperLimit
 			}
 		}
 	}
 }
 
 func genUpdateForReference(table schemareader.Table, value []sqlUtil.RowDataStructure) string {
-	return "update rhnconfigfile set latest_config_revision_id=bla where config_file_name_id=1 and config_channel_id=1;"
+	var updatestring string
+	var latest_config_revision_id, config_file_name_id, config_channel_id interface{}
+	for _, field := range value {
+		if strings.Compare(field.ColumnName, "latest_config_revision_id") == 0 {
+			latest_config_revision_id = field.Value
+		}
+		if strings.Compare(field.ColumnName, "config_file_name_id") == 0 {
+			config_file_name_id = field.Value
+		}
+		if strings.Compare(field.ColumnName, "config_channel_id") == 0 {
+			config_channel_id = field.Value
+		}
+	}
+	updatestring = fmt.Sprintf("update rhnconfigfile set latest_config_revision_id = (%s) where config_file_name_id = (%s) and config_channel_id = (%s);", latest_config_revision_id, config_file_name_id, config_channel_id)
+	return updatestring
 }
 
 // GetRowsFromKeys check if we should move this to a method in the type tableData

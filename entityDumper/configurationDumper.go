@@ -80,7 +80,7 @@ func processConfigs(db *sql.DB, writer *bufio.Writer, labels []string, options C
 	log.Info().Msg(fmt.Sprintf("%d channels to process", len(labels)))
 	schemaMetadata := schemareader.ReadTablesSchema(db, ConfigTableNames())
 	log.Debug().Msg("channel schema metadata loaded")
-	configLabels, err := os.Create(options.GetOutputFolderAbsPath() + "/exportedConfigs.sql")
+	configLabels, err := os.Create(options.GetOutputFolderAbsPath() + "/exportedConfigs.txt")
 	if err != nil {
 		log.Fatal().Err(err).Msg("error creating exportedConfigChannel file")
 		panic(err)
@@ -103,7 +103,7 @@ func processConfigs(db *sql.DB, writer *bufio.Writer, labels []string, options C
 func processConfigChannel(db *sql.DB, writer *bufio.Writer, channelLabel string,
 	schemaMetadata map[string]schemareader.Table, options ChannelDumperOptions) {
 	whereFilter := fmt.Sprintf("label = '%s'", channelLabel)
-	tableData := dumper.DataCrawler(db, schemaMetadata, schemaMetadata["rhnconfigchannel"], whereFilter)
+	tableData := dumper.DataCrawler(db, schemaMetadata, schemaMetadata["rhnconfigchannel"], whereFilter, options.StartingDate)
 	log.Debug().Msg("finished table data crawler")
 
 	cleanWhereClause := fmt.Sprintf(`WHERE rhnconfigchannel.id = (SELECT id FROM rhnconfigchannel WHERE label = '%s')`, channelLabel)

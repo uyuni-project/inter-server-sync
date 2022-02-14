@@ -20,6 +20,8 @@ func DataCrawler(db *sql.DB, schemaMetadata map[string]schemareader.Table, start
 
 IterateItemsLoop:
 	for len(itemsToProcess) > 0 {
+
+		// LIFO instead of FIFO improves performance
 		itemToProcess := itemsToProcess[len(itemsToProcess)-1]
 		itemsToProcess = itemsToProcess[0 : len(itemsToProcess)-1]
 

@@ -16,14 +16,12 @@ var exportCmd = &cobra.Command{
 	Run:   runExport,
 }
 
-
 var channels []string
 var channelWithChildren []string
 var outputDir string
 var metadataOnly bool
 var startingDate string
 var labels []string
-
 
 func init() {
 	exportCmd.Flags().StringSliceVar(&channels, "channels", nil, "Channels to be exported")
@@ -56,9 +54,8 @@ func runExport(cmd *cobra.Command, args []string) {
 		OutputFolder:              outputDir,
 		MetadataOnly:              metadataOnly,
 		StartingDate:              validatedDate,
-		ConfigLabels:			   labels,
+		ConfigLabels:              labels,
 	}
-	utils.ValidateExportFolder(options.GetOutputFolderAbsPath())
 	entityDumper.DumpChannelData(options)
 	var versionfile string
 	versionfile = options.GetOutputFolderAbsPath() + "/version.txt"

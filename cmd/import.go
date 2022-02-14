@@ -5,6 +5,7 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/uyuni-project/inter-server-sync/utils"
+	"github.com/uyuni-project/inter-server-sync/xmlrpc"
 	"os"
 	"os/exec"
 )
@@ -34,7 +35,7 @@ func runImport(cmd *cobra.Command, args []string) {
 		log.Fatal().Msgf("Wrong version detected. Fileversion = %s ; Serverversion = %s", fversion, sversion)
 	}
 	validateFolder(absImportDir)
-	//runPackageFileSync(absImportDir)
+	runPackageFileSync(absImportDir)
 	runImportSql(absImportDir)
 	log.Info().Msg("import finished")
 }
@@ -87,6 +88,13 @@ func runPackageFileSync(absImportDir string) {
 	}
 }
 
+func runConfigFilesSync(dir string, user string, password string) error {
+	labels := utils.ReadFileByLine(fmt.Sprintf("%s/exportedConfigs.txt", dir))
+	client := xmlrpc.NewClient(user, password)
+	_, err := client.SyncConfigFiles(labels)
+	return err
+}
+
 func runImportSql(absImportDir string) {
 	func() {
 		_, err := os.Stat(fmt.Sprintf("%s/sql_statements.sql", absImportDir))
@@ -110,6 +118,10 @@ func runImportSql(absImportDir string) {
 			err = cmd.Run()
 			if err != nil {
 				log.Fatal().Err(err).Msg("error running the sql script (configurations)")
+			}
+			err = runConfigFilesSync(absImportDir, xmlRpcUser, xmlRpcPassword)
+			if err != nil {
+				log.Fatal().Err(err).Msg("error synchronizing files")
 			}
 		}
 

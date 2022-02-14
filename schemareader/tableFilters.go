@@ -62,6 +62,10 @@ func applyTableFilters(table Table) Table {
 		unexportColumns := make(map[string]bool)
 		unexportColumns["latest_config_revision_id"] = true
 		table.UnexportColumns = unexportColumns
+	case "rhnconfigcontent":
+		virtualIndexColumns := []string{"contents", "file_size", "checksum_id", "is_binary", "delim_start", "delim_end", "created"}
+		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
+		table.MainUniqueIndexName = VirtualIndexName
 	}
 	return table
 }

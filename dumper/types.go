@@ -1,6 +1,11 @@
 package dumper
 
-import "github.com/uyuni-project/inter-server-sync/sqlUtil"
+import (
+	"bufio"
+	"database/sql"
+	"github.com/uyuni-project/inter-server-sync/schemareader"
+	"github.com/uyuni-project/inter-server-sync/sqlUtil"
+)
 
 type TableKey struct {
 	Key map[string]string
@@ -28,3 +33,5 @@ type PrintSqlOptions struct {
 	CleanWhereClause         string
 	OnlyIfParentExistsTables []string
 }
+
+type PostOrderCallback func(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, table schemareader.Table, data DataDumper)

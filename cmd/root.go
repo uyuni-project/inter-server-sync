@@ -27,6 +27,8 @@ var logLevel string
 var serverConfig string
 var cpuProfile string
 var memProfile string
+var xmlRpcUser string
+var xmlRpcPassword string
 
 func init() {
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
@@ -41,6 +43,8 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&serverConfig, "serverConfig", "/etc/rhn/rhn.conf", "Server configuration file")
 	rootCmd.PersistentFlags().StringVar(&cpuProfile, "cpuProfile", "", "cpuProfile file location")
 	rootCmd.PersistentFlags().StringVar(&memProfile, "memProfile", "", "memProfile file location")
+	rootCmd.PersistentFlags().StringVar(&xmlRpcUser, "xmlRpcUser", "admin", "A username to access the XML-RPC Api")
+	rootCmd.PersistentFlags().StringVar(&xmlRpcPassword, "xmlRpcPassword", "admin", "A password to access the XML-RPC Api")
 }
 
 func logCallerMarshalFunction(file string, line int) string {

@@ -3,10 +3,12 @@ package dumper
 import (
 	"bufio"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
 
+	"github.com/rs/zerolog/log"
 	"github.com/uyuni-project/inter-server-sync/sqlUtil"
 
 	"github.com/lib/pq"
@@ -16,11 +18,17 @@ import (
 
 var cache = make(map[string]string)
 
+var referrencesCall = make(map[string]int)
+
 func PrintTableDataOrdered(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table,
 	startingTable schemareader.Table, data DataDumper, options PrintSqlOptions) {
 
 	printCleanTables(db, writer, schemaMetadata, startingTable, make(map[string]bool), make([]string, 0), options)
-	printTableData(db, writer, schemaMetadata, data, startingTable, make(map[string]bool), make([]string, 0), options)
+	writer.WriteString("-- end of clean tables")
+	writer.WriteString("\n")
+	orderedTables := getTablesExportOrder(schemaMetadata, startingTable, make(map[string]bool), make([]string, 0))
+	exportTableData(db, writer, schemaMetadata, orderedTables, data, options)
+	// clean cache for the next channel that can be exported
 	cache = make(map[string]string)
 }
 
@@ -65,62 +73,112 @@ func printCleanTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[strin
 	}
 }
 
-func printTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, data DataDumper,
-	table schemareader.Table, processedTables map[string]bool, path []string, options PrintSqlOptions) {
+func exportTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table,
+	tablesOrdered []schemareader.Table, data DataDumper, options PrintSqlOptions) {
+
+	processing := true
+	totalExportedRecords := 0
+	if log.Debug().Enabled() {
+		totalRecords := 0
+
+		for _, value := range data.TableData {
+			totalRecords = totalRecords + len(value.Keys)
+		}
+
+		go func() {
+			count := 0
+			for {
+				time.Sleep(30 * time.Second)
+				log.Debug().Msgf("#count: %d #cacheSize %d -- #writtenRows: #%d of %d",
+					count, len(cache), totalExportedRecords, totalRecords)
+				if !processing {
+					break
+				}
+				count++
+			}
+		}()
+	}
+
+	tableCount := 1
+	for _, table := range tablesOrdered {
+		// export current table data
+		log.Debug().Msg(fmt.Sprintf("Writing data for table [%d/%d] %s", tableCount, len(tablesOrdered), table.Name))
+		tableCount++
+		tableData, dataOK := data.TableData[table.Name]
+		if dataOK {
+			exportPoint := 0
+			batch := 100
+			for len(tableData.Keys) > exportPoint {
+				upperLimit := exportPoint + batch
+				if upperLimit > len(tableData.Keys) {
+					upperLimit = len(tableData.Keys)
+				}
+				rows := GetRowsFromKeys(db, table, tableData.Keys[exportPoint:upperLimit])
+				totalExportedRecords = totalExportedRecords + len(rows)
+				for _, rowValue := range rows {
+					rowToInsert := generateRowInsertStatement(db, rowValue, table, schemaMetadata, options.OnlyIfParentExistsTables)
+					writer.WriteString(rowToInsert + "\n")
+				}
+				writer.Flush()
+				exportPoint = upperLimit
+			}
+		}
+	}
+	// post-processing callback
+	for _, table := range tablesOrdered {
+		if options.PostOrderCallback != nil {
+			options.PostOrderCallback(db, writer, schemaMetadata, table, data)
+		}
+	}
+
+	processing = false
+
+	if log.Debug().Enabled() {
+		valMarshal, errMarshal := json.Marshal(referrencesCall)
+		if errMarshal == nil {
+			log.Debug().Msg(fmt.Sprintf("Referrence count resolver by table: %s", string(valMarshal)))
+		}
+	}
+
+}
+
+func getTablesExportOrder(schemaMetadata map[string]schemareader.Table,
+	table schemareader.Table, processedTables map[string]bool, path []string) []schemareader.Table {
 
 	_, tableProcessed := processedTables[table.Name]
 	// if the current table should not be export we are interrupting the crawler process for these table
 	// not exporting other tables relations
 	if tableProcessed || !table.Export {
-		return
+		return make([]schemareader.Table, 0)
 	}
 	processedTables[table.Name] = true
 	path = append(path, table.Name)
 
 	// follow reference to
+	tablesReferences := make([]schemareader.Table, 0)
 	for _, reference := range table.References {
 		tableReference, ok := schemaMetadata[reference.TableName]
-		if ok && tableReference.Export && shouldFollowToLinkPreOrder(path, table, tableReference) {
-			printTableData(db, writer, schemaMetadata, data, tableReference, processedTables, path, options)
+		if !ok || !tableReference.Export {
+			continue
 		}
+		tablesReferences = append(tablesReferences, getTablesExportOrder(schemaMetadata, tableReference, processedTables, path)...)
 	}
 
-	exportCurrentTableData(db, writer, schemaMetadata, table, data, options)
-
 	// follow reference by
+	tablesReferencesBy := make([]schemareader.Table, 0)
 	for _, reference := range table.ReferencedBy {
 
 		tableReference, ok := schemaMetadata[reference.TableName]
-		if ok && tableReference.Export && shouldFollowReferenceToLink(path, table, tableReference) {
-			printTableData(db, writer, schemaMetadata, data, tableReference, processedTables, path, options)
+		if !ok || !tableReference.Export {
+			continue
 		}
-
-	}
-	if options.PostOrderCallback != nil {
-		options.PostOrderCallback(db, writer, schemaMetadata, table, data)
-	}
-}
-
-func exportCurrentTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table,
-	table schemareader.Table, data DataDumper, options PrintSqlOptions) {
-
-	tableData, dataOK := data.TableData[table.Name]
-	if dataOK {
-		exportPoint := 0
-		batch := 100
-		for len(tableData.Keys) > exportPoint {
-			upperLimit := exportPoint + batch
-			if upperLimit > len(tableData.Keys) {
-				upperLimit = len(tableData.Keys)
-			}
-			rows := GetRowsFromKeys(db, table, tableData.Keys[exportPoint:upperLimit])
-			for _, rowValue := range rows {
-				rowToInsert := generateRowInsertStatement(db, rowValue, table, schemaMetadata, options.OnlyIfParentExistsTables)
-				writer.WriteString(rowToInsert + "\n")
-			}
-			exportPoint = upperLimit
+		if !shouldFollowReferenceToLink(path, table, tableReference) {
+			continue
 		}
+		tablesReferencesBy = append(tablesReferencesBy, getTablesExportOrder(schemaMetadata, tableReference, processedTables, path)...)
 	}
+
+	return append(append(tablesReferences, table), tablesReferencesBy...)
 }
 
 // GetRowsFromKeys check if we should move this to a method in the type tableData
@@ -131,14 +189,19 @@ func GetRowsFromKeys(db *sql.DB, table schemareader.Table, keys []TableKey) [][]
 	formattedColumns := strings.Join(table.Columns, ", ")
 
 	columnsFilter := make([]string, 0)
-	for column, _ := range keys[0].Key {
-		columnsFilter = append(columnsFilter, column)
+	for _, value := range keys[0].Key {
+		columnsFilter = append(columnsFilter, value.Column)
 	}
 	values := make([]string, 0)
 	for _, key := range keys {
 		row := make([]string, 0)
 		for _, c := range columnsFilter {
-			row = append(row, key.Key[c])
+			for _, x := range key.Key {
+				if x.Column == c {
+					row = append(row, x.Value)
+					break
+				}
+			}
 		}
 
 		values = append(values, "("+strings.Join(row, ",")+")")
@@ -206,7 +269,8 @@ func SubstituteForeignKey(db *sql.DB, table schemareader.Table, tables map[strin
 	return row
 }
 
-func substituteForeignKeyReference(db *sql.DB, table schemareader.Table, tables map[string]schemareader.Table, reference schemareader.Reference, row []sqlUtil.RowDataStructure) []sqlUtil.RowDataStructure {
+func substituteForeignKeyReference(db *sql.DB, table schemareader.Table,
+	tables map[string]schemareader.Table, reference schemareader.Reference, row []sqlUtil.RowDataStructure) []sqlUtil.RowDataStructure {
 	foreignTable := tables[reference.TableName]
 
 	foreignMainUniqueColumns := foreignTable.UniqueIndexes[foreignTable.MainUniqueIndexName].Columns
@@ -243,6 +307,13 @@ func substituteForeignKeyReference(db *sql.DB, table schemareader.Table, tables 
 		// this can happen when the column for the reference is null. Example rhnchanel->org_id
 		if len(rows) > 0 {
 			whereParameters = make([]string, 0)
+
+			countVal, findCountVal := referrencesCall[reference.TableName]
+			if !findCountVal {
+				countVal = 0
+			}
+			countVal++
+			referrencesCall[reference.TableName] = countVal
 
 			for _, foreignColumn := range foreignMainUniqueColumns {
 				// produce the where clause

@@ -167,6 +167,8 @@ func processAndInsertProducts(db *sql.DB, writer *bufio.Writer) {
 	}
 
 	dumper.DumpAllTablesData(db, writer, schemaMetadata, startingTables, whereFilterClause, onlyIfParentExistsTables)
+	writer.WriteString("-- end of product tables")
+	writer.WriteString("\n")
 	log.Debug().Msg("products export done")
 }
 

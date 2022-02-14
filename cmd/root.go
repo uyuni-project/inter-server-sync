@@ -1,11 +1,13 @@
 package cmd
 
 import (
+	"fmt"
 	"log/syslog"
 	"os"
 	"runtime/pprof"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -32,15 +34,15 @@ func init() {
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
 		logInit()
 		cpuProfileInit()
+		memProfileDump()
 	}
 	rootCmd.PersistentPostRun = func(cmd *cobra.Command, args []string) {
 		cpuProfileTearDown()
-		memProfileDump()
 	}
 	rootCmd.PersistentFlags().StringVar(&logLevel, "logLevel", "error", "application log level")
 	rootCmd.PersistentFlags().StringVar(&serverConfig, "serverConfig", "/etc/rhn/rhn.conf", "Server configuration file")
-	rootCmd.PersistentFlags().StringVar(&cpuProfile, "cpuProfile", "", "cpuProfile file location")
-	rootCmd.PersistentFlags().StringVar(&memProfile, "memProfile", "", "memProfile file location")
+	rootCmd.PersistentFlags().StringVar(&cpuProfile, "cpuProfile", "", "cpuProfile export folder location")
+	rootCmd.PersistentFlags().StringVar(&memProfile, "memProfile", "", "memProfile export folder location")
 }
 
 func logCallerMarshalFunction(file string, line int) string {
@@ -81,7 +83,7 @@ func logInit() {
 
 func cpuProfileInit() {
 	if cpuProfile != "" {
-		f, err := os.Create(cpuProfile)
+		f, err := os.Create(cpuProfile + "end_cpu_profile.prof")
 		if err != nil {
 			log.Error().Err(err).Msg("could not create CPU profile: ")
 		}
@@ -91,6 +93,7 @@ func cpuProfileInit() {
 		}
 	}
 }
+
 func cpuProfileTearDown() {
 	if cpuProfile != "" {
 		pprof.StopCPUProfile()
@@ -98,15 +101,25 @@ func cpuProfileTearDown() {
 }
 
 func memProfileDump() {
-	if memProfile != "" {
-		f, err := os.Create(memProfile)
-		if err != nil {
-			log.Error().Err(err).Msg("could not create memory profile: ")
-		}
-		defer f.Close() // error handling omitted for example
-		//runtime.GC()    // get up-to-date statistics
-		if err := pprof.WriteHeapProfile(f); err != nil {
-			log.Error().Err(err).Msg("could not write memory profile: ")
-		}
+	if log.Debug().Enabled() && len(memProfile) > 0 {
+
+		go func() {
+
+			count := 0
+			for {
+				time.Sleep(30 * time.Second)
+				fileName := fmt.Sprintf("%s/memory_profile_%d.prof", memProfile, count)
+				f, err := os.Create(fileName)
+				if err != nil {
+					log.Error().Err(err).Msg(fmt.Sprintf("could not create memory profile file: %s", fileName))
+					break
+				}
+				if err := pprof.WriteHeapProfile(f); err != nil {
+					log.Error().Err(err).Msg("could not write memory profile: ")
+				}
+				f.Close()
+				count++
+			}
+		}()
 	}
 }

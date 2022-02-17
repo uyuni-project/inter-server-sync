@@ -21,6 +21,7 @@ func PrintTableDataOrdered(db *sql.DB, writer *bufio.Writer, schemaMetadata map[
 
 	printCleanTables(db, writer, schemaMetadata, startingTable, make(map[string]bool), make([]string, 0), options)
 	printTableData(db, writer, schemaMetadata, data, startingTable, make(map[string]bool), make([]string, 0), options)
+	cache = make(map[string]string)
 }
 
 /**

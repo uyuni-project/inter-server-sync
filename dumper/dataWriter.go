@@ -97,13 +97,10 @@ func printTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]
 	for _, reference := range table.ReferencedBy {
 
 		tableReference, ok := schemaMetadata[reference.TableName]
-		if !ok || !tableReference.Export {
-			continue
+		if ok && tableReference.Export && shouldFollowReferenceToLink(path, table, tableReference) {
+			printTableData(db, writer, schemaMetadata, data, tableReference, processedTables, path, options, callback)
 		}
-		if !shouldFollowReferenceToLink(path, table, tableReference) {
-			continue
-		}
-		printTableData(db, writer, schemaMetadata, data, tableReference, processedTables, path, options, callback)
+
 	}
 
 	callback(db, writer, schemaMetadata, table, data)

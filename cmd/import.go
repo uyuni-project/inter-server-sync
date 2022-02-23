@@ -17,10 +17,14 @@ var importCmd = &cobra.Command{
 }
 
 var importDir string
+var xmlRpcUser string
+var xmlRpcPassword string
 
 func init() {
 
 	importCmd.Flags().StringVar(&importDir, "importDir", ".", "Location import data from")
+	importCmd.Flags().StringVar(&xmlRpcUser, "xmlRpcUser", "admin", "A username to access the XML-RPC Api")
+	importCmd.Flags().StringVar(&xmlRpcPassword, "xmlRpcPassword", "admin", "A password to access the XML-RPC Api")
 	importCmd.Args = cobra.NoArgs
 
 	rootCmd.AddCommand(importCmd)
@@ -32,7 +36,7 @@ func runImport(cmd *cobra.Command, args []string) {
 	fversion, fproduct := getImportVersionProduct(absImportDir)
 	sversion, sproduct := utils.GetCurrentServerVersion()
 	if fversion != sversion || fproduct != sproduct {
-		log.Fatal().Msgf("Wrong version detected. Fileversion = %s ; Serverversion = %s", fversion, sversion)
+		log.Info().Msgf("Wrong version detected. Fileversion = %s ; Serverversion = %s", fversion, sversion)
 	}
 	validateFolder(absImportDir)
 	runPackageFileSync(absImportDir)
@@ -95,35 +99,18 @@ func runConfigFilesSync(dir string, user string, password string) (interface{}, 
 }
 
 func runImportSql(absImportDir string) {
-	func() {
-		_, err := os.Stat(fmt.Sprintf("%s/sql_statements.sql", absImportDir))
-		if os.IsExist(err) {
-			cmd := exec.Command("spacewalk-sql", fmt.Sprintf("%s/sql_statements.sql", absImportDir))
-			cmd.Stdin = os.Stdin
-			cmd.Stdout = os.Stdout
-			cmd.Stderr = os.Stderr
-			log.Info().Msg("starting sql import")
-			err := cmd.Run()
-			if err != nil {
-				log.Fatal().Err(err).Msg("error running the sql script")
-			}
-		}
-	}()
 
-	func() {
-		_, err := os.Stat(fmt.Sprintf("%s/configurations.sql", absImportDir))
-		if err == nil {
-			cmd := exec.Command("spacewalk-sql", fmt.Sprintf("%s/configurations.sql", absImportDir))
-			err = cmd.Run()
-			if err != nil {
-				log.Fatal().Err(err).Msg("error running the sql script (configurations)")
-			}
-			err = runConfigFilesSync(absImportDir, xmlRpcUser, xmlRpcPassword)
-			if err != nil {
-				log.Fatal().Err(err).Msg("error synchronizing files")
-			}
-		}
-
-	}()
-
+	cmd := exec.Command("spacewalk-sql", fmt.Sprintf("%s/sql_statements.sql", absImportDir))
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	log.Info().Msg("starting sql import")
+	err := cmd.Run()
+	if err != nil {
+		log.Fatal().Err(err).Msg("error running the sql script")
+	}
+	_, err = runConfigFilesSync(absImportDir, xmlRpcUser, xmlRpcPassword)
+	if err != nil {
+		log.Fatal().Err(err).Msg("error synchronizing configuration files")
+	}
 }

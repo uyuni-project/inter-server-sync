@@ -32,27 +32,7 @@ func ConfigTableNames() []string {
 	}
 }
 
-func DumpConfigs(options ChannelDumperOptions) {
-	var outputFolderAbs = options.GetOutputFolderAbsPath()
-	db := schemareader.GetDBconnection(options.ServerConfig)
-	defer db.Close()
-	//file, err := os.OpenFile(outputFolderAbs + "/sql_statements.sql", os.O_APPEND | os.O_WRONLY | os.O_CREATE, 0600)
-	file, err := os.Create(outputFolderAbs + "/configurations.sql")
-	if err != nil {
-		log.Fatal().Err(err).Msg("error creating sql file")
-		panic(err)
-	}
-	defer file.Close()
-	bufferWriter := bufio.NewWriter(file)
-	defer bufferWriter.Flush()
-
-	bufferWriter.WriteString("BEGIN;\n")
-	processConfigs(db, bufferWriter, loadConfigsToProcess(db, options), options)
-
-	bufferWriter.WriteString("COMMIT;\n")
-}
-
-func loadConfigsToProcess(db *sql.DB, options ChannelDumperOptions) []string {
+func loadConfigsToProcess(db *sql.DB, options DumperOptions) []string {
 	labels := channelsProcess{make(map[string]bool), make([]string, 0)}
 	for _, singleChannel := range options.ConfigLabels {
 		if _, ok := labels.channelsMap[singleChannel]; !ok {
@@ -76,7 +56,7 @@ func loadConfigsToProcess(db *sql.DB, options ChannelDumperOptions) []string {
 	return labels.channels
 }
 
-func processConfigs(db *sql.DB, writer *bufio.Writer, labels []string, options ChannelDumperOptions) {
+func processConfigs(db *sql.DB, writer *bufio.Writer, labels []string, options DumperOptions) {
 	log.Info().Msg(fmt.Sprintf("%d channels to process", len(labels)))
 	schemaMetadata := schemareader.ReadTablesSchema(db, ConfigTableNames())
 	log.Debug().Msg("channel schema metadata loaded")
@@ -101,7 +81,7 @@ func processConfigs(db *sql.DB, writer *bufio.Writer, labels []string, options C
 }
 
 func processConfigChannel(db *sql.DB, writer *bufio.Writer, channelLabel string,
-	schemaMetadata map[string]schemareader.Table, options ChannelDumperOptions) {
+	schemaMetadata map[string]schemareader.Table, options DumperOptions) {
 	whereFilter := fmt.Sprintf("label = '%s'", channelLabel)
 	tableData := dumper.DataCrawler(db, schemaMetadata, schemaMetadata["rhnconfigchannel"], whereFilter, options.StartingDate)
 	log.Debug().Msg("finished table data crawler")

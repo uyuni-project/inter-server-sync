@@ -1,33 +1,78 @@
 package xmlrpc
 
 import (
-	"github.com/uyuni-project/hub-xmlrpc-api/config"
-	"github.com/uyuni-project/hub-xmlrpc-api/uyuni"
-	"github.com/uyuni-project/hub-xmlrpc-api/uyuni/client"
+	"context"
+	"github.com/uyuni-project/xmlrpc-public-methods"
+	"net"
+	"net/http"
+	"time"
 )
 
-type xmlRpcClient struct {
-	username string
-	password string
+const (
+	ConnectTimeout = 10
+	RequestTimeout = 10
+	Endpoint       = "http://localhost/rpc/api"
+	AuthMethod     = "auth.login"
+	SyncMethod     = "configchannel.syncSaltFilesOnDisk"
+)
+
+type Client interface {
+	SyncConfigFiles(labels []string) (interface{}, error)
 }
 
-func NewClient(username string, password string) *xmlRpcClient {
-	return &xmlRpcClient{
+type client struct {
+	connectTimeout int
+	requestTimeout int
+	endpoint       string
+	username       string
+	password       string
+}
+
+func NewClient(username string, password string) *client {
+	return &client{
+		ConnectTimeout,
+		RequestTimeout,
+		Endpoint,
 		username,
 		password,
 	}
 }
 
-func (xmlRpc *xmlRpcClient) SyncConfigFiles(labels []string) (interface{}, error) {
-	method := "configchannel.syncSaltFilesOnDisk"
+func (c *client) executeCall(endpoint string, call string, args []interface{}) (response interface{}, err error) {
+	client, err := getClientWithTimeout(endpoint, c.connectTimeout, c.requestTimeout)
+	if err != nil {
+		return nil, err
+	}
+	defer client.Close()
+	err = client.Call(call, args, &response)
+	return response, err
+}
 
-	cfg := config.NewConfig()
-	cl := client.NewClient(cfg.ConnectTimeout, cfg.RequestTimeout)
-	exec := uyuni.NewUyuniCallExecutor(cl)
+func getClientWithTimeout(url string, connectTimeout, requestTimeout int) (*xmlrpc.Client, error) {
+	transport := http.Transport{
+		DialContext: timeoutDialer(time.Duration(connectTimeout)*time.Second, time.Duration(requestTimeout)*time.Second),
+	}
+	return xmlrpc.NewClient(url, &transport)
+}
 
-	auth := uyuni.NewUyuniAuthenticator(exec)
-	token, err := auth.Login(cfg.HubAPIURL, xmlRpc.username, xmlRpc.password)
-	resp, err := exec.ExecuteCall(cfg.HubAPIURL, method, []interface{}{token, labels})
+func timeoutDialer(connectTimeout, requestTimeout time.Duration) func(ctx context.Context, net, addr string) (c net.Conn, err error) {
+	return func(ctx context.Context, netw, addr string) (net.Conn, error) {
+		conn, err := net.DialTimeout(netw, addr, connectTimeout)
+		if err != nil {
+			return nil, err
+		}
+		conn.SetDeadline(time.Now().Add(requestTimeout))
+		return conn, nil
+	}
+}
 
-	return resp, err
+func (c *client) SyncConfigFiles(labels []string) (interface{}, error) {
+
+	credentials := []interface{}{c.username, c.password}
+	token, err := c.executeCall(c.endpoint, AuthMethod, credentials)
+	if err != nil {
+		return nil, err
+	}
+	syncPayload := []interface{}{token, labels}
+	return c.executeCall(c.endpoint, SyncMethod, syncPayload)
 }

@@ -88,11 +88,10 @@ func runPackageFileSync(absImportDir string) {
 	}
 }
 
-func runConfigFilesSync(dir string, user string, password string) error {
+func runConfigFilesSync(dir string, user string, password string) (interface{}, error) {
 	labels := utils.ReadFileByLine(fmt.Sprintf("%s/exportedConfigs.txt", dir))
 	client := xmlrpc.NewClient(user, password)
-	_, err := client.SyncConfigFiles(labels)
-	return err
+	return client.SyncConfigFiles(labels)
 }
 
 func runImportSql(absImportDir string) {

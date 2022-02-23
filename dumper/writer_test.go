@@ -372,6 +372,93 @@ func TestFormatOnConflict(t *testing.T) {
 	}
 }
 
+func TestFormatOnConflictRhnConfigInfo(t *testing.T) {
+	// 01 Arrange
+	table := schemareader.Table{Name: "rhnconfiginfo"}
+
+	type Case struct {
+		row        []sqlUtil.RowDataStructure
+		constraint string
+	}
+	testCases := []Case{
+		{
+			row: []sqlUtil.RowDataStructure{
+				{ColumnName: "username", Value: nil},
+				{ColumnName: "groupname", Value: nil},
+				{ColumnName: "filemode", Value: nil},
+				{ColumnName: "selinux_ctx", Value: TableDump{}},
+				{ColumnName: "symlink_target_filename_id", Value: TableDump{}},
+			},
+			// rhn_confinfo_s_se_uq
+			constraint: "(symlink_target_filename_id, selinux_ctx) " +
+				"WHERE username IS NULL " +
+				"AND groupname IS NULL " +
+				"AND filemode IS NULL " +
+				"AND selinux_ctx IS NOT NULL " +
+				"AND symlink_target_filename_id IS NOT NULL",
+		},
+		{
+			row: []sqlUtil.RowDataStructure{
+				{ColumnName: "username", Value: nil},
+				{ColumnName: "groupname", Value: nil},
+				{ColumnName: "filemode", Value: nil},
+				{ColumnName: "selinux_ctx", Value: nil},
+				{ColumnName: "symlink_target_filename_id", Value: TableDump{}},
+			},
+			// rhn_confinfo_s_uq
+			constraint: "(symlink_target_filename_id) " +
+				"WHERE username IS NULL " +
+				"AND groupname IS NULL " +
+				"AND filemode IS NULL " +
+				"AND selinux_ctx IS NULL " +
+				"AND symlink_target_filename_id IS NOT NULL",
+		},
+		{
+			row: []sqlUtil.RowDataStructure{
+				{ColumnName: "username", Value: TableDump{}},
+				{ColumnName: "groupname", Value: TableDump{}},
+				{ColumnName: "filemode", Value: TableDump{}},
+				{ColumnName: "selinux_ctx", Value: TableDump{}},
+				{ColumnName: "symlink_target_filename_id", Value: nil},
+			},
+			// rhn_confinfo_ugf_se_uq
+			constraint: "(username, groupname, filemode, selinux_ctx) " +
+				"WHERE username IS NOT NULL " +
+				"AND groupname IS NOT NULL " +
+				"AND filemode IS NOT NULL " +
+				"AND selinux_ctx IS NOT NULL " +
+				"AND symlink_target_filename_id IS NULL",
+		},
+		{
+			row: []sqlUtil.RowDataStructure{
+				{ColumnName: "username", Value: TableDump{}},
+				{ColumnName: "groupname", Value: TableDump{}},
+				{ColumnName: "filemode", Value: TableDump{}},
+				{ColumnName: "selinux_ctx", Value: nil},
+				{ColumnName: "symlink_target_filename_id", Value: nil},
+			},
+			// rhn_confinfo_ugf_uq
+			constraint: "(username, groupname, filemode) " +
+				"WHERE username IS NOT NULL " +
+				"AND groupname IS NOT NULL " +
+				"AND filemode IS NOT NULL " +
+				"AND selinux_ctx IS NULL " +
+				"AND symlink_target_filename_id IS NULL",
+		},
+	}
+
+	for i, c := range testCases {
+		// 02 Act
+		result := formatOnConflict(c.row, table)
+
+		// 03 Assert
+		expected := c.constraint + " DO UPDATE SET "
+		if strings.Compare(result, expected) != 0 {
+			t.Errorf(fmt.Sprintf("Case # %d: expected %s, but got %s", i, expected, result))
+		}
+	}
+}
+
 // createTestCase is a factory method for writerTestCase
 func createTestCase(graph TablesGraph, root string, options PrintSqlOptions) writerTestCase {
 	repo := tests.CreateDataRepository()

@@ -375,33 +375,32 @@ func formatOnConflict(row []sqlUtil.RowDataStructure, table schemareader.Table) 
 		constraint = "(id)"
 
 	case "rhnconfiginfo":
-		constraint = "(username, groupname, filemode) WHERE username IS NOT NULL AND groupname IS NOT NULL AND filemode IS NOT NULL AND selinux_ctx IS NULL AND symlink_target_filename_id IS NULL"
-		for _, field := range row {
-			if strings.Compare(field.ColumnName, "username") == 0 {
-				if strings.Compare(field.ColumnName, "groupname") == 0 {
-					if strings.Compare(field.ColumnName, "filemode") == 0 {
-						if strings.Compare(field.ColumnName, "selinux_ctx") != 0 {
-							if strings.Compare(field.ColumnName, "symlink_target_filename") != 0 {
-								constraint = "(symlink_target_filename_id, selinux_ctx) WHERE username IS NULL AND groupname IS NULL AND filemode IS NULL AND selinux_ctx IS NOT NULL AND symlink_target_filename_id IS NOT NULL"
-							}
-						} else if strings.Compare(field.ColumnName, "selinux_ctx") == 0 {
-							if strings.Compare(field.ColumnName, "symlink_target_filename") != 0 {
-								constraint = "(symlink_target_filename_id) WHERE username IS NULL AND groupname IS NULL AND filemode IS NULL AND selinux_ctx IS NULL AND symlink_target_filename_id IS NOT NULL"
-							}
-						}
-					}
-				}
-			} else if strings.Compare(field.ColumnName, "username") != 0 {
-				if strings.Compare(field.ColumnName, "groupname") != 0 {
-					if strings.Compare(field.ColumnName, "filemode") != 0 {
-						if strings.Compare(field.ColumnName, "selinux_ctx") != 0 {
-							if strings.Compare(field.ColumnName, "symlink_target_filename") == 0 {
-								constraint = "(username, groupname, filemode, selinux_ctx) WHERE username IS NOT NULL AND groupname IS NOT NULL AND filemode IS NOT NULL AND selinux_ctx IS NOT NULL AND symlink_target_filename_id IS NULL"
-							}
-						}
-					}
-				}
+		constraints := map[string]string{
+			"rhn_confinfo_ugf_se_uq": "(username, groupname, filemode, selinux_ctx) WHERE username IS NOT NULL AND groupname IS NOT NULL AND filemode IS NOT NULL AND selinux_ctx IS NOT NULL AND symlink_target_filename_id IS NULL",
+			"rhn_confinfo_ugf_uq":    "(username, groupname, filemode) WHERE username IS NOT NULL AND groupname IS NOT NULL AND filemode IS NOT NULL AND selinux_ctx IS NULL AND symlink_target_filename_id IS NULL",
+			"rhn_confinfo_s_se_uq":   "(symlink_target_filename_id, selinux_ctx) WHERE username IS NULL AND groupname IS NULL AND filemode IS NULL AND selinux_ctx IS NOT NULL AND symlink_target_filename_id IS NOT NULL",
+			"rhn_confinfo_s_uq":      "(symlink_target_filename_id) WHERE username IS NULL AND groupname IS NULL AND filemode IS NULL AND selinux_ctx IS NULL AND symlink_target_filename_id IS NOT NULL",
+		}
+		// Only username and selinux_ctx columns matter to differentiate between indexes
+		columns := map[string]bool{
+			"username":    false,
+			"selinux_ctx": false,
+		}
+		// Go through all the columns first in case the columns come unordered
+		for _, col := range row {
+			if (col.ColumnName == "username" || col.ColumnName == "selinux_ctx") && col.Value != nil {
+				columns[col.ColumnName] = true
 			}
+		}
+		constraint = constraints["rhn_confinfo_s_uq"]
+		if columns["username"] && columns["selinux_ctx"] {
+			constraint = constraints["rhn_confinfo_ugf_se_uq"]
+		}
+		if !columns["username"] && columns["selinux_ctx"] {
+			constraint = constraints["rhn_confinfo_s_se_uq"]
+		}
+		if columns["username"] && !columns["selinux_ctx"] {
+			constraint = constraints["rhn_confinfo_ugf_uq"]
 		}
 
 	case "rhnerrata":

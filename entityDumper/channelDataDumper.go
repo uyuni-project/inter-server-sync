@@ -178,8 +178,7 @@ func processAndInsertChannels(db *sql.DB, writer *bufio.Writer, channels []strin
 
 	fileChannels, err := os.Create(options.GetOutputFolderAbsPath() + "/exportedChannels.txt")
 	if err != nil {
-		log.Fatal().Err(err).Msg("error creating sql file")
-		panic(err)
+		log.Panic().Err(err).Msg("error creating sql file")
 	}
 
 	defer fileChannels.Close()

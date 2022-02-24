@@ -32,9 +32,8 @@ func DumpPackageFiles(db *sql.DB, schemaMetadata map[string]schemareader.Table, 
 			source := fmt.Sprintf("%s/%s", serverDataFolder, path.Value)
 			target := fmt.Sprintf("%s/%s", outputFolder, path.Value)
 			_, error := copy(source, target)
-			if error != nil{
-				log.Fatal("could not Copy File: ", error)
-				panic(error)
+			if error != nil {
+				log.Panic("could not Copy File: ", error)
 			}
 		}
 		exportPoint = upperLimit

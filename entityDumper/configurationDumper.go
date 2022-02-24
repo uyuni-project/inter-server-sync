@@ -62,8 +62,7 @@ func processConfigs(db *sql.DB, writer *bufio.Writer, labels []string, options D
 	log.Debug().Msg("channel schema metadata loaded")
 	configLabels, err := os.Create(options.GetOutputFolderAbsPath() + "/exportedConfigs.txt")
 	if err != nil {
-		log.Fatal().Err(err).Msg("error creating exportedConfigChannel file")
-		panic(err)
+		log.Panic().Err(err).Msg("error creating exportedConfigChannel file")
 	}
 	defer configLabels.Close()
 	bufferWriterChannels := bufio.NewWriter(configLabels)

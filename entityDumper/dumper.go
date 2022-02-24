@@ -17,8 +17,7 @@ func DumpAllEntities(options DumperOptions) {
 
 	file, err := os.OpenFile(outputFolderAbs+"/sql_statements.sql", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
-		log.Fatal().Err(err).Msg("error creating sql file")
-		panic(err)
+		log.Panic().Err(err).Msg("error creating sql file")
 	}
 
 	defer file.Close()

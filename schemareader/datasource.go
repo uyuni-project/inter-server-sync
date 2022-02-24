@@ -22,8 +22,7 @@ type dataSource struct {
 func GetConnectionString(configFilePath string) string {
 	file, err := os.Open(configFilePath)
 	if err != nil {
-		log.Fatal().Err(err).Msg("error loading configuration file")
-		panic(err)
+		log.Panic().Err(err).Msg("error loading configuration file")
 	}
 	defer file.Close()
 
@@ -60,8 +59,7 @@ func GetConnectionString(configFilePath string) string {
 func GetDBconnection(configFilePath string) *sql.DB {
 	db, err := sql.Open("postgres", GetConnectionString(configFilePath))
 	if err != nil {
-		log.Fatal().Err(err).Msg("error getting connection to the database")
-		panic(err)
+		log.Panic().Err(err).Msg("error getting connection to the database")
 	}
 	return db
 }

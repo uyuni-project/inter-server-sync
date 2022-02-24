@@ -53,6 +53,25 @@ func (repo *DataRepository) Expect(stm string, numRecords int, args ...driver.Va
 
 }
 
+// ExpectInfoSchema adds data to repository, which can then be retrieved by the tested function.
+func (repo *DataRepository) ExpectWithRecords(stm string, recs *sqlmock.Rows, args ...driver.Value) {
+
+	// add mock expectation
+	if len(args) > 0 {
+		repo.mock.
+			ExpectQuery(stm).
+			WithArgs(args...).
+			WillReturnRows(recs).
+			RowsWillBeClosed()
+	} else {
+		repo.mock.
+			ExpectQuery(stm).
+			WillReturnRows(recs).
+			RowsWillBeClosed()
+	}
+
+}
+
 // ExpectationsWereMet checks whether all queued expectations
 // were met in order. If any of them was not met - an error is returned.
 func (repo *DataRepository) ExpectationsWereMet() error {

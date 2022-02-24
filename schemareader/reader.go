@@ -285,6 +285,19 @@ func findIndex(indexes map[string]UniqueIndex, columnName string) string {
 	return ""
 }
 
+func findIndexMostColumns(indexes map[string]UniqueIndex) string {
+	mostCols := 0
+	result := ""
+	for name, index := range indexes {
+		numCols := len(index.Columns)
+		if numCols > mostCols {
+			result = name
+			mostCols = numCols
+		}
+	}
+	return result
+}
+
 func readPKSequence(db *sql.DB, tableName string) string {
 	sql := `WITH sequences AS (
 		SELECT sequence_name
@@ -391,7 +404,7 @@ func processTable(db *sql.DB, tableName string, exportable bool) Table {
 		if len(mainUniqueIndexName) == 0 {
 			mainUniqueIndexName = findIndex(indexes, "name")
 			if len(mainUniqueIndexName) == 0 {
-				mainUniqueIndexName = indexNames[0]
+				mainUniqueIndexName = findIndexMostColumns(indexes)
 			}
 		}
 	}

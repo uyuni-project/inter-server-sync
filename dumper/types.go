@@ -32,6 +32,7 @@ type PrintSqlOptions struct {
 	TablesToClean            []string
 	CleanWhereClause         string
 	OnlyIfParentExistsTables []string
+	PostOrderCallback        Callback
 }
 
-type PostOrderCallback func(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, table schemareader.Table, data DataDumper)
+type Callback func(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, table schemareader.Table, data DataDumper)

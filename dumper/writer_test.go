@@ -284,7 +284,6 @@ func TestPrintTableData(t *testing.T) {
 		testCase.processedTables,
 		testCase.path,
 		testCase.options,
-		createPostOrderCallback(),
 	)
 
 	// 03 Assert
@@ -337,7 +336,6 @@ func TestPrintTableDataRhnConfigFileCase(t *testing.T) {
 		testCase.processedTables,
 		testCase.path,
 		testCase.options,
-		createPostOrderCallback(),
 	)
 
 	// 03 Assert

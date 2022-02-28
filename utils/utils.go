@@ -2,8 +2,10 @@ package utils
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"reflect"
 	"strings"
@@ -64,6 +66,7 @@ func FolderExists(path string) error {
 }
 
 func GetCurrentServerVersion() (string, string) {
+
 	rhndefault := "/etc/rhn/rhn.conf"
 	webpath := "/usr/share/rhn/config-defaults/rhn_web.conf"
 	altpath := "/usr/share/rhn/config-defaults/rhn.conf"
@@ -136,4 +139,43 @@ func ValidateDate(date string) (string, bool) {
 		}
 	}
 	return "", false
+}
+
+func ReadFileByLine(path string) []string {
+
+	msg := fmt.Sprintf("error opening file at %s", path)
+	file, err := os.Open(path)
+	checkError(err, msg)
+	defer func(file *os.File) {
+		err := file.Close()
+		checkError(err, msg)
+	}(file)
+
+	scanner := bufio.NewScanner(file)
+	scanner.Split(bufio.ScanLines)
+	var labels []string
+	for scanner.Scan() {
+		labels = append(labels, scanner.Text())
+	}
+	return labels
+}
+
+// ExecInteractivePrompt calls a command, expects an interactive prompt to start, passes the given input into it.
+func ExecInteractivePrompt(name string, input string) error {
+	cmd := exec.Command(name)
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	buffer := bytes.Buffer{}
+	buffer.Write([]byte(input))
+	cmd.Stdin = &buffer
+
+	return cmd.Run()
+}
+
+func checkError(err error, msg string) {
+	if err != nil {
+		log.Fatal().Err(err).Msg(msg)
+	}
 }

@@ -24,16 +24,14 @@ func ExecuteQueryWithResults(db *sql.DB, sql string, scanParameters ...interface
 
 	if err != nil {
 		log.Printf("Error : While executing '%s', with parameters %s", sql, scanParameters)
-		log.Fatal().Err(err).Msg("error executing query")
-		panic(err)
+		log.Panic().Err(err).Msg("error executing query")
 	}
 	defer rows.Close()
 
 	// get column type info
 	columnTypes, err := rows.ColumnTypes()
 	if err != nil {
-		log.Fatal().Err(err).Msg("error getting column types")
-		panic(err)
+		log.Panic().Err(err).Msg("error getting column types")
 	}
 
 	// used for allocation & dereferencing
@@ -55,8 +53,7 @@ func ExecuteQueryWithResults(db *sql.DB, sql string, scanParameters ...interface
 
 		// scan each column Value into the corresponding **T Value
 		if err := rows.Scan(rowResult...); err != nil {
-			log.Fatal().Err(err).Msg("error getting rows")
-			panic(err)
+			log.Panic().Err(err).Msg("error getting rows")
 		}
 
 		// dereference pointers

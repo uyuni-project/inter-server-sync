@@ -20,6 +20,8 @@ func DataCrawler(db *sql.DB, schemaMetadata map[string]schemareader.Table, start
 
 IterateItemsLoop:
 	for len(itemsToProcess) > 0 {
+
+		// LIFO instead of FIFO improves performance
 		itemToProcess := itemsToProcess[len(itemsToProcess)-1]
 		itemsToProcess = itemsToProcess[0 : len(itemsToProcess)-1]
 
@@ -138,6 +140,22 @@ func followReferencesFrom(db *sql.DB, schemaMetadata map[string]schemareader.Tab
 	return result
 }
 
+func shouldFollowToLinkPreOrder(path []string, currentTable schemareader.Table, referencedTable schemareader.Table) bool {
+	forbiddenNavigations := map[string][]string{
+		"rhnconfigfile": {"rhnconfigrevision"},
+	}
+
+	if tableNavigation, ok := forbiddenNavigations[currentTable.Name]; ok {
+		for _, targetNavigationTable := range tableNavigation {
+			if strings.Compare(targetNavigationTable, referencedTable.Name) == 0 {
+				return false
+			}
+		}
+	}
+	
+	return true
+}
+
 func shouldFollowReferenceToLink(path []string, currentTable schemareader.Table, referencedTable schemareader.Table) bool {
 	// if we already passed by the referencedTable we don't want to follow
 	for _, p := range path {
@@ -153,6 +171,8 @@ func shouldFollowReferenceToLink(path []string, currentTable schemareader.Table,
 		"rhnpackageevr":    {"rhnpackagenevra"},
 		"rhnerrata":        {"rhnerratafile"},
 		"rhnerratafile":    {"rhnerratafilechannel"},
+		"rhnconfigchannel": {"rhnconfigfile"},
+		"rhnconfigfile":    {"rhnconfigrevision"},
 	}
 
 	if tableNavigation, ok := forcedNavegations[currentTable.Name]; ok {

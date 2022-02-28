@@ -18,6 +18,7 @@ var exportCmd = &cobra.Command{
 
 var channels []string
 var channelWithChildren []string
+var configChannels []string
 var outputDir string
 var metadataOnly bool
 var startingDate string
@@ -28,6 +29,7 @@ func init() {
 	exportCmd.Flags().StringVar(&outputDir, "outputDir", ".", "Location for generated data")
 	exportCmd.Flags().BoolVar(&metadataOnly, "metadataOnly", false, "export only metadata")
 	exportCmd.Flags().StringVar(&startingDate, "packagesOnlyAfter", "", "Only export packages added or modified after the specified date (date format can be 'YYYY-MM-DD' or 'YYYY-MM-DD hh:mm:ss')")
+	exportCmd.Flags().StringSliceVar(&configChannels, "configChannels", nil, "Configuration Channels to be exported")
 	exportCmd.Args = cobra.NoArgs
 
 	rootCmd.AddCommand(exportCmd)
@@ -37,7 +39,7 @@ func runExport(cmd *cobra.Command, args []string) {
 	log.Debug().Msg("export called")
 	log.Debug().Msg(strings.Join(channels, ","))
 	log.Debug().Msg(outputDir)
-	// check output dir existance and create it if needed.
+	// check output dir existence and create it if needed.
 
 	// Validate data
 	validatedDate, ok := utils.ValidateDate(startingDate)
@@ -45,15 +47,16 @@ func runExport(cmd *cobra.Command, args []string) {
 		log.Fatal().Msg("Unable to validate the date. Allowed formats are 'YYYY-MM-DD' or 'YYYY-MM-DD hh:mm:ss'")
 	}
 
-	options := entityDumper.ChannelDumperOptions{
+	options := entityDumper.DumperOptions{
 		ServerConfig:              serverConfig,
 		ChannelLabels:             channels,
+		ConfigLabels:              configChannels,
 		ChannelWithChildrenLabels: channelWithChildren,
 		OutputFolder:              outputDir,
 		MetadataOnly:              metadataOnly,
 		StartingDate:              validatedDate,
 	}
-	entityDumper.DumpChannelData(options)
+	entityDumper.DumpAllEntities(options)
 	var versionfile string
 	versionfile = options.GetOutputFolderAbsPath() + "/version.txt"
 	vf, err := os.Open(versionfile)
@@ -61,7 +64,7 @@ func runExport(cmd *cobra.Command, args []string) {
 	if os.IsNotExist(err) {
 		f, err := os.Create(versionfile)
 		if err != nil {
-			log.Fatal().Msg("Unable to create version file")
+			log.Panic().Msg("Unable to create version file")
 		}
 		vf = f
 	}

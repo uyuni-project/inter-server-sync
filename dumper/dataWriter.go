@@ -81,13 +81,29 @@ func printTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]
 	// follow reference to
 	for _, reference := range table.References {
 		tableReference, ok := schemaMetadata[reference.TableName]
-		if !ok || !tableReference.Export {
-			continue
+		if ok && tableReference.Export && shouldFollowToLinkPreOrder(path, table, tableReference) {
+			printTableData(db, writer, schemaMetadata, data, tableReference, processedTables, path, options)
 		}
-		printTableData(db, writer, schemaMetadata, data, tableReference, processedTables, path, options)
 	}
 
-	// export current table data
+	exportCurrentTableData(db, writer, schemaMetadata, table, data, options)
+
+	// follow reference by
+	for _, reference := range table.ReferencedBy {
+
+		tableReference, ok := schemaMetadata[reference.TableName]
+		if ok && tableReference.Export && shouldFollowReferenceToLink(path, table, tableReference) {
+			printTableData(db, writer, schemaMetadata, data, tableReference, processedTables, path, options)
+		}
+
+	}
+
+	options.PostOrderCallback(db, writer, schemaMetadata, table, data)
+}
+
+func exportCurrentTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table,
+	table schemareader.Table, data DataDumper, options PrintSqlOptions) {
+
 	tableData, dataOK := data.TableData[table.Name]
 	if dataOK {
 		exportPoint := 0
@@ -102,22 +118,8 @@ func printTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]
 				rowToInsert := generateRowInsertStatement(db, rowValue, table, schemaMetadata, options.OnlyIfParentExistsTables)
 				writer.WriteString(rowToInsert + "\n")
 			}
-
 			exportPoint = upperLimit
 		}
-	}
-
-	// follow reference by
-	for _, reference := range table.ReferencedBy {
-
-		tableReference, ok := schemaMetadata[reference.TableName]
-		if !ok || !tableReference.Export {
-			continue
-		}
-		if !shouldFollowReferenceToLink(path, table, tableReference) {
-			continue
-		}
-		printTableData(db, writer, schemaMetadata, data, tableReference, processedTables, path, options)
 	}
 }
 
@@ -169,7 +171,7 @@ func filterRowData(value []sqlUtil.RowDataStructure, table schemareader.Table) [
 
 func substituteKeys(db *sql.DB, table schemareader.Table, row []sqlUtil.RowDataStructure, tableMap map[string]schemareader.Table) []sqlUtil.RowDataStructure {
 	values := substitutePrimaryKey(table, row)
-	values = substituteForeignKey(db, table, tableMap, values)
+	values = SubstituteForeignKey(db, table, tableMap, values)
 	return values
 }
 
@@ -191,7 +193,7 @@ func substitutePrimaryKey(table schemareader.Table, row []sqlUtil.RowDataStructu
 	return rowResult
 }
 
-func substituteForeignKey(db *sql.DB, table schemareader.Table, tables map[string]schemareader.Table, row []sqlUtil.RowDataStructure) []sqlUtil.RowDataStructure {
+func SubstituteForeignKey(db *sql.DB, table schemareader.Table, tables map[string]schemareader.Table, row []sqlUtil.RowDataStructure) []sqlUtil.RowDataStructure {
 	for _, reference := range table.References {
 		row = substituteForeignKeyReference(db, table, tables, reference, row)
 	}
@@ -321,12 +323,43 @@ func formatOnConflict(row []sqlUtil.RowDataStructure, table schemareader.Table) 
 	switch table.Name {
 	case "rhnerrataseverity":
 		constraint = "(id)"
+
+	case "rhnconfiginfo":
+		constraints := map[string]string{
+			"rhn_confinfo_ugf_se_uq": "(username, groupname, filemode, selinux_ctx) WHERE username IS NOT NULL AND groupname IS NOT NULL AND filemode IS NOT NULL AND selinux_ctx IS NOT NULL AND symlink_target_filename_id IS NULL",
+			"rhn_confinfo_ugf_uq":    "(username, groupname, filemode) WHERE username IS NOT NULL AND groupname IS NOT NULL AND filemode IS NOT NULL AND selinux_ctx IS NULL AND symlink_target_filename_id IS NULL",
+			"rhn_confinfo_s_se_uq":   "(symlink_target_filename_id, selinux_ctx) WHERE username IS NULL AND groupname IS NULL AND filemode IS NULL AND selinux_ctx IS NOT NULL AND symlink_target_filename_id IS NOT NULL",
+			"rhn_confinfo_s_uq":      "(symlink_target_filename_id) WHERE username IS NULL AND groupname IS NULL AND filemode IS NULL AND selinux_ctx IS NULL AND symlink_target_filename_id IS NOT NULL",
+		}
+		// Only username and selinux_ctx columns matter to differentiate between indexes
+		columns := map[string]bool{
+			"username":    false,
+			"selinux_ctx": false,
+		}
+		// Go through all the columns first in case the columns come unordered
+		for _, col := range row {
+			if (col.ColumnName == "username" || col.ColumnName == "selinux_ctx") && col.Value != nil {
+				columns[col.ColumnName] = true
+			}
+		}
+		constraint = constraints["rhn_confinfo_s_uq"]
+		if columns["username"] && columns["selinux_ctx"] {
+			constraint = constraints["rhn_confinfo_ugf_se_uq"]
+		}
+		if !columns["username"] && columns["selinux_ctx"] {
+			constraint = constraints["rhn_confinfo_s_se_uq"]
+		}
+		if columns["username"] && !columns["selinux_ctx"] {
+			constraint = constraints["rhn_confinfo_ugf_uq"]
+		}
+
 	case "rhnerrata":
 		// TODO rhnerrata and rhnpackageevr logic is similar, so we extract to one method on future
 		var orgId interface{} = nil
 		for _, field := range row {
 			if strings.Compare(field.ColumnName, "org_id") == 0 {
 				orgId = field.Value
+				break
 			}
 		}
 		if orgId == nil {
@@ -346,6 +379,7 @@ func formatOnConflict(row []sqlUtil.RowDataStructure, table schemareader.Table) 
 		} else {
 			return "(version, release, epoch, ((evr).type)) WHERE epoch IS NOT NULL DO NOTHING"
 		}
+
 	}
 	columnAssignment := formatColumnAssignment(table)
 	return fmt.Sprintf("%s DO UPDATE SET %s", constraint, columnAssignment)

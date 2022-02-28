@@ -257,7 +257,7 @@ func TestPrintTableData(t *testing.T) {
 		"v26": []string{},
 	}
 	root := "root"
-	testCase := createTestCase(graph, root, PrintSqlOptions{})
+	testCase := createTestCase(graph, root, PrintSqlOptions{PostOrderCallback: createCallback()})
 
 	// the data repository expect these statements in the exact same order
 	testCase.repo.Expect("SELECT id, fk_id FROM v26 WHERE (id) in (('0001'));", 1)
@@ -301,57 +301,6 @@ func TestPrintTableData(t *testing.T) {
 	}
 }
 
-func TestPrintTableDataRhnConfigFileCase(t *testing.T) {
-
-	// 01 Arrange
-	rhnConfigFileSize := 10
-	graph := TablesGraph{
-		"root":          []string{"rhnconfigfile"},
-		"rhnconfigfile": []string{},
-	}
-	root := "root"
-	testCase := createTestCase(graph, root, PrintSqlOptions{})
-	setNumberOfRecordsForTable(&testCase, "rhnconfigfile", rhnConfigFileSize)
-
-	// create a WHERE clause of a form 'WHERE (id) in ((0001), (0002)...)'
-	var lookupArray []string
-	for i := 0; i < rhnConfigFileSize; i++ {
-		lookupArray = append(lookupArray, fmt.Sprintf("(%04d)", i+1))
-	}
-	whereClause := fmt.Sprintf("WHERE (id) in (%s);", strings.Join(lookupArray, ","))
-
-	// the data repository expect these statements in the exact same order
-	testCase.repo.Expect(fmt.Sprintf("SELECT id, fk_id FROM rhnconfigfile %s", whereClause), 1)
-	testCase.repo.Expect("SELECT id, fk_id FROM root WHERE (id) in (('0001'));", 1)
-	testCase.repo.Expect("SELECT id, fk_id FROM rhnconfigfile WHERE id = $1;", 1)
-
-	// 02 Act
-	printTableData(
-		testCase.repo.DB,
-		testCase.repo.Writer,
-		testCase.schemaMetadata,
-		testCase.dumper,
-		testCase.startingTable,
-		testCase.processedTables,
-		testCase.path,
-		testCase.options,
-	)
-
-	// 03 Assert
-	if testCase.processedTables == nil {
-		t.Errorf("processedTables is nil")
-	}
-	for node, isExported := range testCase.processedTables {
-		if !isExported {
-			t.Errorf(fmt.Sprintf("Node %v is not exported!", node))
-		}
-	}
-	// checks if all expected statements were indeed executed against the db
-	if err := testCase.repo.ExpectationsWereMet(); err != nil {
-		t.Errorf("Some nodes left unexported. Error message: %s", err)
-	}
-}
-
 func TestFormatOnConflict(t *testing.T) {
 	// 01 Arrange
 	row := []sqlUtil.RowDataStructure{
@@ -366,6 +315,93 @@ func TestFormatOnConflict(t *testing.T) {
 	// 03 Assert
 	if strings.Compare(result, expectedResult) != 0 {
 		t.Errorf(fmt.Sprintf("Expected %s, but got %s", expectedResult, result))
+	}
+}
+
+func TestFormatOnConflictRhnConfigInfo(t *testing.T) {
+	// 01 Arrange
+	table := schemareader.Table{Name: "rhnconfiginfo"}
+
+	type Case struct {
+		row        []sqlUtil.RowDataStructure
+		constraint string
+	}
+	testCases := []Case{
+		{
+			row: []sqlUtil.RowDataStructure{
+				{ColumnName: "username", Value: nil},
+				{ColumnName: "groupname", Value: nil},
+				{ColumnName: "filemode", Value: nil},
+				{ColumnName: "selinux_ctx", Value: TableDump{}},
+				{ColumnName: "symlink_target_filename_id", Value: TableDump{}},
+			},
+			// rhn_confinfo_s_se_uq
+			constraint: "(symlink_target_filename_id, selinux_ctx) " +
+				"WHERE username IS NULL " +
+				"AND groupname IS NULL " +
+				"AND filemode IS NULL " +
+				"AND selinux_ctx IS NOT NULL " +
+				"AND symlink_target_filename_id IS NOT NULL",
+		},
+		{
+			row: []sqlUtil.RowDataStructure{
+				{ColumnName: "username", Value: nil},
+				{ColumnName: "groupname", Value: nil},
+				{ColumnName: "filemode", Value: nil},
+				{ColumnName: "selinux_ctx", Value: nil},
+				{ColumnName: "symlink_target_filename_id", Value: TableDump{}},
+			},
+			// rhn_confinfo_s_uq
+			constraint: "(symlink_target_filename_id) " +
+				"WHERE username IS NULL " +
+				"AND groupname IS NULL " +
+				"AND filemode IS NULL " +
+				"AND selinux_ctx IS NULL " +
+				"AND symlink_target_filename_id IS NOT NULL",
+		},
+		{
+			row: []sqlUtil.RowDataStructure{
+				{ColumnName: "username", Value: TableDump{}},
+				{ColumnName: "groupname", Value: TableDump{}},
+				{ColumnName: "filemode", Value: TableDump{}},
+				{ColumnName: "selinux_ctx", Value: TableDump{}},
+				{ColumnName: "symlink_target_filename_id", Value: nil},
+			},
+			// rhn_confinfo_ugf_se_uq
+			constraint: "(username, groupname, filemode, selinux_ctx) " +
+				"WHERE username IS NOT NULL " +
+				"AND groupname IS NOT NULL " +
+				"AND filemode IS NOT NULL " +
+				"AND selinux_ctx IS NOT NULL " +
+				"AND symlink_target_filename_id IS NULL",
+		},
+		{
+			row: []sqlUtil.RowDataStructure{
+				{ColumnName: "username", Value: TableDump{}},
+				{ColumnName: "groupname", Value: TableDump{}},
+				{ColumnName: "filemode", Value: TableDump{}},
+				{ColumnName: "selinux_ctx", Value: nil},
+				{ColumnName: "symlink_target_filename_id", Value: nil},
+			},
+			// rhn_confinfo_ugf_uq
+			constraint: "(username, groupname, filemode) " +
+				"WHERE username IS NOT NULL " +
+				"AND groupname IS NOT NULL " +
+				"AND filemode IS NOT NULL " +
+				"AND selinux_ctx IS NULL " +
+				"AND symlink_target_filename_id IS NULL",
+		},
+	}
+
+	for i, c := range testCases {
+		// 02 Act
+		result := formatOnConflict(c.row, table)
+
+		// 03 Assert
+		expected := c.constraint + " DO UPDATE SET "
+		if strings.Compare(result, expected) != 0 {
+			t.Errorf(fmt.Sprintf("Case # %d: expected %s, but got %s", i, expected, result))
+		}
 	}
 }
 

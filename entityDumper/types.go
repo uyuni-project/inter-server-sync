@@ -4,9 +4,10 @@ import (
 	"github.com/uyuni-project/inter-server-sync/utils"
 )
 
-type ChannelDumperOptions struct {
+type DumperOptions struct {
 	ServerConfig              string
 	ChannelLabels             []string
+	ConfigLabels              []string
 	ChannelWithChildrenLabels []string
 	OutputFolder              string
 	outputFolderAbsPath       string
@@ -14,7 +15,7 @@ type ChannelDumperOptions struct {
 	StartingDate              string
 }
 
-func (opt *ChannelDumperOptions) GetOutputFolderAbsPath() string {
+func (opt *DumperOptions) GetOutputFolderAbsPath() string {
 	if "" == opt.outputFolderAbsPath {
 		opt.outputFolderAbsPath = utils.GetAbsPath(opt.OutputFolder)
 	}

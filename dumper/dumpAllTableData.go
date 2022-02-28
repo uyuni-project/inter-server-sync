@@ -44,7 +44,7 @@ func processTableDataWithLinks(db *sql.DB, writer *bufio.Writer, schemaMetadata 
 
 	for _, reference := range table.References {
 		tableReference, ok := schemaMetadata[reference.TableName]
-		if !ok || !tableReference.Export{
+		if !ok || !tableReference.Export {
 			continue
 		}
 		log.Trace().Msgf("%s", "Table processed: " + table.Name)
@@ -56,7 +56,7 @@ func processTableDataWithLinks(db *sql.DB, writer *bufio.Writer, schemaMetadata 
 
 	for _, reference := range table.ReferencedBy {
 		tableReference, ok := schemaMetadata[reference.TableName]
-		if !ok || !tableReference.Export{
+		if !ok || !tableReference.Export {
 			continue
 		}
 		if !shouldFollowReferenceToLink(path, table, tableReference) {

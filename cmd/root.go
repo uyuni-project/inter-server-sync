@@ -87,8 +87,7 @@ func cpuProfileInit() {
 		}
 		defer f.Close() // error handling omitted for example
 		if err := pprof.StartCPUProfile(f); err != nil {
-			log.Error().Err(err).Msg("could not start CPU profile: ")
-			panic(err)
+			log.Panic().Err(err).Msg("could not start CPU profile: ")
 		}
 	}
 }

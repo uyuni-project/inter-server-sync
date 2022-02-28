@@ -96,32 +96,6 @@ func ProductsTableNames() []string {
 	}
 }
 
-func DumpChannelData(options ChannelDumperOptions) {
-	var outputFolderAbs = options.GetOutputFolderAbsPath()
-	validateExportFolder(outputFolderAbs)
-	db := schemareader.GetDBconnection(options.ServerConfig)
-	defer db.Close()
-
-	channelsExport := loadChannelsToProcess(db, options)
-
-	file, err := os.Create(outputFolderAbs + "/sql_statements.sql")
-	if err != nil {
-		log.Fatal().Err(err).Msg("error creating sql file")
-		panic(err)
-	}
-
-	defer file.Close()
-	bufferWriter := bufio.NewWriter(file)
-	defer bufferWriter.Flush()
-
-	bufferWriter.WriteString("BEGIN;\n")
-	processAndInsertProducts(db, bufferWriter)
-
-	processAndInsertChannels(db, bufferWriter, channelsExport, options)
-
-	bufferWriter.WriteString("COMMIT;\n")
-}
-
 func validateExportFolder(outputFolderAbs string) {
 	err := utils.FolderExists(outputFolderAbs)
 	if err != nil {
@@ -148,7 +122,7 @@ var childChannelSql = "select label from rhnchannel " +
 var singleChannelSql = "select label from rhnchannel " +
 	"where label = $1"
 
-func loadChannelsToProcess(db *sql.DB, options ChannelDumperOptions) []string {
+func loadChannelsToProcess(db *sql.DB, options DumperOptions) []string {
 	channels := channelsProcess{make(map[string]bool), make([]string, 0)}
 	for _, singleChannel := range options.ChannelLabels {
 		if _, ok := channels.channelsMap[singleChannel]; !ok {
@@ -196,7 +170,9 @@ func processAndInsertProducts(db *sql.DB, writer *bufio.Writer) {
 	log.Debug().Msg("products export done")
 }
 
-func processAndInsertChannels(db *sql.DB, writer *bufio.Writer, channels []string, options ChannelDumperOptions) {
+func processAndInsertChannels(db *sql.DB, writer *bufio.Writer, options DumperOptions) {
+
+	channels := loadChannelsToProcess(db, options)
 	log.Info().Msg(fmt.Sprintf("%d channels to process", len(channels)))
 
 	schemaMetadata := schemareader.ReadTablesSchema(db, SoftwareChannelTableNames())
@@ -204,8 +180,7 @@ func processAndInsertChannels(db *sql.DB, writer *bufio.Writer, channels []strin
 
 	fileChannels, err := os.Create(options.GetOutputFolderAbsPath() + "/exportedChannels.txt")
 	if err != nil {
-		log.Fatal().Err(err).Msg("error creating sql file")
-		panic(err)
+		log.Panic().Err(err).Msg("error creating sql file")
 	}
 
 	defer fileChannels.Close()
@@ -223,7 +198,7 @@ func processAndInsertChannels(db *sql.DB, writer *bufio.Writer, channels []strin
 }
 
 func processChannel(db *sql.DB, writer *bufio.Writer, channelLabel string,
-	schemaMetadata map[string]schemareader.Table, options ChannelDumperOptions) {
+	schemaMetadata map[string]schemareader.Table, options DumperOptions) {
 	whereFilter := fmt.Sprintf("label = '%s'", channelLabel)
 	tableData := dumper.DataCrawler(db, schemaMetadata, schemaMetadata["rhnchannel"], whereFilter, options.StartingDate)
 	log.Debug().Msg("finished table data crawler")

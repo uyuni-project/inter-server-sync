@@ -81,13 +81,9 @@ func printTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]
 	// follow reference to
 	for _, reference := range table.References {
 		tableReference, ok := schemaMetadata[reference.TableName]
-		if !ok || !tableReference.Export {
-			continue
+		if ok && tableReference.Export && shouldFollowToLinkPreOrder(path, table, tableReference) {
+			printTableData(db, writer, schemaMetadata, data, tableReference, processedTables, path, options)
 		}
-		if strings.Compare(table.Name, "rhnconfigfile") == 0 && strings.Compare(tableReference.Name, "rhnconfigrevision") == 0 {
-			continue
-		}
-		printTableData(db, writer, schemaMetadata, data, tableReference, processedTables, path, options, callback)
 	}
 
 	exportCurrentTableData(db, writer, schemaMetadata, table, data, options)
@@ -384,18 +380,6 @@ func formatOnConflict(row []sqlUtil.RowDataStructure, table schemareader.Table) 
 			return "(version, release, epoch, ((evr).type)) WHERE epoch IS NOT NULL DO NOTHING"
 		}
 
-	case "rhnpackagecapability":
-		var version interface{} = nil
-		for _, field := range row {
-			if strings.Compare(field.ColumnName, "version") == 0 {
-				version = field.Value
-			}
-		}
-		if version == nil {
-			return "(name) WHERE version IS NULL DO NOTHING"
-		} else {
-			return "(name, version) WHERE version IS NOT NULL DO NOTHING"
-		}
 	}
 	columnAssignment := formatColumnAssignment(table)
 	return fmt.Sprintf("%s DO UPDATE SET %s", constraint, columnAssignment)

@@ -140,6 +140,22 @@ func followReferencesFrom(db *sql.DB, schemaMetadata map[string]schemareader.Tab
 	return result
 }
 
+func shouldFollowToLinkPreOrder(path []string, currentTable schemareader.Table, referencedTable schemareader.Table) bool {
+	forbiddenNavigations := map[string][]string{
+		"rhnconfigfile": {"rhnconfigrevision"},
+	}
+
+	if tableNavigation, ok := forbiddenNavigations[currentTable.Name]; ok {
+		for _, targetNavigationTable := range tableNavigation {
+			if strings.Compare(targetNavigationTable, referencedTable.Name) == 0 {
+				return false
+			}
+		}
+	}
+	
+	return true
+}
+
 func shouldFollowReferenceToLink(path []string, currentTable schemareader.Table, referencedTable schemareader.Table) bool {
 	// if we already passed by the referencedTable we don't want to follow
 	for _, p := range path {

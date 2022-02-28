@@ -170,7 +170,9 @@ func processAndInsertProducts(db *sql.DB, writer *bufio.Writer) {
 	log.Debug().Msg("products export done")
 }
 
-func processAndInsertChannels(db *sql.DB, writer *bufio.Writer, channels []string, options DumperOptions) {
+func processAndInsertChannels(db *sql.DB, writer *bufio.Writer, options DumperOptions) {
+
+	channels := loadChannelsToProcess(db, options)
 	log.Info().Msg(fmt.Sprintf("%d channels to process", len(channels)))
 
 	schemaMetadata := schemareader.ReadTablesSchema(db, SoftwareChannelTableNames())

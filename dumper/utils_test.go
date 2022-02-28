@@ -1,6 +1,8 @@
 package dumper
 
 import (
+	"bufio"
+	"database/sql"
 	"fmt"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
 	"reflect"
@@ -127,5 +129,10 @@ func reverse(s interface{}) {
 	swap := reflect.Swapper(s)
 	for i, j := 0, n-1; i < j; i, j = i+1, j-1 {
 		swap(i, j)
+	}
+}
+
+func createCallback() Callback {
+	return func(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, table schemareader.Table, data DataDumper) {
 	}
 }

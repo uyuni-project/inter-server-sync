@@ -8,6 +8,7 @@ import (
 	"github.com/uyuni-project/inter-server-sync/xmlrpc"
 	"os"
 	"os/exec"
+	"strings"
 )
 
 var importCmd = &cobra.Command{
@@ -36,7 +37,7 @@ func runImport(cmd *cobra.Command, args []string) {
 	fversion, fproduct := getImportVersionProduct(absImportDir)
 	sversion, sproduct := utils.GetCurrentServerVersion()
 	if fversion != sversion || fproduct != sproduct {
-		log.Info().Msgf("Wrong version detected. Fileversion = %s ; Serverversion = %s", fversion, sversion)
+		log.Panic().Msgf("Wrong version detected. Fileversion = %s ; Serverversion = %s", fversion, sversion)
 	}
 	validateFolder(absImportDir)
 	runPackageFileSync(absImportDir)
@@ -62,11 +63,13 @@ func getImportVersionProduct(path string) (string, string) {
 func validateFolder(absImportDir string) {
 	_, err := os.Stat(fmt.Sprintf("%s/sql_statements.sql", absImportDir))
 	if os.IsNotExist(err) {
-		_, err := os.Stat(fmt.Sprintf("%s/configurations.sql", absImportDir))
-		if os.IsNotExist(err) {
-			log.Fatal().Err(err).Msg("No usable .sql files found in import directory")
-		}
+		log.Fatal().Err(err).Msg("No usable .sql files found in import directory")
 	}
+}
+
+func hasConfigChannels(absImportDir string) bool {
+	_, err := os.Stat(fmt.Sprintf("%s/exportedConfigs.txt", absImportDir))
+	return os.IsExist(err)
 }
 
 func runPackageFileSync(absImportDir string) {
@@ -92,8 +95,7 @@ func runPackageFileSync(absImportDir string) {
 	}
 }
 
-func runConfigFilesSync(dir string, user string, password string) (interface{}, error) {
-	labels := utils.ReadFileByLine(fmt.Sprintf("%s/exportedConfigs.txt", dir))
+func runConfigFilesSync(labels []string, user string, password string) (interface{}, error) {
 	client := xmlrpc.NewClient(user, password)
 	return client.SyncConfigFiles(labels)
 }
@@ -109,8 +111,15 @@ func runImportSql(absImportDir string) {
 	if err != nil {
 		log.Fatal().Err(err).Msg("error running the sql script")
 	}
-	_, err = runConfigFilesSync(absImportDir, xmlRpcUser, xmlRpcPassword)
-	if err != nil {
-		log.Fatal().Err(err).Msg("error synchronizing configuration files")
+
+	if hasConfigChannels(absImportDir) {
+		labels := utils.ReadFileByLine(fmt.Sprintf("%s/exportedConfigs.txt", absImportDir))
+		_, err = runConfigFilesSync(labels, xmlRpcUser, xmlRpcPassword)
+		if err != nil {
+			log.Error().Err(err).Msgf(
+				"Error recreating configuration files. Please run spacecmd api configchannel.syncSaltFilesOnDisk -A '[[%s]]'",
+				strings.Join(labels, ", "),
+			)
+		}
 	}
 }

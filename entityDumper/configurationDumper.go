@@ -40,24 +40,13 @@ func loadConfigsToProcess(db *sql.DB, options DumperOptions) []string {
 		}
 	}
 
-	for _, channelChildren := range options.ChannelWithChildrenLabels {
-		if _, ok := labels.channelsMap[channelChildren]; !ok {
-			labels.addChannelLabel(channelChildren)
-			childrenChannels := sqlUtil.ExecuteQueryWithResults(db, childChannelSql, channelChildren)
-			for _, cChannel := range childrenChannels {
-				cLabel := fmt.Sprintf("%v", cChannel[0].Value)
-				if _, okC := labels.channelsMap[cLabel]; !okC {
-					labels.addChannelLabel(cLabel)
-				}
-			}
-
-		}
-	}
 	return labels.channels
 }
 
-func processConfigs(db *sql.DB, writer *bufio.Writer, labels []string, options DumperOptions) {
-	log.Info().Msg(fmt.Sprintf("%d configuration channels to process", len(labels)))
+func processConfigs(db *sql.DB, writer *bufio.Writer, options DumperOptions) {
+
+	configs := loadConfigsToProcess(db, options)
+	log.Info().Msg(fmt.Sprintf("%d configuration channels to process", len(configs)))
 	schemaMetadata := schemareader.ReadTablesSchema(db, ConfigTableNames())
 	log.Debug().Msg("channel schema metadata loaded")
 	configLabels, err := os.Create(options.GetOutputFolderAbsPath() + "/exportedConfigs.txt")
@@ -69,9 +58,9 @@ func processConfigs(db *sql.DB, writer *bufio.Writer, labels []string, options D
 	defer bufferWriterChannels.Flush()
 
 	count := 0
-	for _, l := range labels {
+	for _, l := range configs {
 		count++
-		log.Info().Msg(fmt.Sprintf("Processing channel [%d/%d] %s", count, len(labels), l))
+		log.Debug().Msg(fmt.Sprintf("Processing channel [%d/%d] %s", count, len(configs), l))
 		processConfigChannel(db, writer, l, schemaMetadata, options)
 		writer.Flush()
 		bufferWriterChannels.WriteString(fmt.Sprintf("%s\n", l))
@@ -96,7 +85,7 @@ func processConfigChannel(db *sql.DB, writer *bufio.Writer, channelLabel string,
 	dumper.PrintTableDataOrdered(db, writer, schemaMetadata, schemaMetadata["rhnconfigchannel"],
 		tableData, printOptions)
 	log.Debug().Msg("finished print table order")
-	log.Debug().Msg("config channel export finished")
+	log.Info().Msg("config channel export finished")
 }
 
 func createPostOrderCallback() dumper.Callback {

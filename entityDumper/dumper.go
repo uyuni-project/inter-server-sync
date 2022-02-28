@@ -10,12 +10,8 @@ import (
 func DumpAllEntities(options DumperOptions) {
 	var outputFolderAbs = options.GetOutputFolderAbsPath()
 	validateExportFolder(outputFolderAbs)
-	db := schemareader.GetDBconnection(options.ServerConfig)
-	defer db.Close()
 
-	channelsExport := loadChannelsToProcess(db, options)
-
-	file, err := os.OpenFile(outputFolderAbs+"/sql_statements.sql", os.O_APPEND|os.O_WRONLY|os.O_CREATE, 0600)
+	file, err := os.OpenFile(outputFolderAbs+"/sql_statements.sql", os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		log.Panic().Err(err).Msg("error creating sql file")
 	}
@@ -26,11 +22,15 @@ func DumpAllEntities(options DumperOptions) {
 
 	bufferWriter.WriteString("BEGIN;\n")
 	if len(options.ChannelLabels) > 0 {
+		db := schemareader.GetDBconnection(options.ServerConfig)
+		defer db.Close()
 		processAndInsertProducts(db, bufferWriter)
-		processAndInsertChannels(db, bufferWriter, channelsExport, options)
+		processAndInsertChannels(db, bufferWriter, options)
 	}
 	if len(options.ConfigLabels) > 0 {
-		processConfigs(db, bufferWriter, loadConfigsToProcess(db, options), options)
+		db := schemareader.GetDBconnection(options.ServerConfig)
+		defer db.Close()
+		processConfigs(db, bufferWriter, options)
 	}
 
 	bufferWriter.WriteString("COMMIT;\n")

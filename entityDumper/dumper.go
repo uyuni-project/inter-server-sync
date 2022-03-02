@@ -2,9 +2,10 @@ package entityDumper
 
 import (
 	"bufio"
+	"os"
+
 	"github.com/rs/zerolog/log"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
-	"os"
 )
 
 func DumpAllEntities(options DumperOptions) {
@@ -31,6 +32,10 @@ func DumpAllEntities(options DumperOptions) {
 		db := schemareader.GetDBconnection(options.ServerConfig)
 		defer db.Close()
 		processConfigs(db, bufferWriter, options)
+	}
+
+	if options.OSImages || options.Containers {
+		dumpImageData(options)
 	}
 
 	bufferWriter.WriteString("COMMIT;\n")

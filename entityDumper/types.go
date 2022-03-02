@@ -13,6 +13,9 @@ type DumperOptions struct {
 	outputFolderAbsPath       string
 	MetadataOnly              bool
 	StartingDate              string
+	Containers                bool
+	OSImages                  bool
+	OrgID                     uint
 }
 
 func (opt *DumperOptions) GetOutputFolderAbsPath() string {
@@ -20,19 +23,6 @@ func (opt *DumperOptions) GetOutputFolderAbsPath() string {
 		opt.outputFolderAbsPath = utils.GetAbsPath(opt.OutputFolder)
 	}
 	return opt.outputFolderAbsPath
-}
-
-type ImageDumperOptions struct {
-	ServerConfig string
-	OutputFolder string
-	OSImage      bool
-	Containers   bool
-	OrgID        uint
-	StartingDate string
-}
-
-func (opt *ImageDumperOptions) GetOutputFolderAbsPath() string {
-	return utils.GetAbsPath(opt.OutputFolder)
 }
 
 type channelsProcess struct {

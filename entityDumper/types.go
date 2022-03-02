@@ -15,7 +15,7 @@ type DumperOptions struct {
 	StartingDate              string
 	Containers                bool
 	OSImages                  bool
-	OrgID                     uint
+	Orgs                      []uint
 }
 
 func (opt *DumperOptions) GetOutputFolderAbsPath() string {

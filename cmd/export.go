@@ -25,7 +25,7 @@ var metadataOnly bool
 var startingDate string
 var includeImages bool
 var includeContainers bool
-var orgidOnly uint
+var orgs []uint
 
 func init() {
 	exportCmd.Flags().StringSliceVar(&channels, "channels", nil, "Channels to be exported")
@@ -36,7 +36,7 @@ func init() {
 	exportCmd.Flags().StringSliceVar(&configChannels, "configChannels", nil, "Configuration Channels to be exported")
 	exportCmd.Flags().BoolVar(&includeImages, "images", false, "Export OS images and associated metadata")
 	exportCmd.Flags().BoolVar(&includeContainers, "containers", false, "Export containers metadata")
-	exportCmd.Flags().UintVar(&orgidOnly, "orgId", 0, "Export only for organization id")
+	exportCmd.Flags().UintSliceVar(&orgs, "orgLimit", nil, "Export only for specified organizations")
 	exportCmd.Args = cobra.NoArgs
 
 	rootCmd.AddCommand(exportCmd)
@@ -62,6 +62,7 @@ func runExport(cmd *cobra.Command, args []string) {
 		OutputFolder:              outputDir,
 		MetadataOnly:              metadataOnly,
 		StartingDate:              validatedDate,
+		Orgs:                      orgs,
 	}
 	entityDumper.DumpAllEntities(options)
 	var versionfile string

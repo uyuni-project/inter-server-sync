@@ -73,12 +73,11 @@ func markAsExported(schema map[string]schemareader.Table, tables []string) {
 
 func dumpImageStores(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, options DumperOptions, store_label string) {
 
-	org_id := options.OrgID
 	var whereFilterClause = func(table schemareader.Table) string {
 		filter := fmt.Sprintf("WHERE store_type_id = (SELECT id FROM suseimagestoretype WHERE label = '%s')", store_label)
-		if org_id != 0 {
-			if _, ok := table.ColumnIndexes["org_id"]; ok {
-				filter = fmt.Sprintf(" AND org_id = %d", org_id)
+		if _, ok := table.ColumnIndexes["org_id"]; ok {
+			for _, org := range options.Orgs {
+				filter = fmt.Sprintf(" AND org_id = %d", org)
 			}
 		}
 		return filter
@@ -94,12 +93,10 @@ func dumpImageStores(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string
 
 func dumpOSImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, options DumperOptions) {
 
-	org_id := options.OrgID
-
 	// Image profiles
 	sqlForExistingProfiles := "SELECT profile_id FROM suseimageprofile WHERE image_type = 'kiwi'"
-	if org_id != 0 {
-		sqlForExistingProfiles = fmt.Sprintf("%s AND org_id = %d", sqlForExistingProfiles, org_id)
+	for _, org := range options.Orgs {
+		sqlForExistingProfiles = fmt.Sprintf("%s AND org_id = %d", sqlForExistingProfiles, org)
 	}
 	if options.StartingDate != "" {
 		sqlForExistingProfiles = fmt.Sprintf("%s AND modified > '%s'::timestamp", sqlForExistingProfiles, options.StartingDate)
@@ -122,8 +119,8 @@ func dumpOSImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[stri
 
 	// Images
 	sqlForExistingImages := "SELECT id FROM suseimageinfo WHERE image_type = 'kiwi'"
-	if org_id != 0 {
-		sqlForExistingImages = fmt.Sprintf("%s AND org_id = %d", sqlForExistingImages, org_id)
+	for _, org := range options.Orgs {
+		sqlForExistingImages = fmt.Sprintf("%s AND org_id = %d", sqlForExistingImages, org)
 	}
 	if options.StartingDate != "" {
 		sqlForExistingImages = fmt.Sprintf("%s AND modified > '%s'::timestamp", sqlForExistingImages, options.StartingDate)
@@ -146,8 +143,8 @@ func dumpOSImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[stri
 		log.Debug().Msg("Dumping Image pillars")
 		writer.WriteString("-- OS Images pillars\n")
 		pillarFilter := "category = 'images'"
-		if org_id != 0 {
-			pillarFilter = fmt.Sprintf("%s AND org_id = %d", pillarFilter, org_id)
+		for _, org := range options.Orgs {
+			pillarFilter = fmt.Sprintf("%s AND org_id = %d", pillarFilter, org)
 		}
 		if options.StartingDate != "" {
 			pillarFilter = fmt.Sprintf("%s AND modified > '%s'::timestamp", pillarFilter, options.StartingDate)
@@ -207,8 +204,8 @@ func dumpImageData(options DumperOptions) {
 	if options.OSImages {
 		dumpImageStores(db, bufferWriter, schemaMetadata, options, "os_image")
 		dumpOSImageTables(db, bufferWriter, schemaMetadata, options)
-		pillarDumper.DumpImagePillars(outputFolderPillarAbs, options.OrgID, options.ServerConfig)
-		osImageDumper.DumpOsImages(outputFolderImagesAbs, options.OrgID)
+		pillarDumper.DumpImagePillars(outputFolderPillarAbs, options.Orgs, options.ServerConfig)
+		osImageDumper.DumpOsImages(outputFolderImagesAbs, options.Orgs)
 	}
 	if options.Containers {
 		dumpImageStores(db, bufferWriter, schemaMetadata, options, "registry")

@@ -15,7 +15,7 @@ import (
 var serverDataDir = "/srv/susemanager/pillar_data/"
 var replacePattern = "{SERVER_FQDN}"
 
-func DumpImagePillars(outputDir string, orgId uint, serverConfig string) {
+func DumpImagePillars(outputDir string, orgIds []uint, serverConfig string) {
 	log.Debug().Msgf("Dumping pillars to %s", outputDir)
 	fqdn := utils.GetCurrentServerFQDN(serverConfig)
 
@@ -27,10 +27,18 @@ func DumpImagePillars(outputDir string, orgId uint, serverConfig string) {
 	defer orgDir.Close()
 	orgDirInfo, err := orgDir.ReadDir(-1)
 
+	// If orgIds is empty, set it to 0 so all orgs would be exported
+	if len(orgIds) == 0 {
+		orgIds = []uint{0}
+	}
+
 	for _, org := range orgDirInfo {
-		if org.Type().IsDir() && (orgId == 0 || org.Name() == fmt.Sprintf("org%d", orgId)) {
-			DumpPillars(path.Join(sourceDir, org.Name()), path.Join(outputDir, org.Name()), fqdn, replacePattern)
+		for _, orgId := range orgIds {
+			if org.Type().IsDir() && (orgId == 0 || org.Name() == fmt.Sprintf("org%d", orgId)) {
+				DumpPillars(path.Join(sourceDir, org.Name()), path.Join(outputDir, org.Name()), fqdn, replacePattern)
+			}
 		}
+
 	}
 }
 

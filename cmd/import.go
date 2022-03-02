@@ -47,16 +47,12 @@ func runImport(cmd *cobra.Command, args []string) {
 	if fversion != sversion || fproduct != sproduct {
 		log.Panic().Msgf("Wrong version detected. Fileversion = %s ; Serverversion = %s", fversion, sversion)
 	}
-	toImport := validateFolder(absImportDir)
-	if sql, ok := toImport["CHANNELS"]; ok {
-		runPackageFileSync(absImportDir)
-		runImportSql(sql)
-	}
-	if sql, ok := toImport["IMAGES"]; ok {
-		runImageFileSync(absImportDir, serverConfig)
-		runImportSql(sql)
-	}
+	validateFolder(absImportDir)
+	runPackageFileSync(absImportDir)
 
+	runImageFileSync(absImportDir, serverConfig)
+
+	runImportSql(absImportDir)
 	log.Info().Msg("import finished")
 }
 
@@ -80,7 +76,6 @@ func validateFolder(absImportDir string) {
 	if os.IsNotExist(err) {
 		log.Fatal().Err(err).Msg("No usable .sql files found in import directory")
 	}
-	return toImport
 }
 
 func hasConfigChannels(absImportDir string) bool {
@@ -143,7 +138,7 @@ func runImageFileSync(absImportDir string, serverFQDN string) {
 	err = utils.FolderExists(pillarImportDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Warn().Msg("No pillar files to import")
+			log.Info().Msg("No pillar files to import")
 			return
 		} else {
 			log.Fatal().Err(err).Msg("Error reading import folder for pillars")
@@ -163,7 +158,7 @@ func runImportSql(absImportDir string) {
 	log.Info().Msg("Starting SQL import")
 	err := cmd.Run()
 	if err != nil {
-		log.Fatal().Err(err).Msgf("Error running the SQL script %s", source)
+		log.Fatal().Err(err).Msgf("Error running the SQL script")
 	}
 
 	if hasConfigChannels(absImportDir) {

@@ -78,29 +78,5 @@ func runExport(cmd *cobra.Command, args []string) {
 	version, product := utils.GetCurrentServerVersion(serverConfig)
 	vf.WriteString("product_name = " + product + "\n" + "version = " + version + "\n")
 
-	if len(channels) > 0 || len(channelWithChildren) > 0 {
-		options := entityDumper.ChannelDumperOptions{
-			ServerConfig:              serverConfig,
-			ChannelLabels:             channels,
-			ChannelWithChildrenLabels: channelWithChildren,
-			OutputFolder:              outputDir,
-			MetadataOnly:              metadataOnly,
-			StartingDate:              validatedDate,
-		}
-		entityDumper.DumpChannelData(options)
-	}
-
-	if includeImages || includeContainers {
-		imageOptions := entityDumper.ImageDumperOptions{
-			ServerConfig: serverConfig,
-			OutputFolder: outputDir,
-			OSImage:      includeImages,
-			Containers:   includeContainers,
-			OrgID:        orgidOnly,
-			StartingDate: validatedDate,
-		}
-		entityDumper.DumpImageData(imageOptions)
-	}
-
 	log.Info().Msgf("Export done. Directory: %s", outputDir)
 }

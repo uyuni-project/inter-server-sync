@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/rs/zerolog/log"
@@ -11,6 +12,7 @@ import (
 	"github.com/uyuni-project/inter-server-sync/dumper/packageDumper"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
 	"github.com/uyuni-project/inter-server-sync/sqlUtil"
+	"github.com/uyuni-project/inter-server-sync/utils"
 )
 
 // TablesToClean represents Tables which needs to be cleaned in case on client side there is a record that doesn't exist anymore on master side

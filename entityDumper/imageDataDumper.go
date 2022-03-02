@@ -71,7 +71,7 @@ func markAsExported(schema map[string]schemareader.Table, tables []string) {
 	}
 }
 
-func dumpImageStores(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, options ImageDumperOptions, store_label string) {
+func dumpImageStores(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, options DumperOptions, store_label string) {
 
 	org_id := options.OrgID
 	var whereFilterClause = func(table schemareader.Table) string {
@@ -92,7 +92,7 @@ func dumpImageStores(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string
 	markAsExported(schemaMetadata, []string{"suseimagestore"})
 }
 
-func dumpOSImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, options ImageDumperOptions) {
+func dumpOSImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, options DumperOptions) {
 
 	org_id := options.OrgID
 
@@ -161,7 +161,7 @@ func dumpOSImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[stri
 }
 
 // TODO, incomplete
-func dumpContainerImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, options ImageDumperOptions) {
+func dumpContainerImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, options DumperOptions) {
 	startingTables := []schemareader.Table{schemaMetadata["suseimagestore"], schemaMetadata["suseimageprofile"], schemaMetadata["suseimageinfo"]}
 
 	var whereFilterClause = func(table schemareader.Table) string {
@@ -178,7 +178,7 @@ func dumpContainerImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata m
 }
 
 // Main entry point
-func DumpImageData(options ImageDumperOptions) {
+func dumpImageData(options DumperOptions) {
 	log.Debug().Msg("Starting image metadata dump")
 	var outputFolderAbs = options.GetOutputFolderAbsPath()
 	var outputFolderImagesAbs = filepath.Join(outputFolderAbs, "images")
@@ -204,7 +204,7 @@ func DumpImageData(options ImageDumperOptions) {
 
 	bufferWriter.WriteString("BEGIN;\n")
 
-	if options.OSImage {
+	if options.OSImages {
 		dumpImageStores(db, bufferWriter, schemaMetadata, options, "os_image")
 		dumpOSImageTables(db, bufferWriter, schemaMetadata, options)
 		pillarDumper.DumpImagePillars(outputFolderPillarAbs, options.OrgID, options.ServerConfig)

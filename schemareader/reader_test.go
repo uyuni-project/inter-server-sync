@@ -1,10 +1,11 @@
 package schemareader
 
 import (
-	"github.com/DATA-DOG/go-sqlmock"
-	"github.com/uyuni-project/inter-server-sync/tests"
 	"reflect"
 	"testing"
+
+	"github.com/DATA-DOG/go-sqlmock"
+	"github.com/uyuni-project/inter-server-sync/tests"
 )
 
 const (
@@ -26,7 +27,7 @@ func TestProcessTable(t *testing.T) {
 	UniqueIndexMostColumnsCase(repo)
 
 	// Act
-	table := processTable(repo.DB, TableName, true)
+	table, _ := processTable(repo.DB, TableName, true)
 
 	// Assert
 	indexesEqual := reflect.DeepEqual(table.MainUniqueIndexName, UniqueIndexName03)

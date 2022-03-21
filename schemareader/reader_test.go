@@ -38,9 +38,9 @@ func TestProcessTable(t *testing.T) {
 
 func UniqueIndexMostColumnsCase(repo *tests.DataRepository) {
 
-	repo.ExpectWithRecords(ReadColumnNames, sqlmock.NewRows([]string{"column_name"}), TableName)
-	repo.ExpectWithRecords(ReadPkColumnNames, sqlmock.NewRows([]string{"attname"}), TableName)
-	repo.ExpectWithRecords(ReadPkSequence, sqlmock.NewRows([]string{"sequence_name"}), TableName)
+	repo.ExpectWithRecords(ReadColumnNames, sqlmock.NewRows([]string{"column_name"}).AddRow(""), TableName)
+	repo.ExpectWithRecords(ReadPkColumnNames, sqlmock.NewRows([]string{"attname"}).AddRow(""), TableName)
+	repo.ExpectWithRecords(ReadPkSequence, sqlmock.NewRows([]string{"sequence_name"}).AddRow(""), TableName)
 
 	// Read indexes information to get three indexes
 	repo.ExpectWithRecords(

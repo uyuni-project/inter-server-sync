@@ -49,6 +49,7 @@ BuildRequires:  rsyslog
 Requires:       logrotate
 Requires:       rsyslog
 Requires:       systemd
+Requires:       gzip
 
 
 %description

@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"path"
@@ -67,15 +68,22 @@ func getImportVersionProduct(path string) (string, string) {
 }
 
 func validateFolder(absImportDir string) {
-	_, err := os.Stat(fmt.Sprintf("%s/sql_statements.sql", absImportDir))
-	if os.IsNotExist(err) {
-		log.Fatal().Err(err).Msg("No usable .sql files found in import directory")
+	_, err := os.Stat(fmt.Sprintf("%s/sql_statements.sql.gz", absImportDir))
+	if err != nil {
+		if os.IsNotExist(err) {
+			_, err = os.Stat(fmt.Sprintf("%s/sql_statements.sql", absImportDir))
+			if err != nil {
+				log.Fatal().Err(err).Msg("No usable .sql or .gz file found in import directory")
+			}
+		} else {
+			log.Fatal().Err(err)
+		}
 	}
 }
 
 func hasConfigChannels(absImportDir string) bool {
 	_, err := os.Stat(fmt.Sprintf("%s/exportedConfigs.txt", absImportDir))
-	log.Debug().Err(err).Msg(fmt.Sprintf("no export config file found: %s/exportedConfigs.txt", absImportDir))
+	log.Info().Err(err).Msg(fmt.Sprintf("no export config file found: %s/exportedConfigs.txt", absImportDir))
 	return err == nil || os.IsExist(err)
 }
 
@@ -144,8 +152,7 @@ func runImageFileSync(absImportDir string, serverFQDN string) {
 	pillarDumper.ImportImagePillars(pillarImportDir, serverConfig)
 }
 
-func runImportSql(absImportDir string) {
-
+func importSqlFile(absImportDir string) {
 	cmd := exec.Command("spacewalk-sql", fmt.Sprintf("%s/sql_statements.sql", absImportDir))
 	cmd.Stdin = os.Stdin
 	cmd.Stdout = os.Stdout
@@ -155,11 +162,48 @@ func runImportSql(absImportDir string) {
 	if err != nil {
 		log.Fatal().Err(err).Msgf("Error running the SQL script")
 	}
+}
+
+func importGzFile(absImportDir string) {
+	cUnzip := exec.Command("gunzip", "-c", fmt.Sprintf("%s/sql_statements.sql.gz", absImportDir))
+	cImport := exec.Command("spacewalk-sql", "-")
+
+	pr, pw := io.Pipe()
+	cUnzip.Stdout = pw
+	cUnzip.Stderr = os.Stderr
+
+	cImport.Stdin = pr
+	cImport.Stdout = os.Stdout
+	cImport.Stderr = os.Stderr
+
+	log.Info().Msg("Starting SQL/GZ import")
+	cUnzip.Start()
+	cImport.Start()
+
+	go func() {
+		defer pw.Close()
+		cUnzip.Wait()
+	}()
+	err := cImport.Wait()
+	if err != nil {
+		log.Fatal().Err(err).Msgf("Error running the SQL script")
+	}
+}
+
+func runImportSql(absImportDir string) {
+
+	if _, err := os.Stat(fmt.Sprintf("%s/sql_statements.sql.gz", absImportDir)); err == nil {
+		importGzFile(absImportDir)
+	} else {
+		if _, err := os.Stat(fmt.Sprintf("%s/sql_statements.sql", absImportDir)); err == nil {
+			importSqlFile(absImportDir)
+		}
+	}
 
 	if hasConfigChannels(absImportDir) {
 		labels := utils.ReadFileByLine(fmt.Sprintf("%s/exportedConfigs.txt", absImportDir))
 		log.Debug().Msg("Will call xml-rpc API to update filesystem")
-		_, err = runConfigFilesSync(labels, xmlRpcUser, xmlRpcPassword)
+		_, err := runConfigFilesSync(labels, xmlRpcUser, xmlRpcPassword)
 		if err != nil {
 			log.Error().Err(err).Msgf(
 				"Error recreating configuration files. Please run spacecmd api configchannel.syncSaltFilesOnDisk -A '[[%s]]'",

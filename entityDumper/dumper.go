@@ -2,6 +2,7 @@ package entityDumper
 
 import (
 	"bufio"
+	"compress/gzip"
 	"os"
 
 	"github.com/rs/zerolog/log"
@@ -12,13 +13,16 @@ func DumpAllEntities(options DumperOptions) {
 	var outputFolderAbs = options.GetOutputFolderAbsPath()
 	validateExportFolder(outputFolderAbs)
 
-	file, err := os.OpenFile(outputFolderAbs+"/sql_statements.sql", os.O_WRONLY|os.O_CREATE, 0600)
+	file, err := os.OpenFile(outputFolderAbs+"/sql_statements.sql.gz", os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		log.Panic().Err(err).Msg("error creating sql file")
 	}
-
 	defer file.Close()
-	bufferWriter := bufio.NewWriter(file)
+
+	gzipFile := gzip.NewWriter(file)
+	defer gzipFile.Close()
+
+	bufferWriter := bufio.NewWriterSize(gzipFile, 32768)
 	defer bufferWriter.Flush()
 
 	db := schemareader.GetDBconnection(options.ServerConfig)

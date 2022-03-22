@@ -97,8 +97,9 @@ func printTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]
 		}
 
 	}
-
-	options.PostOrderCallback(db, writer, schemaMetadata, table, data)
+	if options.PostOrderCallback != nil {
+		options.PostOrderCallback(db, writer, schemaMetadata, table, data)
+	}
 }
 
 func exportCurrentTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table,

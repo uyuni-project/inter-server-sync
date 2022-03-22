@@ -2,9 +2,6 @@
 
 [![Test](https://github.com/uyuni-project/inter-server-sync/actions/workflows/github-actions-tests.yml/badge.svg)](https://github.com/uyuni-project/inter-server-sync/actions/workflows/github-actions-tests.yml)
 
-## Installation
-Use the repository: https://download.opensuse.org/repositories/home:/RDiasMateus:/iss/
-
 ## Usage
 run the command for more information:
 `inter-server-sync -h`
@@ -39,14 +36,43 @@ Steps to run in locally in development mode:
 
 `go run . dot --serverConfig=rhn.conf |  dot -Tx11`
 
-### Profile
-Run with profile: `go run . -cpuprofile=cpu.prof -memprofile=mem.prof ...`
+## Build and release
 
-View Profile data: `go tool pprof -web mem.prof`
+### 1. Update cmd version
 
-## Packaging
+- Edit file `cmd/root.go` "Version" property to the desire version
+- On project root folder run `osc vc` to update the changes file with the release data
+- Manually update changes file with the release number for the next release
+- commit and push to github
 
-OBS project: https://build.opensuse.org/project/show/home:RDiasMateus:iss
+### 2. Create tag
 
-## Service to create vendor sources
-`osc service rundisabled`
+- Create a tag with the version number using the format "v0.0.0" and push it to github
+
+### 3. Create a github release (optional)
+
+- On github create a new version release based on the previous tag
+
+### 4. OBS: project preparetion
+
+- Projects names:
+    - Uyuni: `systemsmanagement:Uyuni:Master`
+    - Head: Devel: `Galaxy:Manager:Head`
+    - Manager 4.2: `Devel:Galaxy:Manager:4.2`
+- Pakcage name: `inter-server-sync`
+
+On porject working directory: 
+
+1. Adapt the `_services` file to be able to download the correct tag for the version
+2. Run all services: `osc service runall`
+3. Check the the changes files is correctly updated
+4. Check spec file was correctly updated with the release version
+5. Add all files: `osc ar`
+6. Remove old version files `tar` and `osinfo` (`osc rm filename`)
+7. Commit everything with `osc commit`
+
+### 5. OBS: create submit requests
+
+Uyuni: `osc sr --no-cleanup <your_project> inter-server-sync systemsmanagement:Uyuni:Master`
+Manager Head: `iosc sr --no-cleanup openSUSE.org:<your_project> inter-server-sync Devel:Galaxy:Manager:Head`
+For each maintained SUSE Manager version, one SR in the form: `iosc sr --no-cleanup openSUSE.org:<your_project> inter-server-sync Devel:Galaxy:Manager:X.Y`

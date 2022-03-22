@@ -1,0 +1,52 @@
+- version x.x.x
+  * Allow export and import of configuration channels
+  * Clean lookup cache after processing a channel (bsc#1195750)
+  * Improve lookup method for generate foreign key export
+
+-------------------------------------------------------------------
+Sun Feb 14 11:36:09 UTC 2022 - Stefan Bluhm <stefan.bluhm@clacee.eu>
+
+- Adapted for build on Enterprise Linux 8.
+
+-------------------------------------------------------------------
+Mon Jan 31 14:00:15 UTC 2022 - Ricardo Mateus <rmateus@suse.com>
+
+- version 0.0.7
+  * Correct database sequence name used for table rhnChecksum
+  * Add support for partial exports based on a date (bsc#1195008)
+  * Export table rhnpackagekey (bsc#1194764)
+
+-------------------------------------------------------------------
+Tue Dec 21 15:38:27 UTC 2021 - Ricardo Mateus <rmateus@suse.com>
+
+- version 0.0.6
+  * Fix bug when exporting rhnpackagecapability table
+
+-------------------------------------------------------------------
+Tue Sep  7 16:24:21 UTC 2021 - Ricardo Mateus <rmateus@suse.com>
+
+- Use systemd rpm macro instead of direct call to systemctl
+
+-------------------------------------------------------------------
+Thu Sep  2 10:20:21 UTC 2021 - Jordi Massaguer <jmassaguerpla@suse.com>
+
+- fix post section: use try-restart instead of restart, so we do not
+  start rsyslog if it was not running before.
+
+-------------------------------------------------------------------
+Wed Jul 28 14:56:36 UTC 2021 - Ricardo Mateus <rmateus@suse.com>
+
+- version 0.0.5
+- correctly export packages change log data
+
+-------------------------------------------------------------------
+Tue Jul 23 17:24:50 UTC 2021 - Ricardo Mateus <rmateus@suse.com>
+
+- version 0.0.4
+- hidden dot sub-command
+
+-------------------------------------------------------------------
+Tue May 25 06:11:50 UTC 2021 - Abid Mehmood <amehmood@suse.com>
+
+- version 0.0.1
+- Import and Export tools for ISS v2

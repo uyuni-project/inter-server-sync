@@ -1,4 +1,7 @@
-- version x.x.x
+-------------------------------------------------------------------
+Thu Mar 24 17:15:00 UTC 2022 - Ricardo Mateus <rmateus@suse.com>
+
+- version 0.1.0
   * Allow export and import of configuration channels
   * Clean lookup cache after processing a channel (bsc#1195750)
   * Improve lookup method for generate foreign key export

@@ -4,12 +4,13 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
+	"os"
+	"strings"
+
 	"github.com/rs/zerolog/log"
 	"github.com/uyuni-project/inter-server-sync/dumper"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
 	"github.com/uyuni-project/inter-server-sync/sqlUtil"
-	"os"
-	"strings"
 )
 
 func ConfigTableNames() []string {
@@ -19,7 +20,6 @@ func ConfigTableNames() []string {
 		"rhnconfigrevision",
 		"rhnconfigcontent",
 		"rhnconfigchannel",
-		"rhnconfigfilestate",
 		"rhnregtokenconfigchannels",
 		"rhnserverconfigchannel",
 		"rhnsnapshotconfigchannel",
@@ -27,8 +27,6 @@ func ConfigTableNames() []string {
 		"rhnconfiginfo",
 		"rhnconfigfilefailure",
 		"rhnchecksum",
-		"rhnchecksumtype",
-		"web_contact",
 	}
 }
 

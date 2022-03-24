@@ -2,13 +2,14 @@ package cmd
 
 import (
 	"fmt"
+	"os"
+	"os/exec"
+	"strings"
+
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/uyuni-project/inter-server-sync/utils"
 	"github.com/uyuni-project/inter-server-sync/xmlrpc"
-	"os"
-	"os/exec"
-	"strings"
 )
 
 var importCmd = &cobra.Command{
@@ -69,7 +70,8 @@ func validateFolder(absImportDir string) {
 
 func hasConfigChannels(absImportDir string) bool {
 	_, err := os.Stat(fmt.Sprintf("%s/exportedConfigs.txt", absImportDir))
-	return os.IsExist(err)
+	log.Debug().Err(err).Msg(fmt.Sprintf("no export config file found: %s/exportedConfigs.txt", absImportDir))
+	return err == nil || os.IsExist(err)
 }
 
 func runPackageFileSync(absImportDir string) {
@@ -114,6 +116,7 @@ func runImportSql(absImportDir string) {
 
 	if hasConfigChannels(absImportDir) {
 		labels := utils.ReadFileByLine(fmt.Sprintf("%s/exportedConfigs.txt", absImportDir))
+		log.Debug().Msg("Will call xml-rpc API to update filesystem")
 		_, err = runConfigFilesSync(labels, xmlRpcUser, xmlRpcPassword)
 		if err != nil {
 			log.Error().Err(err).Msgf(
@@ -121,5 +124,7 @@ func runImportSql(absImportDir string) {
 				strings.Join(labels, ", "),
 			)
 		}
+	} else {
+		log.Debug().Msg("No configuration channels, NO CALL to xml-rpc API")
 	}
 }

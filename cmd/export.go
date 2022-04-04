@@ -62,6 +62,8 @@ func runExport(cmd *cobra.Command, args []string) {
 		OutputFolder:              outputDir,
 		MetadataOnly:              metadataOnly,
 		StartingDate:              validatedDate,
+		OSImages:                  includeImages,
+		Containers:                includeContainers,
 		Orgs:                      orgs,
 	}
 	entityDumper.DumpAllEntities(options)

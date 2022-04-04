@@ -20,11 +20,6 @@ var importCmd = &cobra.Command{
 	Run:   runImport,
 }
 
-var allowedImports = map[string](string){
-	"CHANNELS": "sql_statements.sql",
-	"IMAGES":   "sql_statements_images.sql",
-}
-
 var importDir string
 var xmlRpcUser string
 var xmlRpcPassword string

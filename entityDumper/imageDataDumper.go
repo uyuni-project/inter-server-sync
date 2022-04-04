@@ -34,11 +34,12 @@ var imagesTableNames = []string{
 	"rhnRegToken",
 	// images
 	"rhnchecksum",
+	"suseImageFile",
 	"suseImageInfo",
-	"suseImageOverview",
 	"suseImageInfoChannel",
 	"suseImageInfoPackage",
 	"suseimageinfoinstalledproduct",
+	"suseImageOverview",
 	"susecveimagechannel",
 	"suseImageCustomDataValue",
 	// packages in image - this is needed because of custom rpm with SSL certificate
@@ -89,7 +90,11 @@ func dumpImageStores(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string
 	markAsExported(schemaMetadata, []string{"suseimagestore"})
 }
 
-func dumpOSImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, options DumperOptions) {
+/**
+  Dump OS image tables, return true if additional data (pillars, images) need to be also dumped
+*/
+func dumpOSImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table,
+	options DumperOptions, outputFolderImagesAbs string) bool {
 
 	// Image profiles
 	sqlForExistingProfiles := "SELECT profile_id FROM suseimageprofile WHERE image_type = 'kiwi'"
@@ -116,6 +121,7 @@ func dumpOSImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[stri
 	}
 
 	// Images
+	needExtraExport := false
 	sqlForExistingImages := "SELECT id FROM suseimageinfo WHERE image_type = 'kiwi'"
 	for _, org := range options.Orgs {
 		sqlForExistingImages = fmt.Sprintf("%s AND org_id = %d", sqlForExistingImages, org)
@@ -132,27 +138,33 @@ func dumpOSImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[stri
 			whereClause := fmt.Sprintf("id = '%s'", image[0].Value)
 			tableImageData := dumper.DataCrawler(db, schemaMetadata, schemaMetadata["suseimageinfo"], whereClause, options.StartingDate)
 			dumper.PrintTableDataOrdered(db, writer, schemaMetadata, schemaMetadata["suseimageinfo"], tableImageData, dumper.PrintSqlOptions{})
+			// Check if pillars are already in database
+			if _, ok := tableImageData.TableData["susesaltpillar"]; ok && !options.MetadataOnly {
+				// pillars in database, files must be as well
+				// find all image files for the image and export them
+				sqlForExistingImageFiles := fmt.Sprintf("SELECT file, org_id FROM suseimagefile AS sif JOIN suseimageinfo AS sii "+
+					"ON sif.image_info_id = sii.id WHERE sii.id = '%s' AND external = 'N'", image[0].Value)
+				imageFiles := sqlUtil.ExecuteQueryWithResults(db, sqlForExistingImageFiles)
+				for _, imageFile := range imageFiles {
+					// source is taken from basedir + org + filename from db
+					// output should be base abs dir + org + filename from db
+					file := (imageFile[0].Value).(string)
+					org := fmt.Sprintf("%s", imageFile[1].Value)
+					source := osImageDumper.GetImagePathForImage(file, org)
+					target := osImageDumper.GetImagePathForImage(file, org, outputFolderImagesAbs)
+					osImageDumper.DumpOsImage(target, source)
+				}
+
+			} else {
+				// pillars and thus image files are not in database, need extra export step
+				needExtraExport = true
+			}
 		}
 		markAsExported(schemaMetadata, []string{"suseimageinfo"})
 	}
 
-	// Dump image pillars from database if included. Pillar files dump is handled by pillarDumper
-	if _, ok := schemaMetadata["susesaltpillar"]; ok {
-		log.Debug().Msg("Dumping Image pillars")
-		writer.WriteString("-- OS Images pillars\n")
-		pillarFilter := "category = 'images'"
-		for _, org := range options.Orgs {
-			pillarFilter = fmt.Sprintf("%s AND org_id = %d", pillarFilter, org)
-		}
-		if options.StartingDate != "" {
-			pillarFilter = fmt.Sprintf("%s AND modified > '%s'::timestamp", pillarFilter, options.StartingDate)
-		}
-
-		pillarImageData := dumper.DataCrawler(db, schemaMetadata, schemaMetadata["susesaltpillar"], pillarFilter, options.StartingDate)
-		dumper.PrintTableDataOrdered(db, writer, schemaMetadata, schemaMetadata["susesaltpillar"], pillarImageData, dumper.PrintSqlOptions{})
-	}
-
-	log.Info().Msg("Kiwi image profiles export done")
+	log.Info().Msg("Kiwi image export done")
+	return needExtraExport
 }
 
 // TODO, incomplete
@@ -187,9 +199,12 @@ func dumpImageData(db *sql.DB, writer *bufio.Writer, options DumperOptions) {
 
 	if options.OSImages {
 		dumpImageStores(db, writer, schemaMetadata, options, "os_image")
-		dumpOSImageTables(db, writer, schemaMetadata, options)
-		pillarDumper.DumpImagePillars(outputFolderPillarAbs, options.Orgs, options.ServerConfig)
-		osImageDumper.DumpOsImages(outputFolderImagesAbs, options.Orgs)
+		if dumpOSImageTables(db, writer, schemaMetadata, options, outputFolderImagesAbs) {
+			pillarDumper.DumpImagePillars(outputFolderPillarAbs, options.Orgs, options.ServerConfig)
+			if !options.MetadataOnly {
+				osImageDumper.DumpOsImages(outputFolderImagesAbs, options.Orgs)
+			}
+		}
 	}
 	if options.Containers {
 		dumpImageStores(db, writer, schemaMetadata, options, "registry")

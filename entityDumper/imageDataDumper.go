@@ -32,7 +32,6 @@ var imagesTableNames = []string{
 	"suseKiwiProfile",
 	"suseDockerfileProfile",
 	"rhnRegToken",
-	"rhnActivationKey",
 	// images
 	"rhnchecksum",
 	"suseImageInfo",

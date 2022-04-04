@@ -188,7 +188,7 @@ func substitutePrimaryKey(table schemareader.Table, row []sqlUtil.RowDataStructu
 		pkSequence = true
 	}
 	for _, column := range row {
-		if pkSequence && table.PKColumns[column.ColumnName] {
+		if pkSequence && table.PKColumns[column.ColumnName] && len(table.PKColumns) == 1 {
 			column.ColumnType = "SQL"
 			column.Value = fmt.Sprintf("SELECT nextval('%s')", table.PKSequence)
 			rowResult = append(rowResult, column)

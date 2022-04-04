@@ -104,9 +104,6 @@ func applyTableFilters(table Table) Table {
 		virtualIndexColumns := []string{"profile_id"}
 		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
 		table.MainUniqueIndexName = VirtualIndexName
-	case "rhnactivationkey":
-		// Activation keys are to be managed by salt states or XMLRPC API
-		table.Export = false
 	}
 
 	return table

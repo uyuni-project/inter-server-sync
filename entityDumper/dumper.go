@@ -21,21 +21,19 @@ func DumpAllEntities(options DumperOptions) {
 	bufferWriter := bufio.NewWriter(file)
 	defer bufferWriter.Flush()
 
+	db := schemareader.GetDBconnection(options.ServerConfig)
+	defer db.Close()
 	bufferWriter.WriteString("BEGIN;\n")
 	if len(options.ChannelLabels) > 0 {
-		db := schemareader.GetDBconnection(options.ServerConfig)
-		defer db.Close()
 		processAndInsertProducts(db, bufferWriter)
 		processAndInsertChannels(db, bufferWriter, options)
 	}
 	if len(options.ConfigLabels) > 0 {
-		db := schemareader.GetDBconnection(options.ServerConfig)
-		defer db.Close()
 		processConfigs(db, bufferWriter, options)
 	}
 
 	if options.OSImages || options.Containers {
-		dumpImageData(options)
+		dumpImageData(db, bufferWriter, options)
 	}
 
 	bufferWriter.WriteString("COMMIT;\n")

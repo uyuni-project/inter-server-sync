@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"database/sql"
 	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/rs/zerolog/log"
@@ -175,42 +174,26 @@ func dumpContainerImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata m
 }
 
 // Main entry point
-func dumpImageData(options DumperOptions) {
+func dumpImageData(db *sql.DB, writer *bufio.Writer, options DumperOptions) {
 	log.Debug().Msg("Starting image metadata dump")
 	var outputFolderAbs = options.GetOutputFolderAbsPath()
 	var outputFolderImagesAbs = filepath.Join(outputFolderAbs, "images")
 	var outputFolderPillarAbs = filepath.Join(outputFolderAbs, "images", "pillars")
-	ValidateExistingFolder(outputFolderAbs)
 	ValidateExportFolder(outputFolderImagesAbs)
 	ValidateExportFolder(outputFolderPillarAbs)
 
 	// export DB data about images
-	db := schemareader.GetDBconnection(options.ServerConfig)
-	defer db.Close()
-	file, err := os.Create(filepath.Join(outputFolderAbs, "sql_statements_images.sql"))
-	if err != nil {
-		log.Fatal().Err(err).Msg("Error creating sql file")
-	}
-
-	defer file.Close()
-	bufferWriter := bufio.NewWriter(file)
-	defer bufferWriter.Flush()
-
 	log.Trace().Msg("Loading table schema")
 	schemaMetadata := schemareader.ReadTablesSchema(db, imagesTableNames)
 
-	bufferWriter.WriteString("BEGIN;\n")
-
 	if options.OSImages {
-		dumpImageStores(db, bufferWriter, schemaMetadata, options, "os_image")
-		dumpOSImageTables(db, bufferWriter, schemaMetadata, options)
+		dumpImageStores(db, writer, schemaMetadata, options, "os_image")
+		dumpOSImageTables(db, writer, schemaMetadata, options)
 		pillarDumper.DumpImagePillars(outputFolderPillarAbs, options.Orgs, options.ServerConfig)
 		osImageDumper.DumpOsImages(outputFolderImagesAbs, options.Orgs)
 	}
 	if options.Containers {
-		dumpImageStores(db, bufferWriter, schemaMetadata, options, "registry")
-		dumpContainerImageTables(db, bufferWriter, schemaMetadata, options)
+		dumpImageStores(db, writer, schemaMetadata, options, "registry")
+		dumpContainerImageTables(db, writer, schemaMetadata, options)
 	}
-
-	bufferWriter.WriteString("COMMIT;\n")
 }

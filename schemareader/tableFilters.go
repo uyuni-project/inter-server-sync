@@ -104,6 +104,11 @@ func applyTableFilters(table Table) Table {
 		virtualIndexColumns := []string{"profile_id"}
 		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
 		table.MainUniqueIndexName = VirtualIndexName
+	case "susedockerfileprofile":
+		virtualIndexColumns := []string{"profile_id", "path"}
+		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
+		table.MainUniqueIndexName = VirtualIndexName
+
 	}
 
 	return table

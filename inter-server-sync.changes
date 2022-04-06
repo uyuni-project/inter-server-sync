@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Wed Apr  6 17:06:47 UTC 2022 - Ricardo Mateus <rmateus@suse.com>
+
+- version 0.2.0
+  * Allow images export and import (os based and Docker)
+
+-------------------------------------------------------------------
 Thu Mar 24 17:15:00 UTC 2022 - Ricardo Mateus <rmateus@suse.com>
 
 - version 0.1.0

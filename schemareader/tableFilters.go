@@ -73,10 +73,11 @@ func applyTableFilters(table Table) Table {
 		unexportColumns["build_action_id"] = true
 		unexportColumns["inspect_action_id"] = true
 		unexportColumns["build_server_id"] = true
+		unexportColumns["log"] = true
 		table.UnexportColumns = unexportColumns
 		// Unfortunately images have only ID unique and that is not enough for our guessing game.
 		// Create virtual compound index then as close as we can get
-		virtualIndexColumns := []string{"name", "version", "image_type", "image_arch_id", "org_id"}
+		virtualIndexColumns := []string{"name", "version", "image_type", "image_arch_id", "org_id", "curr_revision_num"}
 		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
 		table.MainUniqueIndexName = VirtualIndexName
 	case "suseimageinfochannel":
@@ -108,7 +109,6 @@ func applyTableFilters(table Table) Table {
 		virtualIndexColumns := []string{"profile_id", "path"}
 		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
 		table.MainUniqueIndexName = VirtualIndexName
-
 	}
 
 	return table

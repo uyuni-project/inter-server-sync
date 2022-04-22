@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 	"github.com/uyuni-project/inter-server-sync/dumper"
@@ -27,6 +28,8 @@ var tablesToClean_images = []string{
 var imagesTableNames = []string{
 	// stores
 	"suseImageStore",
+	"suseImageStoreType",
+	"suseCredentials",
 	// profiles
 	"suseImageProfile",
 	"suseKiwiProfile",
@@ -50,14 +53,6 @@ var imagesTableNames = []string{
 	"suseSaltPillar",
 }
 
-var containersTableNames = []string{
-	// container specific use
-	"suseImageBuildHistory",
-	"suseImageRepoDigest",
-	// generic table for pillars
-	"suseSaltPillar",
-}
-
 func ImageTableNames() []string {
 	return imagesTableNames
 }
@@ -70,23 +65,47 @@ func markAsExported(schema map[string]schemareader.Table, tables []string) {
 	}
 }
 
+func markAsUnexported(schema map[string]schemareader.Table, tables []string) {
+	for _, table := range tables {
+		tmp := schema[table]
+		tmp.Export = true
+		schema[table] = tmp
+	}
+}
+
+func isColumnInTable(schema map[string]schemareader.Table, table string, column string) bool {
+	columns := schema[table].Columns
+	for _, c := range columns {
+		if strings.Compare(c, column) == 0 {
+			return true
+		}
+	}
+	return false
+}
+
 func dumpImageStores(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, options DumperOptions, store_label string) {
 
-	var whereFilterClause = func(table schemareader.Table) string {
-		filter := fmt.Sprintf("WHERE store_type_id = (SELECT id FROM suseimagestoretype WHERE label = '%s')", store_label)
-		if _, ok := table.ColumnIndexes["org_id"]; ok {
-			for _, org := range options.Orgs {
-				filter = fmt.Sprintf(" AND org_id = %d", org)
-			}
-		}
-		return filter
+	sqlForExistingStores := fmt.Sprintf(
+		"SELECT sis.id from suseimagestore AS sis JOIN suseimagestoretype AS sist ON sis.store_type_id = sist.id WHERE sist.label = '%s'", store_label)
+	for _, org := range options.Orgs {
+		sqlForExistingStores = fmt.Sprintf("%s AND sis.org_id = %d", sqlForExistingStores, org)
 	}
+	if options.StartingDate != "" {
+		sqlForExistingStores = fmt.Sprintf("%s AND sis.modified > '%s'::timestamp", sqlForExistingStores, options.StartingDate)
+	}
+	stores := sqlUtil.ExecuteQueryWithResults(db, sqlForExistingStores)
+	if len(stores) > 0 {
+		log.Debug().Msgf("Dumping ImageStores tables for label %s", store_label)
+		writer.WriteString(fmt.Sprintf("-- %s Image Stores\n", store_label))
+		for _, store := range stores {
+			log.Trace().Msgf("Exporting store id %s", store[0].Value)
+			whereClause := fmt.Sprintf("id = '%s'", store[0].Value)
+			tableProfilesData := dumper.DataCrawler(db, schemaMetadata, schemaMetadata["suseimagestore"], whereClause, options.StartingDate)
 
-	processTables := make(map[string]bool)
-	log.Trace().Msg("Dumping all ImageStore tables")
-	writer.WriteString("-- OS Image Store\n")
-	processTables = dumper.DumpReachableTablesData(db, writer, schemaMetadata, []schemareader.Table{schemaMetadata["suseimagestore"]}, whereFilterClause,
-		[]string{}, processTables)
+			dumper.PrintTableDataOrdered(db, writer, schemaMetadata, schemaMetadata["suseimagestore"], tableProfilesData, dumper.PrintSqlOptions{})
+		}
+	}
+	// Mark tables as exported so they are not transitively exported by profiles
 	markAsExported(schemaMetadata, []string{"suseimagestore"})
 }
 
@@ -115,6 +134,7 @@ func dumpOSImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[stri
 
 			dumper.PrintTableDataOrdered(db, writer, schemaMetadata, schemaMetadata["susekiwiprofile"], tableProfilesData, dumper.PrintSqlOptions{})
 		}
+		// Mark tables as exported so they are not transitively exported by images
 		markAsExported(schemaMetadata, []string{"suseimageprofile"})
 	} else {
 		log.Info().Msg("No Kiwi profiles found to export")
@@ -123,6 +143,9 @@ func dumpOSImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[stri
 	// Images
 	needExtraExport := false
 	sqlForExistingImages := "SELECT id FROM suseimageinfo WHERE image_type = 'kiwi'"
+	if isColumnInTable(schemaMetadata, "suseimageinfo", "built") {
+		sqlForExistingImages = fmt.Sprintf("%s AND built = 'Y'", sqlForExistingImages)
+	}
 	for _, org := range options.Orgs {
 		sqlForExistingImages = fmt.Sprintf("%s AND org_id = %d", sqlForExistingImages, org)
 	}
@@ -160,51 +183,84 @@ func dumpOSImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[stri
 				needExtraExport = true
 			}
 		}
-		markAsExported(schemaMetadata, []string{"suseimageinfo"})
 	}
 
 	log.Info().Msg("Kiwi image export done")
 	return needExtraExport
 }
 
-// TODO, incomplete
 func dumpContainerImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, options DumperOptions) {
-	startingTables := []schemareader.Table{schemaMetadata["suseimagestore"], schemaMetadata["suseimageprofile"], schemaMetadata["suseimageinfo"]}
 
-	var whereFilterClause = func(table schemareader.Table) string {
-		filterOrg := ""
-		if _, ok := table.ColumnIndexes["org_id"]; ok {
-			filterOrg = " WHERE org_id IS NULL"
+	// Image profiles
+	sqlForExistingProfiles := "SELECT profile_id FROM suseimageprofile WHERE image_type = 'dockerfile'"
+	for _, org := range options.Orgs {
+		sqlForExistingProfiles = fmt.Sprintf("%s AND org_id = %d", sqlForExistingProfiles, org)
+	}
+	if options.StartingDate != "" {
+		sqlForExistingProfiles = fmt.Sprintf("%s AND modified > '%s'::timestamp", sqlForExistingProfiles, options.StartingDate)
+	}
+	profiles := sqlUtil.ExecuteQueryWithResults(db, sqlForExistingProfiles)
+	if len(profiles) > 0 {
+		log.Debug().Msg("Dumping ImageProfile tables")
+		writer.WriteString("-- Dockerfile Profiles\n")
+		for _, profile := range profiles {
+			log.Trace().Msgf("Exporting profile id %s", profile[0].Value)
+			whereClause := fmt.Sprintf("profile_id = '%s'", profile[0].Value)
+			tableProfilesData := dumper.DataCrawler(db, schemaMetadata, schemaMetadata["susedockerfileprofile"], whereClause, options.StartingDate)
+
+			dumper.PrintTableDataOrdered(db, writer, schemaMetadata, schemaMetadata["susedockerfileprofile"], tableProfilesData, dumper.PrintSqlOptions{})
 		}
-		return filterOrg
+		markAsExported(schemaMetadata, []string{"suseimageprofile"})
+	} else {
+		log.Info().Msg("No profiles found to export")
 	}
 
-	dumper.DumpAllTablesData(db, writer, schemaMetadata, startingTables, whereFilterClause, []string{"susedockerfileprofile"})
-	log.Info().Msg("Dockerfile image profiles export done")
-	// no data to export as they are on remote registry
+	// Images
+	sqlForExistingImages := "SELECT id FROM suseimageinfo WHERE image_type = 'dockerfile'"
+	for _, org := range options.Orgs {
+		sqlForExistingImages = fmt.Sprintf("%s AND org_id = %d", sqlForExistingImages, org)
+	}
+	if options.StartingDate != "" {
+		sqlForExistingImages = fmt.Sprintf("%s AND modified > '%s'::timestamp", sqlForExistingImages, options.StartingDate)
+	}
+	images := sqlUtil.ExecuteQueryWithResults(db, sqlForExistingImages)
+	if len(images) > 0 {
+		log.Debug().Msg("Dumping Image tables")
+		writer.WriteString("-- Dockerfile Images\n")
+		for _, image := range images {
+			log.Trace().Msgf("Exporting image id %s", image[0].Value)
+			whereClause := fmt.Sprintf("id = '%s'", image[0].Value)
+			tableImageData := dumper.DataCrawler(db, schemaMetadata, schemaMetadata["suseimageinfo"], whereClause, options.StartingDate)
+			dumper.PrintTableDataOrdered(db, writer, schemaMetadata, schemaMetadata["suseimageinfo"], tableImageData, dumper.PrintSqlOptions{})
+		}
+	}
+
+	log.Info().Msg("Dockerfile image export done")
 }
 
 // Main entry point
 func dumpImageData(db *sql.DB, writer *bufio.Writer, options DumperOptions) {
 	log.Debug().Msg("Starting image metadata dump")
 	var outputFolderAbs = options.GetOutputFolderAbsPath()
-	var outputFolderImagesAbs = filepath.Join(outputFolderAbs, "images")
-	var outputFolderPillarAbs = filepath.Join(outputFolderAbs, "images", "pillars")
-	ValidateExportFolder(outputFolderImagesAbs)
-	ValidateExportFolder(outputFolderPillarAbs)
 
 	// export DB data about images
 	log.Trace().Msg("Loading table schema")
 	schemaMetadata := schemareader.ReadTablesSchema(db, imagesTableNames)
 
 	if options.OSImages {
+		var outputFolderImagesAbs = filepath.Join(outputFolderAbs, "images")
+		ValidateExportFolder(outputFolderImagesAbs)
 		dumpImageStores(db, writer, schemaMetadata, options, "os_image")
 		if dumpOSImageTables(db, writer, schemaMetadata, options, outputFolderImagesAbs) {
+			var outputFolderPillarAbs = filepath.Join(outputFolderAbs, "images", "pillars")
+			ValidateExportFolder(outputFolderPillarAbs)
 			pillarDumper.DumpImagePillars(outputFolderPillarAbs, options.Orgs, options.ServerConfig)
 			if !options.MetadataOnly {
 				osImageDumper.DumpOsImages(outputFolderImagesAbs, options.Orgs)
 			}
 		}
+		// This is needed for containers to be able to export their respective tables
+		markAsUnexported(schemaMetadata, []string{"suseimagestore", "suseimageprofile"})
 	}
 	if options.Containers {
 		dumpImageStores(db, writer, schemaMetadata, options, "registry")

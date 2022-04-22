@@ -1,5 +1,9 @@
+-------------------------------------------------------------------
+Fri Apr 22 09:21:52 UTC 2022 - Ricardo Mateus <rmateus@suse.com>
+
 - version 0.2.1
   * Correct sequence in use for table rhnpackagekey(bsc#1197400)
+  * Make Docker image export compatible with Suse Manager 4.2
 
 -------------------------------------------------------------------
 Wed Apr  6 17:06:47 UTC 2022 - Ricardo Mateus <rmateus@suse.com>

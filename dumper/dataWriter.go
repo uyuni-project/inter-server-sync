@@ -435,9 +435,9 @@ func getJoinsClause(path []string, schemaMetadata map[string]schemareader.Table)
 		firstTable := reversePath[i]
 		secondTable := reversePath[i+1]
 		reverseRelationLookup := false
-		relationFound := findRelationInfo(schemaMetadata[firstTable].ReferencedBy, secondTable)
+		relationFound := findRelationInfo(schemaMetadata[firstTable].ReferencedBy, firstTable, secondTable)
 		if relationFound == nil {
-			relationFound = findRelationInfo(schemaMetadata[firstTable].References, secondTable)
+			relationFound = findRelationInfo(schemaMetadata[firstTable].References, firstTable, secondTable)
 			reverseRelationLookup = true
 		}
 		for key, value := range relationFound {
@@ -453,10 +453,17 @@ func getJoinsClause(path []string, schemaMetadata map[string]schemareader.Table)
 	return result.String()
 }
 
-func findRelationInfo(References []schemareader.Reference, tableToFind string) map[string]string {
+func findRelationInfo(References []schemareader.Reference, sourceTable string, tableToFind string) map[string]string {
 	for _, reference := range References {
 
 		if reference.TableName == tableToFind {
+			// we can try to generalize it by check if PK is in fact a foreign key.
+			// for now, since is a single case, I will hardcode it
+			if strings.Compare("rhnchannelcloned", sourceTable) == 0 {
+				if _, ok := reference.ColumnMapping["original_id"]; ok {
+					continue
+				}
+			}
 			return reference.ColumnMapping
 		}
 	}

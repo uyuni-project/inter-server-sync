@@ -1,5 +1,6 @@
 - version 0.2.2
   * Parameter --channel-with-children didn't export data(bsc#1199089)
+  * Clean rhnchannelcloned table to rebuild hierarchy (bsc#1197400)
 
 -------------------------------------------------------------------
 Fri Apr 22 09:21:52 UTC 2022 - Ricardo Mateus <rmateus@suse.com>

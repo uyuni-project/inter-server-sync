@@ -22,7 +22,7 @@ var tablesToClean = []string{"rhnreleasechannelmap", "rhndistchannelmap", "rhnch
 	"rhnerratafilechannel", "rhnerratafilepackage", "rhnerratafilepackagesource",
 	"rhnerratabuglist", "rhnerratacve",
 	"rhnerratakeyword",
-	"susemddata", "suseproductchannel"}
+	"susemddata", "suseproductchannel", "rhnchannelcloned"}
 
 // onlyIfParentExistsTables represents Tables for which only records needs to be insterted only if parent record exists
 var onlyIfParentExistsTables = []string{"rhnchannelcloned", "rhnerratacloned", "suseproductchannel"}

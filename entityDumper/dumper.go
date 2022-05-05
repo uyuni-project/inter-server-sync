@@ -24,7 +24,7 @@ func DumpAllEntities(options DumperOptions) {
 	db := schemareader.GetDBconnection(options.ServerConfig)
 	defer db.Close()
 	bufferWriter.WriteString("BEGIN;\n")
-	if len(options.ChannelLabels) > 0 {
+	if len(options.ChannelLabels) > 0 || len(options.ChannelWithChildrenLabels) > 0 {
 		processAndInsertProducts(db, bufferWriter)
 		processAndInsertChannels(db, bufferWriter, options)
 	}

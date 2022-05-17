@@ -48,6 +48,10 @@ Steps to run in locally in development mode:
 ### 2. Create tag
 
 - Create a tag with the version number using the format "v0.0.0" and push it to github
+```
+git tag v0.0.0
+git push origin v0.0.0
+```
 
 ### 3. Create a github release (optional)
 
@@ -65,7 +69,7 @@ On porject working directory:
 
 1. Adapt the `_services` file to be able to download the correct tag for the version
 2. Run all services: `osc service runall`
-3. Check the the changes files is correctly updated
+3. Check the changes files is correctly updated
 4. Check spec file was correctly updated with the release version
 5. Add all files: `osc ar`
 6. Remove old version files `tar` and `osinfo` (`osc rm filename`)

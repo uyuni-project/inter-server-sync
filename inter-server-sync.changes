@@ -1,4 +1,8 @@
-* Compress exported sql data #16631
+-------------------------------------------------------------------
+Thu 21 Jul 11:21:25 UTC 2022 - Artem Shiliaev <artem.shiliaev@suse.com>
+
+- version 0.2.3
+  * Compress exported sql data #16631
 
 -------------------------------------------------------------------
 Tue May 17 14:24:28 UTC 2022 - Ricardo Mateus <rmateus@suse.com>

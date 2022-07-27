@@ -89,11 +89,11 @@ func exportTablesData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[strin
 			count := 0
 			for {
 				time.Sleep(30 * time.Second)
-				log.Debug().Msgf("#count: %d #cacheSize %d -- #writtenRows: #%d of %d",
-					count, len(cache), totalExportedRecords, totalRecords)
 				if !processing {
 					break
 				}
+				log.Debug().Msgf("#count: %d #cacheSize %d -- #writtenRows: #%d of %d",
+					count, len(cache), totalExportedRecords, totalRecords)
 				count++
 			}
 		}()

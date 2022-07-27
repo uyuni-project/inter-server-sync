@@ -27,6 +27,9 @@ func DataCrawler(db *sql.DB, schemaMetadata map[string]schemareader.Table, start
 			count := 0
 			for {
 				time.Sleep(30 * time.Second)
+				if len(itemsToProcess) == 0 {
+					break
+				}
 				keysSize := 0
 				maxSize := 0
 				table := ""
@@ -39,10 +42,6 @@ func DataCrawler(db *sql.DB, schemaMetadata map[string]schemareader.Table, start
 				}
 				log.Debug().Msgf("#count: %d #rowsToProcess: #%d ;  #rowsToExport: #%d  --> Bigger export table: %s: #%d",
 					count, len(itemsToProcess), keysSize, table, maxSize)
-
-				if len(itemsToProcess) == 0 {
-					break
-				}
 				count++
 			}
 		}()
@@ -186,7 +185,7 @@ func shouldFollowToLinkPreOrder(path []string, currentTable schemareader.Table, 
 			}
 		}
 	}
-	
+
 	return true
 }
 

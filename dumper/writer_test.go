@@ -277,7 +277,7 @@ func TestPrintTableData(t *testing.T) {
 
 	// 02 Act
 	orderedTables := getTablesExportOrder(testCase.schemaMetadata, testCase.startingTable, testCase.processedTables, testCase.path)
-	exportTableData(
+	exportTablesData(
 		testCase.repo.DB,
 		testCase.repo.Writer,
 		testCase.schemaMetadata,

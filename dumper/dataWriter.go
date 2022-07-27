@@ -27,7 +27,7 @@ func PrintTableDataOrdered(db *sql.DB, writer *bufio.Writer, schemaMetadata map[
 	writer.WriteString("-- end of clean tables")
 	writer.WriteString("\n")
 	orderedTables := getTablesExportOrder(schemaMetadata, startingTable, make(map[string]bool), make([]string, 0))
-	exportTableData(db, writer, schemaMetadata, orderedTables, data, options)
+	exportTablesData(db, writer, schemaMetadata, orderedTables, data, options)
 	// clean cache for the next channel that can be exported
 	cache = make(map[string]string)
 }
@@ -73,7 +73,7 @@ func printCleanTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[strin
 	}
 }
 
-func exportTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table,
+func exportTablesData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table,
 	tablesOrdered []schemareader.Table, data DataDumper, options PrintSqlOptions) {
 
 	processing := true
@@ -104,25 +104,7 @@ func exportTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string
 		// export current table data
 		log.Debug().Msg(fmt.Sprintf("Writing data for table [%d/%d] %s", tableCount, len(tablesOrdered), table.Name))
 		tableCount++
-		tableData, dataOK := data.TableData[table.Name]
-		if dataOK {
-			exportPoint := 0
-			batch := 100
-			for len(tableData.Keys) > exportPoint {
-				upperLimit := exportPoint + batch
-				if upperLimit > len(tableData.Keys) {
-					upperLimit = len(tableData.Keys)
-				}
-				rows := GetRowsFromKeys(db, table, tableData.Keys[exportPoint:upperLimit])
-				totalExportedRecords = totalExportedRecords + len(rows)
-				for _, rowValue := range rows {
-					rowToInsert := generateRowInsertStatement(db, rowValue, table, schemaMetadata, options.OnlyIfParentExistsTables)
-					writer.WriteString(rowToInsert + "\n")
-				}
-				writer.Flush()
-				exportPoint = upperLimit
-			}
-		}
+		totalExportedRecords += exportCurrentTableData(db, writer, schemaMetadata, table, data, options)
 	}
 	// post-processing callback
 	for _, table := range tablesOrdered {
@@ -142,6 +124,31 @@ func exportTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string
 
 }
 
+func exportCurrentTableData(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table,
+	table schemareader.Table, data DataDumper, options PrintSqlOptions) int {
+
+	totalExportedRecords := 0
+	tableData, dataOK := data.TableData[table.Name]
+	if dataOK {
+		exportPoint := 0
+		batch := 100
+		for len(tableData.Keys) > exportPoint {
+			upperLimit := exportPoint + batch
+			if upperLimit > len(tableData.Keys) {
+				upperLimit = len(tableData.Keys)
+			}
+			rows := GetRowsFromKeys(db, table, tableData.Keys[exportPoint:upperLimit])
+			totalExportedRecords = totalExportedRecords + len(rows)
+			for _, rowValue := range rows {
+				rowToInsert := generateRowInsertStatement(db, rowValue, table, schemaMetadata, options.OnlyIfParentExistsTables)
+				writer.WriteString(rowToInsert + "\n")
+			}
+			exportPoint = upperLimit
+		}
+	}
+	return totalExportedRecords
+}
+
 func getTablesExportOrder(schemaMetadata map[string]schemareader.Table,
 	table schemareader.Table, processedTables map[string]bool, path []string) []schemareader.Table {
 
@@ -155,30 +162,24 @@ func getTablesExportOrder(schemaMetadata map[string]schemareader.Table,
 	path = append(path, table.Name)
 
 	// follow reference to
-	tablesReferences := make([]schemareader.Table, 0)
+	tableReferences := make([]schemareader.Table, 0)
 	for _, reference := range table.References {
 		tableReference, ok := schemaMetadata[reference.TableName]
-		if !ok || !tableReference.Export {
-			continue
+		if ok && tableReference.Export && shouldFollowToLinkPreOrder(path, table, tableReference) {
+			tableReferences = append(tableReferences, getTablesExportOrder(schemaMetadata, tableReference, processedTables, path)...)
 		}
-		tablesReferences = append(tablesReferences, getTablesExportOrder(schemaMetadata, tableReference, processedTables, path)...)
 	}
 
 	// follow reference by
-	tablesReferencesBy := make([]schemareader.Table, 0)
+	tableReferencesBy := make([]schemareader.Table, 0)
 	for _, reference := range table.ReferencedBy {
-
 		tableReference, ok := schemaMetadata[reference.TableName]
-		if !ok || !tableReference.Export {
-			continue
+		if ok && tableReference.Export && shouldFollowReferenceToLink(path, table, tableReference) {
+			tableReferencesBy = append(tableReferencesBy, getTablesExportOrder(schemaMetadata, tableReference, processedTables, path)...)
 		}
-		if !shouldFollowReferenceToLink(path, table, tableReference) {
-			continue
-		}
-		tablesReferencesBy = append(tablesReferencesBy, getTablesExportOrder(schemaMetadata, tableReference, processedTables, path)...)
 	}
 
-	return append(append(tablesReferences, table), tablesReferencesBy...)
+	return append(append(tableReferences, table), tableReferencesBy...)
 }
 
 // GetRowsFromKeys check if we should move this to a method in the type tableData

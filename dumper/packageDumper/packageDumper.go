@@ -33,7 +33,7 @@ func DumpPackageFiles(db *sql.DB, schemaMetadata map[string]schemareader.Table, 
 				}
 				time.Sleep(30 * time.Second)
 				log.Debug().Msgf("#count: %d -- #exportedPackageFiles: #%d of %d",
-					count, totalPackages, exportedpackages)
+					count, exportedpackages, totalPackages)
 				count++
 			}
 		}()
@@ -48,7 +48,6 @@ func DumpPackageFiles(db *sql.DB, schemaMetadata map[string]schemareader.Table, 
 			upperLimit = len(packageKeysData.Keys)
 		}
 		rows := dumper.GetRowsFromKeys(db, table, packageKeysData.Keys[exportPoint:upperLimit])
-		exportedpackages += len(rows)
 		for _, rowPackage := range rows {
 			path := rowPackage[pathIndex]
 			source := fmt.Sprintf("%s/%s", serverDataFolder, path.Value)
@@ -57,6 +56,7 @@ func DumpPackageFiles(db *sql.DB, schemaMetadata map[string]schemareader.Table, 
 			if error != nil {
 				log.Panic().Err(error).Msg("could not Copy File")
 			}
+			exportedpackages++
 		}
 		exportPoint = upperLimit
 	}

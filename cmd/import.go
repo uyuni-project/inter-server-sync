@@ -99,7 +99,12 @@ func runPackageFileSync(absImportDir string) {
 		}
 	}
 
-	cmd := exec.Command("rsync", "-og", "--chown=wwwrun:www", "-r",
+	debugFlag := ""
+	if log.Debug().Enabled() {
+		debugFlag = "-v"
+	}
+
+	cmd := exec.Command("rsync", debugFlag, "-og", "--chown=wwwrun:www", "-r",
 		packagesImportDir, "/var/spacewalk/packages/")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
@@ -127,7 +132,12 @@ func runImageFileSync(absImportDir string, serverFQDN string) {
 		}
 	}
 
-	cmd := exec.Command("rsync", "-og", "--chown=salt:susemanager", "--chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r",
+	debugFlag := ""
+	if log.Debug().Enabled() {
+		debugFlag = "-v"
+	}
+
+	cmd := exec.Command("rsync", debugFlag, "-og", "--chown=salt:susemanager", "--chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r",
 		"-r", "--exclude=pillars", imagesImportDir+"/", "/srv/www/os-images")
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr

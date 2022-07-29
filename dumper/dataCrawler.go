@@ -40,7 +40,7 @@ func DataCrawler(db *sql.DB, schemaMetadata map[string]schemareader.Table, start
 						table = key
 					}
 				}
-				log.Debug().Msgf("#count: %d #rowsToProcess: #%d ;  #rowsToExport: #%d  --> Bigger export table: %s: #%d",
+				log.Debug().Msgf("#count: %d #rowsToProcess: #%d ;  #rowsToDiscover: #%d  --> Bigger export table: %s: #%d",
 					count, len(itemsToProcess), keysSize, table, maxSize)
 				count++
 			}

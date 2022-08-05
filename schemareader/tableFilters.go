@@ -1,6 +1,11 @@
 package schemareader
 
-import "strings"
+import (
+	"regexp"
+	"strings"
+
+	"github.com/uyuni-project/inter-server-sync/sqlUtil"
+)
 
 const (
 	VirtualIndexName = "virtual_main_unique_index"
@@ -119,7 +124,33 @@ func applyTableFilters(table Table) Table {
 		// this table has two unique indexes with the same size which can be used
 		// we are fixing the usage to one of them to make it deterministic
 		table.MainUniqueIndexName = "rhn_errata_adv_org_uq"
+		table.RowModCallback = func(value []sqlUtil.RowDataStructure, table Table) []sqlUtil.RowDataStructure {
+			for i, row := range value {
+				if strings.Compare(row.ColumnName, "severity_id") == 0 {
+					value[i].Value = value[i].GetInitialValue()
+				}
+			}
+			return value
+		}
+	case "susesaltpillar":
+		table.RowModCallback = func(value []sqlUtil.RowDataStructure, table Table) []sqlUtil.RowDataStructure {
+			isImagePillar := false
+			pillarRow := 0
+			for i, row := range value {
+				if strings.Compare(row.ColumnName, "category") == 0 &&
+					strings.HasPrefix(row.Value.(string), "Image") {
+					isImagePillar = true
+				}
+				if strings.Compare(row.ColumnName, "pillar") == 0 {
+					pillarRow = i
+				}
+			}
+			if isImagePillar {
+				re := regexp.MustCompile(`https://[^/]/`)
+				value[pillarRow].Value = re.ReplaceAllString(value[pillarRow].Value.(string), "https://{SERVER_FQDN}/")
+			}
+			return value
+		}
 	}
-
 	return table
 }

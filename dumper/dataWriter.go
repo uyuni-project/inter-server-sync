@@ -219,12 +219,8 @@ func GetRowsFromKeys(db *sql.DB, table schemareader.Table, keys []TableKey) [][]
 }
 
 func filterRowData(value []sqlUtil.RowDataStructure, table schemareader.Table) []sqlUtil.RowDataStructure {
-	if strings.Compare(table.Name, "rhnerrata") == 0 {
-		for i, row := range value {
-			if strings.Compare(row.ColumnName, "severity_id") == 0 {
-				value[i].Value = value[i].GetInitialValue()
-			}
-		}
+	if table.RowModCallback != nil {
+		value = table.RowModCallback(value, table)
 	}
 	if table.UnexportColumns != nil {
 		returnValues := make([]sqlUtil.RowDataStructure, 0)

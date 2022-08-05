@@ -104,9 +104,11 @@ func dumpImageStores(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string
 
 			dumper.PrintTableDataOrdered(db, writer, schemaMetadata, schemaMetadata["suseimagestore"], tableProfilesData, dumper.PrintSqlOptions{})
 		}
+		// Mark tables as exported so they are not transitively exported by profiles
+		markAsExported(schemaMetadata, []string{"suseimagestore"})
+	} else {
+		log.Info().Msg("No image stores found to export")
 	}
-	// Mark tables as exported so they are not transitively exported by profiles
-	markAsExported(schemaMetadata, []string{"suseimagestore"})
 }
 
 /**
@@ -144,6 +146,7 @@ func dumpOSImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[stri
 	needExtraExport := false
 	sqlForExistingImages := "SELECT id FROM suseimageinfo WHERE image_type = 'kiwi'"
 	if isColumnInTable(schemaMetadata, "suseimageinfo", "built") {
+		// For 4.3 and newer export only succesfuly built images
 		sqlForExistingImages = fmt.Sprintf("%s AND built = 'Y'", sqlForExistingImages)
 	}
 	for _, org := range options.Orgs {
@@ -217,6 +220,10 @@ func dumpContainerImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata m
 
 	// Images
 	sqlForExistingImages := "SELECT id FROM suseimageinfo WHERE image_type = 'dockerfile'"
+	if isColumnInTable(schemaMetadata, "suseimageinfo", "built") {
+		// For 4.3 and newer export only succesfuly built images
+		sqlForExistingImages = fmt.Sprintf("%s AND built = 'Y'", sqlForExistingImages)
+	}
 	for _, org := range options.Orgs {
 		sqlForExistingImages = fmt.Sprintf("%s AND org_id = %d", sqlForExistingImages, org)
 	}

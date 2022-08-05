@@ -3,7 +3,6 @@ package cmd
 import (
 	"os"
 	"path"
-	"strings"
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
@@ -43,9 +42,7 @@ func init() {
 }
 
 func runExport(cmd *cobra.Command, args []string) {
-	log.Debug().Msg("export called")
-	log.Debug().Msg(strings.Join(channels, ","))
-	log.Debug().Msg(outputDir)
+	log.Info().Msg("Export started")
 	// check output dir existence and create it if needed.
 
 	// Validate data

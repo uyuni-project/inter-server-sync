@@ -204,12 +204,13 @@ func processChannel(db *sql.DB, writer *bufio.Writer, channelLabel string,
 	whereFilter := fmt.Sprintf("label = '%s'", channelLabel)
 	tableData := dumper.DataCrawler(db, schemaMetadata, schemaMetadata["rhnchannel"], whereFilter, options.StartingDate)
 
-	totalRows := 0
-	for _, value := range tableData.TableData {
-		totalRows = totalRows + len(value.KeyMap)
+	if log.Debug().Enabled() {
+		totalRows := 0
+		for _, value := range tableData.TableData {
+			totalRows = totalRows + len(value.KeyMap)
+		}
+		log.Debug().Msgf("finished table data crawler. Total database rows to export: %d", totalRows)
 	}
-
-	log.Debug().Msgf("finished table data crawler. Total database rows to export: %d", totalRows)
 
 	cleanWhereClause := fmt.Sprintf(`WHERE rhnchannel.id = (SELECT id FROM rhnchannel WHERE label = '%s')`, channelLabel)
 	printOptions := dumper.PrintSqlOptions{

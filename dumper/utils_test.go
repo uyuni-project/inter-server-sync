@@ -37,8 +37,9 @@ func createMetaDataGraph(graph TablesGraph) (MetaDataGraph, DataDumper) {
 			return schemareader.Table{
 				Name:                name,
 				Export:              true,
-				Columns:             []string{"id", "fk_id"},
+				Columns:             []string{"id"},
 				PKColumns:           map[string]bool{"id": true},
+				ColumnIndexes:       map[string]int{"id": 0},
 				MainUniqueIndexName: indexName,
 				UniqueIndexes:       map[string]schemareader.UniqueIndex{indexName: {indexName, []string{"id"}}},
 				References:          []schemareader.Reference{},
@@ -51,14 +52,18 @@ func createMetaDataGraph(graph TablesGraph) (MetaDataGraph, DataDumper) {
 	for parent, children := range graph {
 		var parentTable = getOrCreateTable(parent)
 		for _, child := range children {
+			columnKey := child + "_fk_id"
+			parentTable.Columns = append(parentTable.Columns, columnKey)
+			parentTable.ColumnIndexes[columnKey] = len(parentTable.Columns) - 1
 			parentTable.References = append(
 				parentTable.References,
-				schemareader.Reference{TableName: child, ColumnMapping: map[string]string{"fk_id": "id"}},
+				schemareader.Reference{TableName: child, ColumnMapping: map[string]string{columnKey: "id"}},
 			)
+
 			childTable := getOrCreateTable(child)
 			childTable.ReferencedBy = append(
 				childTable.ReferencedBy,
-				schemareader.Reference{TableName: parent, ColumnMapping: map[string]string{"fk_id": "id"}},
+				schemareader.Reference{TableName: parent, ColumnMapping: map[string]string{columnKey: "id"}},
 			)
 			schemaMetadata[child] = childTable
 			k := []RowKey{{"id", fmt.Sprintf("'%04d'", 1)}}

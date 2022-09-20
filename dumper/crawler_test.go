@@ -36,16 +36,16 @@ func TestShouldCreateDataDumper(t *testing.T) {
 	testCase := createDataCrawlerTestCase(graph, root)
 
 	// the data repository expect these statements in the exact same order
-	testCase.repo.Expect("SELECT * FROM root WHERE CUSTOM ;", 1)
-	testCase.repo.Expect("SELECT id, fk_id FROM v31 WHERE id = $1;", 1)
-	testCase.repo.Expect("SELECT id, fk_id FROM v32 WHERE id = $1;", 1)
-	testCase.repo.Expect("SELECT id, fk_id FROM v33 WHERE id = $1;", 1)
-	testCase.repo.Expect("SELECT id, fk_id FROM v34 WHERE id = $1;", 1)
-	testCase.repo.Expect("SELECT id, fk_id FROM v35 WHERE id = $1;", 1)
-	testCase.repo.Expect("SELECT id, fk_id FROM v36 WHERE id = $1;", 1)
+	testCase.repo.Expect("SELECT * FROM root WHERE CUSTOM ;", testCase.schemaMetadata["root"].Columns, 1)
+	testCase.repo.Expect("SELECT id, v35_fk_id, v36_fk_id FROM v31 WHERE id = $1;", testCase.schemaMetadata["v31"].Columns, 1)
+	testCase.repo.Expect("SELECT id, v33_fk_id FROM v32 WHERE id = $1;", testCase.schemaMetadata["v32"].Columns, 1)
+	testCase.repo.Expect("SELECT id, v34_fk_id FROM v33 WHERE id = $1;", testCase.schemaMetadata["v33"].Columns, 1)
+	testCase.repo.Expect("SELECT id, v35_fk_id, v36_fk_id FROM v34 WHERE id = $1;", testCase.schemaMetadata["v34"].Columns, 1)
+	testCase.repo.Expect("SELECT id, v34_fk_id FROM v35 WHERE id = $1;", testCase.schemaMetadata["v35"].Columns, 1)
+	testCase.repo.Expect("SELECT id FROM v36 WHERE id = $1;", testCase.schemaMetadata["v36"].Columns, 1)
 
-	testCase.repo.Expect("SELECT id, fk_id FROM v35 WHERE id = $1;", 1)
-	testCase.repo.Expect("SELECT id, fk_id FROM v36 WHERE id = $1;", 1)
+	testCase.repo.Expect("SELECT id, v34_fk_id FROM v35 WHERE id = $1;", testCase.schemaMetadata["v35"].Columns, 1)
+	testCase.repo.Expect("SELECT id FROM v36 WHERE id = $1;", testCase.schemaMetadata["v36"].Columns, 1)
 
 	// Act
 	dataDumper := DataCrawler(

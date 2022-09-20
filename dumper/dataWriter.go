@@ -300,7 +300,6 @@ func substituteForeignKeyReference(db *sql.DB, table schemareader.Table,
 		//Assuming there will be one entry in reference.ColumnMapping
 		row[table.ColumnIndexes[localColumns[0]]].Value = cachedValue
 		row[table.ColumnIndexes[localColumns[0]]].ColumnType = "SQL"
-
 	} else {
 		rows := sqlUtil.ExecuteQueryWithResults(db, sql, scanParameters...)
 		// we will only change for a sub query if we were able to find the target Value
@@ -567,7 +566,7 @@ func generateRowInsertStatement(db *sql.DB, values []sqlUtil.RowDataStructure, t
 
 	if strings.Compare(table.MainUniqueIndexName, schemareader.VirtualIndexName) == 0 || utils.Contains(onlyIfParentExistsTables, table.Name) {
 		whereClauseList := make([]string, 0)
-		parentsRecordsCheckList := make([]string, 0)
+
 		for _, indexColumn := range table.UniqueIndexes[table.MainUniqueIndexName].Columns {
 			for _, value := range valueFiltered {
 				if strings.Compare(indexColumn, value.ColumnName) == 0 {
@@ -576,18 +575,27 @@ func generateRowInsertStatement(db *sql.DB, values []sqlUtil.RowDataStructure, t
 					} else {
 						whereClauseList = append(whereClauseList, fmt.Sprintf(" %s = %s",
 							value.ColumnName, formatField(value)))
-						if value.ColumnType == "SQL" {
-							parentsRecordsCheckList = append(parentsRecordsCheckList, fmt.Sprintf("EXISTS %s",
-								formatField(value)))
-						}
 					}
 				}
 			}
 		}
 		whereClause := strings.Join(whereClauseList, " AND ")
-		parentRecordsExistsClause := strings.Join(parentsRecordsCheckList, " AND ")
 
 		if utils.Contains(onlyIfParentExistsTables, table.Name) {
+
+			parentsRecordsCheckList := make([]string, 0)
+			for _, reference := range table.References {
+				for localColumn, _ := range reference.ColumnMapping {
+					for _, value := range valueFiltered {
+						if strings.Compare(localColumn, value.ColumnName) == 0 {
+							if value.Value != nil && value.ColumnType == "SQL" {
+								parentsRecordsCheckList = append(parentsRecordsCheckList, fmt.Sprintf("EXISTS %s", formatField(value)))
+							}
+						}
+					}
+				}
+			}
+			parentRecordsExistsClause := strings.Join(parentsRecordsCheckList, " AND ")
 			return fmt.Sprintf(`INSERT INTO %s (%s)	SELECT %s WHERE NOT EXISTS (SELECT 1 FROM %s WHERE %s) AND %s;`,
 				tableName, columnNames, formatRowValue(valueFiltered), tableName, whereClause, parentRecordsExistsClause)
 		}

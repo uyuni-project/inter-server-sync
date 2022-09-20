@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+
 	"github.com/DATA-DOG/go-sqlmock"
 )
 
@@ -28,14 +29,18 @@ func CreateDataRepository() *DataRepository {
 }
 
 // Expect adds data to repository, which can then be retrieved by the tested function.
-func (repo *DataRepository) Expect(stm string, numRecords int, args ...driver.Value) {
+func (repo *DataRepository) Expect(stm string, columns []string, numRecords int, args ...driver.Value) {
 
 	// simulate table having only one row
 	recs := sqlmock.
-		NewRows([]string{"id", "fk_id"})
+		NewRows(columns)
 
 	for i := 0; i < numRecords; i++ {
-		recs = recs.AddRow(fmt.Sprintf("%04d", i+1), fmt.Sprintf("%04d", 1))
+		res := []driver.Value{fmt.Sprintf("%04d", i+1)}
+		for j := 1; j < len(columns); j++ {
+			res = append(res, fmt.Sprintf("%04d", 1))
+		}
+		recs = recs.AddRow(res...)
 	}
 	// add mock expectation
 	if len(args) > 0 {

@@ -111,6 +111,10 @@ func applyTableFilters(table Table) Table {
 		virtualIndexColumns := []string{"profile_id", "path"}
 		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
 		table.MainUniqueIndexName = VirtualIndexName
+	case "rhnerrata":
+		// this table has two unique indexes with the same size which can be used
+		// we are fixing the usage to one of them to make it deterministic
+		table.MainUniqueIndexName = "rhn_errata_adv_org_uq"
 	}
 
 	return table

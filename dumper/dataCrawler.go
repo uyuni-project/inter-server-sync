@@ -125,6 +125,12 @@ func extractRowKeyData(table schemareader.Table, itemToProcess processItem) Tabl
 	return TableKey{keys}
 }
 
+func shouldApplyStartingDate(startingDate string, tableName string) bool {
+	return startingDate != "" &&
+		(tableName == "rhnchannelerrata" || tableName == "rhnchannelpackage" ||
+			tableName == "susemddata" || tableName == "rhnerratafilechannel")
+}
+
 func followReferencesFrom(db *sql.DB, schemaMetadata map[string]schemareader.Table, table schemareader.Table, row processItem, startingDate string) []processItem {
 	result := make([]processItem, 0)
 
@@ -151,7 +157,7 @@ func followReferencesFrom(db *sql.DB, schemaMetadata map[string]schemareader.Tab
 			scanParameters = append(scanParameters, row.row[table.ColumnIndexes[localColumn]].Value)
 		}
 
-		if startingDate != "" && (reference.TableName == "rhnchannelerrata" || reference.TableName == "rhnchannelpackage" || reference.TableName == "susemddata") {
+		if shouldApplyStartingDate(startingDate, reference.TableName) {
 			whereParameters = append(whereParameters, fmt.Sprintf("%s >= '$%d'::timestamp", "modified", len(whereParameters)+1))
 			scanParameters = append(scanParameters, startingDate)
 		}
@@ -199,11 +205,10 @@ func shouldFollowReferenceToLink(path []string, currentTable schemareader.Table,
 
 	forcedNavigations := map[string][]string{
 		"rhnchannelfamily": {"rhnpublicchannelfamily"},
-		"rhnchannel":       {"susemddata", "suseproductchannel", "rhnreleasechannelmap", "rhndistchannelmap"},
+		"rhnchannel":       {"susemddata", "suseproductchannel", "rhnreleasechannelmap", "rhndistchannelmap", "rhnerratafilechannel"},
 		"suseproducts":     {"suseproductextension", "suseproductsccrepository"},
 		"rhnpackageevr":    {"rhnpackagenevra"},
 		"rhnerrata":        {"rhnerratafile"},
-		"rhnerratafile":    {"rhnerratafilechannel"},
 		"rhnconfigchannel": {"rhnconfigfile"},
 		"rhnconfigfile":    {"rhnconfigrevision"},
 	}
@@ -256,7 +261,7 @@ func followReferencesTo(db *sql.DB, schemaMetadata map[string]schemareader.Table
 			scanParameters = append(scanParameters, row.row[table.ColumnIndexes[foreignColumn]].Value)
 		}
 
-		if startingDate != "" && (reference.TableName == "rhnchannelerrata" || reference.TableName == "rhnchannelpackage" || reference.TableName == "susemddata") {
+		if shouldApplyStartingDate(startingDate, referencedTable.Name) {
 			whereParameters = append(whereParameters, fmt.Sprintf("%s >= $%d::timestamp", "modified", len(whereParameters)+1))
 			scanParameters = append(scanParameters, startingDate)
 		}

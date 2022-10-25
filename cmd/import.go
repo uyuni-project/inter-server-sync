@@ -99,13 +99,15 @@ func runPackageFileSync(absImportDir string) {
 		}
 	}
 
-	debugFlag := ""
+	rsyncParams := make([]string, 0)
 	if log.Debug().Enabled() {
-		debugFlag = "-v"
+		rsyncParams = append(rsyncParams, "-v")
 	}
 
-	cmd := exec.Command("rsync", debugFlag, "-og", "--chown=wwwrun:www", "-r",
+	rsyncParams = append(rsyncParams, "-og", "--chown=wwwrun:www", "-r",
 		packagesImportDir, "/var/spacewalk/packages/")
+
+	cmd := exec.Command("rsync", rsyncParams...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	log.Info().Msg("starting importing package files")
@@ -132,13 +134,14 @@ func runImageFileSync(absImportDir string, serverFQDN string) {
 		}
 	}
 
-	debugFlag := ""
+	rsyncParams := make([]string, 0)
 	if log.Debug().Enabled() {
-		debugFlag = "-v"
+		rsyncParams = append(rsyncParams, "-v")
 	}
-
-	cmd := exec.Command("rsync", debugFlag, "-og", "--chown=salt:susemanager", "--chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r",
+	rsyncParams = append(rsyncParams, "-og", "--chown=salt:susemanager", "--chmod=Du=rwx,Dgo=rx,Fu=rw,Fgo=r",
 		"-r", "--exclude=pillars", imagesImportDir+"/", "/srv/www/os-images")
+
+	cmd := exec.Command("rsync", rsyncParams...)
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	log.Info().Msg("Copying image files")

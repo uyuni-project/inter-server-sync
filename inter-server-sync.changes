@@ -1,4 +1,5 @@
 * Correct error when importing without debug log level (bsc#1204699)
+* Change build to use go version 18 with openssl (#19269)
 
 -------------------------------------------------------------------
 Wed Oct 12 10:31:36 UTC 2022 - Ricardo Mateus <rmateus@suse.com>

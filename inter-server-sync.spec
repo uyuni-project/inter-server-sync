@@ -40,9 +40,13 @@ Source0:        %{name}-%{version}.tar.gz
 Source1:        vendor.tar.gz
 BuildRequires:  golang-packaging
 %if 0%{?rhel}
-BuildRequires:  golang >= 1.16
+BuildRequires:  golang >= 1.17
 %else
-BuildRequires:  golang(API) = 1.16
+%if 0%{?is_opensuse}
+BuildRequires:  golang(API) = 1.18
+%else
+BuildRequires:  go1.18-openssl
+%endif
 %endif
 BuildRequires:  rsyslog
 
@@ -68,9 +72,6 @@ export GOFLAGS=-mod=vendor
 
 %install
 %goinstall
-%gosrc
-
-%gofilelist
 
 %define _release_dir  %{_builddir}/%{project}-%{version}/release
 
@@ -97,7 +98,7 @@ rm -f %{buildroot}/usr/lib/debug/%{_bindir}/%{name}-%{version}-*.debug
 %service_del_postun rsyslog.service
 %endif
 
-%files -f file.lst
+%files
 
 %defattr(-,root,root)
 %doc README.md

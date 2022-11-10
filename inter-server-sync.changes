@@ -1,4 +1,8 @@
-* Correct error when importing without debug log level (bsc#1204699)
+-------------------------------------------------------------------
+Thu Nov 10 10:34:51 UTC 2022 - Ricardo Mateus <rmateus@suse.com>
+
+- version 0.2.5 
+  * Correct error when importing without debug log level (bsc#1204699)
 
 -------------------------------------------------------------------
 Wed Oct 12 10:31:36 UTC 2022 - Ricardo Mateus <rmateus@suse.com>

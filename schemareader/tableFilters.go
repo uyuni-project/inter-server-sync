@@ -25,6 +25,10 @@ func applyTableFilters(table Table) Table {
 		table.PKSequence = "rhn_package_source_id_seq"
 	case "rhnpackagekey":
 		table.PKSequence = "rhn_pkey_id_seq"
+	case "rhnpackageextratag":
+		virtualIndexColumns := []string{"package_id", "key_id"}
+		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
+		table.MainUniqueIndexName = VirtualIndexName
 	case "rhnpackageevr":
 		// constraint: rhn_pe_id_pk
 		table.PKSequence = "rhn_pkg_evr_seq"

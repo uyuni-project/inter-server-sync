@@ -22,7 +22,8 @@ var tablesToClean = []string{"rhnreleasechannelmap", "rhndistchannelmap", "rhnch
 	"rhnerratafilechannel", "rhnerratafilepackage", "rhnerratafilepackagesource",
 	"rhnerratabuglist", "rhnerratacve",
 	"rhnerratakeyword",
-	"susemddata", "suseproductchannel", "rhnchannelcloned"}
+	"susemddata", "suseproductchannel", "rhnchannelcloned",
+	"rhnpackageextratag"}
 
 // onlyIfParentExistsTables represents Tables for which only records needs to be insterted only if parent record exists
 var onlyIfParentExistsTables = []string{"rhnchannelcloned", "rhnerratacloned", "suseproductchannel"}
@@ -67,6 +68,8 @@ func SoftwareChannelTableNames() []string {
 		"rhnpackagechangelogrec",
 		"rhnpackageconflicts",
 		"rhnpackageenhances",
+		"rhnpackageextratag",
+		"rhnpackageextratagkey",
 		"rhnpackagefile",
 		"rhnpackageobsoletes",
 		"rhnpackagepredepends",

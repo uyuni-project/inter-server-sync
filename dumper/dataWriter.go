@@ -32,7 +32,8 @@ func PrintTableDataOrdered(db *sql.DB, writer *bufio.Writer, schemaMetadata map[
 	cache = make(map[string]string)
 }
 
-/**
+/*
+*
 clear tables need to be printed in reverse order, otherwise it will not work
 */
 func printCleanTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table, table schemareader.Table,
@@ -220,7 +221,8 @@ func GetRowsFromKeys(db *sql.DB, table schemareader.Table, keys []TableKey) [][]
 
 func filterRowData(value []sqlUtil.RowDataStructure, table schemareader.Table) []sqlUtil.RowDataStructure {
 	if table.RowModCallback != nil {
-		value = table.RowModCallback(value, table)
+		// value passed as slice so modifications done in callback are visible in this scope as well
+		table.RowModCallback(value, table)
 	}
 	if table.UnexportColumns != nil {
 		returnValues := make([]sqlUtil.RowDataStructure, 0)

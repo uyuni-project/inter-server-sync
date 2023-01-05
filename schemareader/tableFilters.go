@@ -4,6 +4,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/rs/zerolog/log"
 	"github.com/uyuni-project/inter-server-sync/sqlUtil"
 )
 
@@ -135,22 +136,31 @@ func applyTableFilters(table Table) Table {
 	case "susesaltpillar":
 		table.RowModCallback = func(value []sqlUtil.RowDataStructure, table Table) []sqlUtil.RowDataStructure {
 			isImagePillar := false
-			pillarRow := 0
-			for i, row := range value {
-				if strings.Compare(row.ColumnName, "category") == 0 &&
-					strings.HasPrefix(row.Value.(string), "Image") {
+			pillarColumn := 0
+			for i, column := range value {
+				if strings.Compare(column.ColumnName, "category") == 0 &&
+					strings.HasPrefix(column.Value.(string), "Image") {
+					log.Trace().Msgf("Updating pillar URLs of %s", column.Value)
 					isImagePillar = true
-				}
-				if strings.Compare(row.ColumnName, "pillar") == 0 {
-					pillarRow = i
+				} else if strings.Compare(column.ColumnName, "pillar") == 0 {
+					pillarColumn = i
 				}
 			}
 			if isImagePillar {
-				re := regexp.MustCompile(`https://[^/]/`)
-				value[pillarRow].Value = re.ReplaceAllString(value[pillarRow].Value.(string), "https://{SERVER_FQDN}/")
+				re := regexp.MustCompile(`https://[^/]+/os-images/`)
+				repl := []byte("https://{SERVER_FQDN}/os-images/")
+				value[pillarColumn].Value = re.ReplaceAll(value[pillarColumn].Value.([]byte), repl)
 			}
 			return value
 		}
+		virtualIndexColumns := []string{"server_id", "group_id", "org_id", "category"}
+		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
+		table.MainUniqueIndexName = VirtualIndexName
+	case "suseimagefile":
+		table.PKSequence = "suse_image_file_id_seq"
+		virtualIndexColumns := []string{"image_info_id", "file"}
+		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
+		table.MainUniqueIndexName = VirtualIndexName
 	}
 	return table
 }

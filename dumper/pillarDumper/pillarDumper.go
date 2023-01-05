@@ -109,8 +109,10 @@ func ImportImagePillars(sourceDir string, fqdn string) {
 // image export replaces hostnames in image pillars, we need to replace them to correct SUMA on import
 func UpdateImagePillars(fqdn string) {
 	cmd := exec.Command("spacewalk-sql", "-")
-	sqlQuery := fmt.Sprintf("UPDATE susesaltpillar SET pillar = REPLACE(pillar::text, '%s', '%s')::jsonb WHERE category LIKE Image%%;",
+	sqlQuery := fmt.Sprintf("UPDATE susesaltpillar SET pillar = REPLACE(pillar::text, '%s', '%s')::jsonb WHERE category LIKE 'Image%%';",
 		replacePattern, fqdn)
+
+	log.Trace().Msgf("Updateing pillar files using query %s", sqlQuery)
 
 	cmd.Stdin = strings.NewReader(sqlQuery)
 	cmd.Stdout = os.Stdout

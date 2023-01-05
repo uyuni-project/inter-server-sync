@@ -20,11 +20,8 @@ var tablesToClean_images = []string{
 	"suseimageinfochannel",
 }
 
-/*
-    Activation keys are not exported - they are managed by uyunit formulas and/or XMLRPC/salt calls
-
-	If correct activation key is not present, OS images, particularly saltboot images, may not finish bootstrap correctly
-*/
+// Activation keys are not exported - they are managed by uyuni formulas and/or XMLRPC/salt calls
+// If correct activation key is not present, OS images, particularly saltboot images, may not finish bootstrap correctly
 var imagesTableNames = []string{
 	// stores
 	"suseImageStore",
@@ -111,8 +108,10 @@ func dumpImageStores(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string
 	}
 }
 
-/**
-  Dump OS image tables, return true if additional data (pillars, images) need to be also dumped
+/*
+*
+
+	Dump OS image tables, return true if additional data (pillars, images) need to be also dumped
 */
 func dumpOSImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[string]schemareader.Table,
 	options DumperOptions, outputFolderImagesAbs string) bool {
@@ -167,10 +166,16 @@ func dumpOSImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[stri
 			// Check if pillars are already in database
 			if _, ok := tableImageData.TableData["susesaltpillar"]; ok && !options.MetadataOnly {
 				// pillars in database, files must be as well
-				// find all image files for the image and export them
-				sqlForExistingImageFiles := fmt.Sprintf("SELECT file, org_id FROM suseimagefile AS sif JOIN suseimageinfo AS sii "+
+				// export all metadata about images
+				whereClauseImageFiles := fmt.Sprintf("image_info_id = '%s'", image[0].Value)
+				tableImageFilesData := dumper.DataCrawler(db, schemaMetadata, schemaMetadata["suseimagefile"],
+					whereClauseImageFiles, options.StartingDate)
+				dumper.PrintTableDataOrdered(db, writer, schemaMetadata, schemaMetadata["suseimagefile"],
+					tableImageFilesData, dumper.PrintSqlOptions{})
+				// find all local (not-external) image files for the image and export their files
+				sqlForExistingLocalImageFiles := fmt.Sprintf("SELECT file, org_id FROM suseimagefile AS sif JOIN suseimageinfo AS sii "+
 					"ON sif.image_info_id = sii.id WHERE sii.id = '%s' AND external = 'N'", image[0].Value)
-				imageFiles := sqlUtil.ExecuteQueryWithResults(db, sqlForExistingImageFiles)
+				imageFiles := sqlUtil.ExecuteQueryWithResults(db, sqlForExistingLocalImageFiles)
 				for _, imageFile := range imageFiles {
 					// source is taken from basedir + org + filename from db
 					// output should be base abs dir + org + filename from db

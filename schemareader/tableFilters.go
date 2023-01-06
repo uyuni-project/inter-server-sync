@@ -1,6 +1,12 @@
 package schemareader
 
-import "strings"
+import (
+	"regexp"
+	"strings"
+
+	"github.com/rs/zerolog/log"
+	"github.com/uyuni-project/inter-server-sync/sqlUtil"
+)
 
 const (
 	VirtualIndexName = "virtual_main_unique_index"
@@ -119,7 +125,42 @@ func applyTableFilters(table Table) Table {
 		// this table has two unique indexes with the same size which can be used
 		// we are fixing the usage to one of them to make it deterministic
 		table.MainUniqueIndexName = "rhn_errata_adv_org_uq"
+		table.RowModCallback = func(value []sqlUtil.RowDataStructure, table Table) []sqlUtil.RowDataStructure {
+			for i, row := range value {
+				if strings.Compare(row.ColumnName, "severity_id") == 0 {
+					value[i].Value = value[i].GetInitialValue()
+				}
+			}
+			return value
+		}
+	case "susesaltpillar":
+		table.RowModCallback = func(value []sqlUtil.RowDataStructure, table Table) []sqlUtil.RowDataStructure {
+			isImagePillar := false
+			pillarColumn := 0
+			for i, column := range value {
+				if strings.Compare(column.ColumnName, "category") == 0 &&
+					strings.HasPrefix(column.Value.(string), "Image") {
+					log.Trace().Msgf("Updating pillar URLs of %s", column.Value)
+					isImagePillar = true
+				} else if strings.Compare(column.ColumnName, "pillar") == 0 {
+					pillarColumn = i
+				}
+			}
+			if isImagePillar {
+				re := regexp.MustCompile(`https://[^/]+/os-images/`)
+				repl := []byte("https://{SERVER_FQDN}/os-images/")
+				value[pillarColumn].Value = re.ReplaceAll(value[pillarColumn].Value.([]byte), repl)
+			}
+			return value
+		}
+		virtualIndexColumns := []string{"server_id", "group_id", "org_id", "category"}
+		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
+		table.MainUniqueIndexName = VirtualIndexName
+	case "suseimagefile":
+		table.PKSequence = "suse_image_file_id_seq"
+		virtualIndexColumns := []string{"image_info_id", "file"}
+		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
+		table.MainUniqueIndexName = VirtualIndexName
 	}
-
 	return table
 }

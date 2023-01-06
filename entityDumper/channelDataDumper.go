@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 	"github.com/uyuni-project/inter-server-sync/dumper"
@@ -126,6 +127,7 @@ var singleChannelSql = "select label from rhnchannel " +
 	"where label = $1"
 
 func loadChannelsToProcess(db *sql.DB, options DumperOptions) []string {
+	log.Trace().Msg("Loading channel list")
 	channels := channelsProcess{make(map[string]bool), make([]string, 0)}
 	for _, singleChannel := range options.ChannelLabels {
 		if _, ok := channels.channelsMap[singleChannel]; !ok {
@@ -154,10 +156,12 @@ func loadChannelsToProcess(db *sql.DB, options DumperOptions) []string {
 
 		}
 	}
+	log.Debug().Msgf("Channels to export: %s", strings.Join(channels.channels, ","))
 	return channels.channels
 }
 
 func processAndInsertProducts(db *sql.DB, writer *bufio.Writer) {
+	log.Trace().Msg("Processing product tables")
 	schemaMetadata := schemareader.ReadTablesSchema(db, ProductsTableNames())
 	startingTables := []schemareader.Table{schemaMetadata["suseproducts"]}
 

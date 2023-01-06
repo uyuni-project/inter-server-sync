@@ -6,6 +6,7 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
+	"strings"
 
 	"github.com/rs/zerolog/log"
 	"github.com/uyuni-project/inter-server-sync/dumper"
@@ -76,9 +77,10 @@ func DumpPillars(sourceDir, outputDir, sourceFQDN, targetFQDN string) {
 	}
 }
 
-func ImportImagePillars(sourceDir string, serverConfig string) {
+// 4.2 and older stores pillars in files
+// image export replaces hostnames in image pillars, we need to replace them to correct SUMA on import
+func ImportImagePillars(sourceDir string, fqdn string) {
 	log.Debug().Msgf("Importing image pillars from %s", sourceDir)
-	fqdn := utils.GetCurrentServerFQDN(serverConfig)
 	orgDir, err := os.Open(sourceDir)
 	if err != nil {
 		log.Fatal().Err(err)
@@ -100,5 +102,26 @@ func ImportImagePillars(sourceDir string, serverConfig string) {
 
 			}
 		}
+	}
+}
+
+// 4.3 and newer stores pillars in database
+// image export replaces hostnames in image pillars, we need to replace them to correct SUMA on import
+func UpdateImagePillars(fqdn string) {
+	cmd := exec.Command("spacewalk-sql", "-")
+	sqlQuery := fmt.Sprintf("UPDATE susesaltpillar SET pillar = REPLACE(pillar::text, '%s', '%s')::jsonb WHERE category LIKE 'Image%%';",
+		replacePattern, fqdn)
+
+	log.Trace().Msgf("Updateing pillar files using query %s", sqlQuery)
+
+	cmd.Stdin = strings.NewReader(sqlQuery)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	log.Info().Msg("Updating image pillars if needed")
+
+	err := cmd.Run()
+	if err != nil {
+		log.Fatal().Err(err).Msgf("Error updating image pillars")
 	}
 }

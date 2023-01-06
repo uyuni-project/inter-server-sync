@@ -48,7 +48,7 @@ func runImport(cmd *cobra.Command, args []string) {
 
 	runImageFileSync(absImportDir, serverConfig)
 
-	runImportSql(absImportDir)
+	runImportSql(absImportDir, serverConfig)
 	log.Info().Msg("import finished")
 }
 
@@ -122,7 +122,7 @@ func runConfigFilesSync(labels []string, user string, password string) (interfac
 	return client.SyncConfigFiles(labels)
 }
 
-func runImageFileSync(absImportDir string, serverFQDN string) {
+func runImageFileSync(absImportDir string, serverConfig string) {
 	imagesImportDir := path.Join(absImportDir, "images")
 	err := utils.FolderExists(imagesImportDir)
 	if err != nil {
@@ -154,7 +154,7 @@ func runImageFileSync(absImportDir string, serverFQDN string) {
 	err = utils.FolderExists(pillarImportDir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			log.Info().Msg("No pillar files to import")
+			log.Debug().Msg("No pillar files to import")
 			return
 		} else {
 			log.Fatal().Err(err).Msg("Error reading import folder for pillars")
@@ -162,7 +162,7 @@ func runImageFileSync(absImportDir string, serverFQDN string) {
 	}
 
 	log.Info().Msg("Copying image pillar files")
-	pillarDumper.ImportImagePillars(pillarImportDir, serverConfig)
+	pillarDumper.ImportImagePillars(pillarImportDir, utils.GetCurrentServerFQDN(serverConfig))
 }
 
 func importSqlFile(absImportDir string) {
@@ -203,7 +203,7 @@ func importGzFile(absImportDir string) {
 	}
 }
 
-func runImportSql(absImportDir string) {
+func runImportSql(absImportDir string, serverConfig string) {
 
 	if _, err := os.Stat(fmt.Sprintf("%s/sql_statements.sql.gz", absImportDir)); err == nil {
 		importGzFile(absImportDir)
@@ -212,6 +212,8 @@ func runImportSql(absImportDir string) {
 			importSqlFile(absImportDir)
 		}
 	}
+
+	pillarDumper.UpdateImagePillars(utils.GetCurrentServerFQDN(serverConfig))
 
 	if hasConfigChannels(absImportDir) {
 		labels := utils.ReadFileByLine(fmt.Sprintf("%s/exportedConfigs.txt", absImportDir))

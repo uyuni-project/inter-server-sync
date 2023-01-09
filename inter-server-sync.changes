@@ -1,5 +1,5 @@
 -------------------------------------------------------------------
-Thu Dec 22 12:25:42 UTC 2022 - Cédric Bosdonnat <cbosdonnat@suse.com>
+Mon Jan  9 14:33:35 UTC 2023 - Cédric Bosdonnat <cbosdonnat@suse.com>
 
 - version 0.2.6
   * Export package extra tags for complete debian repo metatdata (bsc#1206375)

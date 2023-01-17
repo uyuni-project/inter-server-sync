@@ -213,7 +213,7 @@ func runImportSql(absImportDir string, serverConfig string) {
 		}
 	}
 
-	pillarDumper.UpdateImagePillars(utils.GetCurrentServerFQDN(serverConfig))
+	pillarDumper.UpdateImagePillars(serverConfig)
 
 	if hasConfigChannels(absImportDir) {
 		labels := utils.ReadFileByLine(fmt.Sprintf("%s/exportedConfigs.txt", absImportDir))

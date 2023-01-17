@@ -6,10 +6,10 @@ import (
 	"os/exec"
 	"path"
 	"path/filepath"
-	"strings"
 
 	"github.com/rs/zerolog/log"
 	"github.com/uyuni-project/inter-server-sync/dumper"
+	"github.com/uyuni-project/inter-server-sync/schemareader"
 	"github.com/uyuni-project/inter-server-sync/utils"
 )
 
@@ -107,20 +107,33 @@ func ImportImagePillars(sourceDir string, fqdn string) {
 
 // 4.3 and newer stores pillars in database
 // image export replaces hostnames in image pillars, we need to replace them to correct SUMA on import
-func UpdateImagePillars(fqdn string) {
-	cmd := exec.Command("spacewalk-sql", "-")
+func UpdateImagePillars(serverConfig string) {
+	fqdn := utils.GetCurrentServerFQDN(serverConfig)
+
+	checkQuery := "SELECT EXISTS (SELECT FROM pg_tables WHERE schemaname = 'public' AND tablename = 'susesaltpillar')"
+	db := schemareader.GetDBconnection(serverConfig)
+	rows, err := db.Query(checkQuery)
+	if err != nil {
+		log.Fatal().Err(err).Msgf("Error while executing '%s'", checkQuery)
+	}
+	if !rows.Next() {
+		log.Fatal().Msgf("No return on pillar database table check")
+	}
+	var hasPillars bool
+	err = rows.Scan(&hasPillars)
+	if err != nil {
+		log.Fatal().Err(err).Msgf("Unexpected query result")
+	}
+	if !hasPillars {
+		log.Debug().Msgf("Pillars not backed by database")
+		return
+	}
+
 	sqlQuery := fmt.Sprintf("UPDATE susesaltpillar SET pillar = REPLACE(pillar::text, '%s', '%s')::jsonb WHERE category LIKE 'Image%%';",
 		replacePattern, fqdn)
-
-	log.Trace().Msgf("Updateing pillar files using query %s", sqlQuery)
-
-	cmd.Stdin = strings.NewReader(sqlQuery)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
+	log.Trace().Msgf("Updating pillar files using query '%s'", sqlQuery)
 	log.Info().Msg("Updating image pillars if needed")
-
-	err := cmd.Run()
+	rows, err = db.Query(sqlQuery)
 	if err != nil {
 		log.Fatal().Err(err).Msgf("Error updating image pillars")
 	}

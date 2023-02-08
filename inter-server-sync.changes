@@ -1,4 +1,8 @@
-- Do not update pillars table if it does not exists like in 4.2
+-------------------------------------------------------------------
+Wed Feb  8 10:41:54 UTC 2023 - Cédric Bosdonnat <cbosdonnat@suse.com>
+
+- version 0.2.7
+  * Do not update pillars table if it does not exists like in 4.2
 
 -------------------------------------------------------------------
 Mon Jan  9 14:33:35 UTC 2023 - Cédric Bosdonnat <cbosdonnat@suse.com>

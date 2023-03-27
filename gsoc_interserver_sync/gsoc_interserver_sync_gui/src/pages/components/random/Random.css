@@ -1,0 +1,16 @@
+.randomButton{
+    background-color: #0F0326;
+    color: #ffffff;
+    padding: 20px 100px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+}
+
+.randomElement{
+    margin: 0 auto;
+    color: #0F0326;
+}

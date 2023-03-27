@@ -16,3 +16,18 @@ In this pre proposal work, the following things are implemented to get started o
   3. Backend in Golang is setup
   4. API is implemented in Golang using Gin which generates a random number (Clicking on the "API call" button to generate random number shows this       implementation)
 An React app with Redux (Typescript) is implemented which makes an API call to our backend which is made in Golang. The backend Golang provides an API which generates a random number and the React app displays the number on the screen.
+
+# Running the code
+## Backend  
+It is a Golang backend (using Gin) which returns a random number when (/random) endpoint is hit
+```
+go get .
+go run .
+```
+## Frontend  
+It is a React Redux App (Typescript)
+```
+cd gsoc_interserver_sync_gui
+npm install
+npm run start
+```

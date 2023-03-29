@@ -16,6 +16,7 @@ var exportCmd = &cobra.Command{
 	Run:   runExport,
 }
 
+var config string
 var channels []string
 var channelWithChildren []string
 var configChannels []string
@@ -27,6 +28,7 @@ var includeContainers bool
 var orgs []uint
 
 func init() {
+	exportCmd.Flags().StringVar(&config, "config", "", "Location of configuration file")
 	exportCmd.Flags().StringSliceVar(&channels, "channels", nil, "Channels to be exported")
 	exportCmd.Flags().StringSliceVar(&channelWithChildren, "channel-with-children", nil, "Channels to be exported")
 	exportCmd.Flags().StringVar(&outputDir, "outputDir", ".", "Location for generated data")
@@ -52,6 +54,7 @@ func runExport(cmd *cobra.Command, args []string) {
 	}
 
 	options := entityDumper.DumperOptions{
+		Config:                    config,
 		ServerConfig:              serverConfig,
 		ChannelLabels:             channels,
 		ConfigLabels:              configChannels,

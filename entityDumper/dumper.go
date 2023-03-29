@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"github.com/rs/zerolog/log"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
+	"github.com/uyuni-project/inter-server-sync/utils"
 	"io"
 	"os"
 )
@@ -17,7 +18,7 @@ func setOptionsByConfig(options *DumperOptions) {
 		return
 	}
 
-	configFile, err := os.Open(options.Config)
+	configFile, err := os.Open(utils.GetAbsPath(options.Config))
 	if err != nil {
 		log.Panic().Err(err).Msg("failed to open config file")
 	}

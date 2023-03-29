@@ -37,11 +37,11 @@ func setOptionsByConfig(options *DumperOptions) {
 		log.Panic().Err(err).Msg("failed to unmarshal config file")
 	}
 
-	if options.ServerConfig == "" {
+	if options.ServerConfig == "/etc/rhn/rhn.conf" && config.ServerConfig != "" {
 		options.ServerConfig = config.ServerConfig
 	}
 
-	if options.OutputFolder == "" {
+	if options.OutputFolder == "." && config.OutputDir != "" {
 		options.OutputFolder = config.OutputDir
 	}
 

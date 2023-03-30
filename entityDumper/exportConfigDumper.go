@@ -35,9 +35,11 @@ func SetOptionsByConfig(configPath string, options *DumperOptions) {
 		log.Panic().Err(err).Msg("failed to unmarshal config file")
 	}
 
-	if options.ServerConfig == "/etc/rhn/rhn.conf" && config.ServerConfig != "" {
-		options.ServerConfig = config.ServerConfig
-	}
+	// ServerConfig is set by cmd/root.go
+	// Should we change it anyway?
+	//if options.ServerConfig == "/etc/rhn/rhn.conf" && config.ServerConfig != "" {
+	//	options.ServerConfig = config.ServerConfig
+	//}
 
 	if options.OutputFolder == "." && config.OutputDir != "" {
 		options.OutputFolder = config.OutputDir

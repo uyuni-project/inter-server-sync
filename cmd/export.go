@@ -54,7 +54,6 @@ func runExport(cmd *cobra.Command, args []string) {
 	}
 
 	options := entityDumper.DumperOptions{
-		Config:                    config,
 		ServerConfig:              serverConfig,
 		ChannelLabels:             channels,
 		ConfigLabels:              configChannels,
@@ -66,6 +65,7 @@ func runExport(cmd *cobra.Command, args []string) {
 		Containers:                includeContainers,
 		Orgs:                      orgs,
 	}
+	entityDumper.SetOptionsByConfig(config, &options)
 	entityDumper.DumpAllEntities(options)
 	var versionfile string
 	versionfile = path.Join(utils.GetAbsPath(outputDir), "version.txt")

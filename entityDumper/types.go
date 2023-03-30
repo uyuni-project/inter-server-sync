@@ -18,7 +18,6 @@ type ExportConfig struct {
 }
 
 type DumperOptions struct {
-	Config                    string
 	ServerConfig              string
 	ChannelLabels             []string
 	ConfigLabels              []string

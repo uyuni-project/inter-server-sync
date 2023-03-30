@@ -68,7 +68,7 @@ func runExport(cmd *cobra.Command, args []string) {
 	entityDumper.SetOptionsByConfig(config, &options)
 	entityDumper.DumpAllEntities(options)
 	var versionfile string
-	versionfile = path.Join(utils.GetAbsPath(outputDir), "version.txt")
+	versionfile = path.Join(utils.GetAbsPath(options.OutputFolder), "version.txt")
 	vf, err := os.Open(versionfile)
 	defer vf.Close()
 	if os.IsNotExist(err) {
@@ -81,5 +81,5 @@ func runExport(cmd *cobra.Command, args []string) {
 	version, product := utils.GetCurrentServerVersion(serverConfig)
 	vf.WriteString("product_name = " + product + "\n" + "version = " + version + "\n")
 
-	log.Info().Msgf("Export done. Directory: %s", outputDir)
+	log.Info().Msgf("Export done. Directory: %s", options.OutputFolder)
 }

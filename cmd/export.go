@@ -32,7 +32,7 @@ func init() {
 
 	exportCmd.Flags().StringVar(&config, "config", "", "Location of the configuration file")
 	exportCmd.Flags().StringSlice("channels", nil, "Channels to be exported")
-	exportCmd.Flags().StringSlice("channel-with-children", nil, "Channels to be exported")
+	exportCmd.Flags().StringSlice("channelWithChildren", nil, "Channels to be exported")
 	exportCmd.Flags().String("outputDir", ".", "Location for generated data")
 	exportCmd.Flags().Bool("metadataOnly", false, "export only metadata")
 	exportCmd.Flags().String("packagesOnlyAfter", "", "Only export packages added or modified after the specified date (date format can be 'YYYY-MM-DD' or 'YYYY-MM-DD hh:mm:ss')")
@@ -71,7 +71,7 @@ func runExport(cmd *cobra.Command, args []string) {
 	}
 
 	channels = viper.GetStringSlice("channels")
-	channelWithChildren = viper.GetStringSlice("channel-with-children")
+	channelWithChildren = viper.GetStringSlice("channelWithChildren")
 	outputDir = viper.GetString("outputDir")
 	metadataOnly = viper.GetBool("metadataOnly")
 	startingDate = viper.GetString("packagesOnlyAfter")

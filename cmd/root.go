@@ -42,7 +42,7 @@ func init() {
 	rootCmd.PersistentFlags().String("memProfile", "", "memProfile export folder location")
 
 	if err := viper.BindPFlags(rootCmd.PersistentFlags()); err != nil {
-		log.Warn().Err(err).Msg("Failed to bind PFlags")
+		log.Fatal().Err(err).Msg("Failed to bind PFlags")
 	}
 
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {

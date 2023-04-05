@@ -39,7 +39,7 @@ func init() {
 	exportCmd.Flags().UintSlice("orgLimit", nil, "Export only for specified organizations")
 
 	if err := viper.BindPFlags(exportCmd.Flags()); err != nil {
-		log.Warn().Err(err).Msg("Failed to bind PFlags")
+		log.Fatal().Err(err).Msg("Failed to bind PFlags")
 	}
 
 	exportCmd.Args = cobra.NoArgs

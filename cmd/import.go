@@ -33,7 +33,7 @@ func init() {
 	importCmd.Flags().String("xmlRpcPassword", "admin", "A password to access the XML-RPC Api")
 
 	if err := viper.BindPFlags(importCmd.Flags()); err != nil {
-		log.Warn().Err(err).Msg("Failed to bind PFlags")
+		log.Fatal().Err(err).Msg("Failed to bind PFlags")
 	}
 
 	importCmd.Args = cobra.NoArgs

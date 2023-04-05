@@ -19,6 +19,29 @@ run the command for more information:
 ### on target server
 - **Run command: `inter-server-sync import --importDir ~/export/`
 
+## Use configuration file
+### Export
+Create a file named `export.json`:
+
+```json
+{
+    "channelWithChildren": ["childChannel0", "childChannel1"],
+    "channels": ["testchannel", "channel0"],
+    "configChannels": ["configChannel0", "configChannel1"],
+    "containers": true,
+    "images": true,
+    "metadataOnly": true,
+    "orgLimit": [1, 2],
+    "outputDir": "~/export",
+    "packagesOnlyAfter": "2023-05-04 16:31:58"
+}
+```
+
+Then run with:
+```
+inter-server-sync export --config=/path/to/export.json
+```
+
 ## Database connection configuration
 
 Database connection configuration are loaded by default from `/etc/rhn/rhn.conf`.

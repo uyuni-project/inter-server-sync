@@ -27,7 +27,6 @@ var xmlRpcUser string
 var xmlRpcPassword string
 
 func init() {
-
 	importCmd.Flags().String("importDir", ".", "Location import data from")
 	importCmd.Flags().String("xmlRpcUser", "admin", "A username to access the XML-RPC Api")
 	importCmd.Flags().String("xmlRpcPassword", "admin", "A password to access the XML-RPC Api")

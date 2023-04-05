@@ -56,7 +56,6 @@ func init() {
 		memProfileDump()
 	}
 	rootCmd.PersistentPostRun = func(cmd *cobra.Command, args []string) {
-
 		cpuProfileTearDown()
 	}
 }

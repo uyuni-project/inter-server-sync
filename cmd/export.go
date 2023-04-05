@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"encoding/json"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -72,13 +73,13 @@ func runExport(cmd *cobra.Command, args []string) {
 	configChannels = viper.GetStringSlice("configChannels")
 	includeImages = viper.GetBool("images")
 	includeContainers = viper.GetBool("containers")
-	var rawOrgs []uint
-	err := viper.UnmarshalKey("orgLimit", &rawOrgs)
-	if err == nil {
-		orgs = rawOrgs
-	} else {
-		log.Panic().Err(err).Msg("Failed to unmarshal orgLimit")
+	// https://github.com/spf13/viper/issues/926
+	rawOrgs := viper.GetString("orgLimit")
+	var parsedOrgs []uint
+	if err := json.Unmarshal([]byte(rawOrgs), &parsedOrgs); err != nil {
+		log.Panic().Err(err).Msg("Failed to parse orgLimit")
 	}
+	orgs = parsedOrgs
 
 	// Validate data
 	validatedDate, ok := utils.ValidateDate(startingDate)

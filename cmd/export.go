@@ -64,12 +64,6 @@ func runExport(cmd *cobra.Command, args []string) {
 	log.Info().Msg("Export started")
 	// check output dir existence and create it if needed.
 
-	// Validate data
-	validatedDate, ok := utils.ValidateDate(startingDate)
-	if !ok {
-		log.Fatal().Msg("Unable to validate the date. Allowed formats are 'YYYY-MM-DD' or 'YYYY-MM-DD hh:mm:ss'")
-	}
-
 	channels = viper.GetStringSlice("channels")
 	channelWithChildren = viper.GetStringSlice("channelWithChildren")
 	outputDir = viper.GetString("outputDir")
@@ -84,6 +78,12 @@ func runExport(cmd *cobra.Command, args []string) {
 		orgs = rawOrgs
 	} else {
 		log.Panic().Err(err).Msg("Failed to unmarshal orgLimit")
+	}
+
+	// Validate data
+	validatedDate, ok := utils.ValidateDate(startingDate)
+	if !ok {
+		log.Fatal().Msg("Unable to validate the date. Allowed formats are 'YYYY-MM-DD' or 'YYYY-MM-DD hh:mm:ss'")
 	}
 
 	options := entityDumper.DumperOptions{

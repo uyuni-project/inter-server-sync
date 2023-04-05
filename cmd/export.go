@@ -17,7 +17,6 @@ var exportCmd = &cobra.Command{
 	Run:   runExport,
 }
 
-var config string
 var channels []string
 var channelWithChildren []string
 var configChannels []string
@@ -29,9 +28,6 @@ var includeContainers bool
 var orgs []uint
 
 func init() {
-	cobra.OnInitialize(initConfig)
-
-	exportCmd.Flags().StringVar(&config, "config", "", "Location of the configuration file")
 	exportCmd.Flags().StringSlice("channels", nil, "Channels to be exported")
 	exportCmd.Flags().StringSlice("channelWithChildren", nil, "Channels to be exported")
 	exportCmd.Flags().String("outputDir", ".", "Location for generated data")
@@ -42,23 +38,13 @@ func init() {
 	exportCmd.Flags().Bool("containers", false, "Export containers metadata")
 	exportCmd.Flags().UintSlice("orgLimit", nil, "Export only for specified organizations")
 
-	err := viper.BindPFlags(exportCmd.Flags())
-	if err != nil {
+	if err := viper.BindPFlags(exportCmd.Flags()); err != nil {
 		log.Warn().Err(err).Msg("Failed to bind PFlags")
 	}
+
 	exportCmd.Args = cobra.NoArgs
 
 	rootCmd.AddCommand(exportCmd)
-}
-
-func initConfig() {
-	if config != "" {
-		viper.SetConfigFile(utils.GetAbsPath(config))
-
-		if err := viper.ReadInConfig(); err != nil {
-			log.Panic().Err(err).Msg("Failed to read config file")
-		}
-	}
 }
 
 func runExport(cmd *cobra.Command, args []string) {

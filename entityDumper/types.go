@@ -4,19 +4,6 @@ import (
 	"github.com/uyuni-project/inter-server-sync/utils"
 )
 
-type ExportConfig struct {
-	ServerConfig        string
-	Channels            []string
-	ChannelWithChildren []string
-	OutputDir           string
-	MetadataOnly        bool
-	StartingDate        string
-	ConfigChannels      []string
-	IncludeImages       bool
-	IncludeContainers   bool
-	Orgs                []uint
-}
-
 type DumperOptions struct {
 	ServerConfig              string
 	ChannelLabels             []string

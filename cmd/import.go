@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/spf13/viper"
 	"io"
 	"os"
 	"os/exec"
@@ -27,15 +28,24 @@ var xmlRpcPassword string
 
 func init() {
 
-	importCmd.Flags().StringVar(&importDir, "importDir", ".", "Location import data from")
-	importCmd.Flags().StringVar(&xmlRpcUser, "xmlRpcUser", "admin", "A username to access the XML-RPC Api")
-	importCmd.Flags().StringVar(&xmlRpcPassword, "xmlRpcPassword", "admin", "A password to access the XML-RPC Api")
+	importCmd.Flags().String("importDir", ".", "Location import data from")
+	importCmd.Flags().String("xmlRpcUser", "admin", "A username to access the XML-RPC Api")
+	importCmd.Flags().String("xmlRpcPassword", "admin", "A password to access the XML-RPC Api")
+
+	if err := viper.BindPFlags(importCmd.Flags()); err != nil {
+		log.Warn().Err(err).Msg("Failed to bind PFlags")
+	}
+
 	importCmd.Args = cobra.NoArgs
 
 	rootCmd.AddCommand(importCmd)
 }
 
 func runImport(cmd *cobra.Command, args []string) {
+	importDir = viper.GetString("importDir")
+	xmlRpcUser = viper.GetString("xmlRpcUser")
+	xmlRpcPassword = viper.GetString("xmlRpcPassword")
+
 	absImportDir := utils.GetAbsPath(importDir)
 	log.Info().Msg(fmt.Sprintf("starting import from dir %s", absImportDir))
 	fversion, fproduct := getImportVersionProduct(absImportDir)

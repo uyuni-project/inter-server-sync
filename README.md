@@ -20,11 +20,15 @@ run the command for more information:
 - **Run command: `inter-server-sync import --importDir ~/export/`
 
 ## Use configuration file
-### Export
-Create a file named `export.json`:
+Create a file named `config.json`:
 
 ```json
 {
+    "logLevel": "info",
+    "serverConfig": "/path/to/rhn.conf",
+    "cpuProfile": "/path/to/cpu/profile/folder",
+    "memProfile": "/path/to/memory/profile/folder",
+  
     "channelWithChildren": ["childChannel0", "childChannel1"],
     "channels": ["testchannel", "channel0"],
     "configChannels": ["configChannel0", "configChannel1"],
@@ -33,13 +37,18 @@ Create a file named `export.json`:
     "metadataOnly": true,
     "orgLimit": [1, 2],
     "outputDir": "~/export",
-    "packagesOnlyAfter": "2023-05-04 16:31:58"
+    "packagesOnlyAfter": "2023-05-04 16:31:58",
+  
+    "importDir": "~/export",
+    "xmlRpcUser": "WordlessEcho",
+    "xmlRpcPassword": "W0rd1essEch0"
 }
 ```
 
 Then run with:
 ```
-inter-server-sync export --config=/path/to/export.json
+inter-server-sync export --config /path/to/export.json
+inter-server-sync import --config /path/to/export.json
 ```
 
 ## Database connection configuration

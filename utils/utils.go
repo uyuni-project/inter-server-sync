@@ -107,8 +107,8 @@ func GetCurrentServerFQDN(serverConfig string) string {
 }
 
 func getProperty(filePaths []string, names []string) (string, error) {
-	for _, path := range filePaths {
-		for _, search := range names {
+	for _, search := range names {
+		for _, path := range filePaths {
 			p, err := ScannerFunc(path, search)
 			if err == nil {
 				return p, nil
@@ -119,7 +119,6 @@ func getProperty(filePaths []string, names []string) (string, error) {
 }
 
 func ScannerFunc(path string, search string) (string, error) {
-	var output string
 	f, err := os.Open(path)
 	if err != nil {
 		log.Fatal().Msgf("Couldn't open file: %s", path)
@@ -127,16 +126,15 @@ func ScannerFunc(path string, search string) (string, error) {
 	defer f.Close()
 	scanner := bufio.NewScanner(f)
 	for scanner.Scan() {
-		if strings.Contains(scanner.Text(), search) {
-			splits := strings.Split(scanner.Text(), "=")
-			output = splits[1]
-			if output == " SUSE Manager" {
-				output = strings.Replace(output, " SUSE Manager", "SUSE Manager", 1)
-			} else {
-				splits = strings.Split(output, " ")
-				output = splits[len(splits)-1]
-			}
-			return output, nil
+		linetext := scanner.Text()
+
+		index := strings.Index(linetext, "=")
+		if index < 0 {
+			continue
+		}
+		key := strings.Trim(linetext[:index], " ")
+		if key == search {
+			return strings.Trim(linetext[index+1:], " "), nil
 		}
 	}
 	return "", fmt.Errorf("String not found!")

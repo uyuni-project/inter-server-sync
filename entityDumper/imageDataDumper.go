@@ -165,7 +165,8 @@ func dumpOSImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[stri
 			// Check if pillars are already in database
 			if _, ok := tableImageData.TableData["susesaltpillar"]; ok && !options.MetadataOnly {
 				// pillars in database, files must be as well
-				// export all metadata about images
+				// export all metadata about images, but skip linked suseimageinfo
+				markAsExported(schemaMetadata, []string{"suseimageinfo"})
 				whereClauseImageFiles := fmt.Sprintf("image_info_id = '%s'", image[0].Value)
 				tableImageFilesData := dumper.DataCrawler(db, schemaMetadata, schemaMetadata["suseimagefile"],
 					whereClauseImageFiles, options.StartingDate)
@@ -184,7 +185,8 @@ func dumpOSImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[stri
 					target := osImageDumper.GetImagePathForImage(file, org, outputFolderImagesAbs)
 					osImageDumper.DumpOsImage(target, source)
 				}
-
+				// we marked this as exported for image files, now we need to unexport for the rest of the images
+				markAsUnexported(schemaMetadata, []string{"suseimageinfo"})
 			} else {
 				// pillars and thus image files are not in database, need extra export step
 				needExtraExport = true

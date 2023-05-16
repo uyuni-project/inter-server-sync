@@ -50,10 +50,6 @@ var imagesTableNames = []string{
 	"suseSaltPillar",
 }
 
-func ImageTableNames() []string {
-	return imagesTableNames
-}
-
 func markAsExported(schema map[string]schemareader.Table, tables []string) {
 	for _, table := range tables {
 		tmp := schema[table]
@@ -156,13 +152,16 @@ func dumpOSImageTables(db *sql.DB, writer *bufio.Writer, schemaMetadata map[stri
 	}
 	images := sqlUtil.ExecuteQueryWithResults(db, sqlForExistingImages)
 	if len(images) > 0 {
+		dumperOptions := dumper.PrintSqlOptions{
+			OnlyIfParentExistsTables: []string{"suseimageinfochannel"},
+		}
 		log.Debug().Msg("Dumping Image tables")
 		writer.WriteString("-- OS Images\n")
 		for _, image := range images {
 			log.Trace().Msgf("Exporting image id %s", image[0].Value)
 			whereClause := fmt.Sprintf("id = '%s'", image[0].Value)
 			tableImageData := dumper.DataCrawler(db, schemaMetadata, schemaMetadata["suseimageinfo"], whereClause, options.StartingDate)
-			dumper.PrintTableDataOrdered(db, writer, schemaMetadata, schemaMetadata["suseimageinfo"], tableImageData, dumper.PrintSqlOptions{})
+			dumper.PrintTableDataOrdered(db, writer, schemaMetadata, schemaMetadata["suseimageinfo"], tableImageData, dumperOptions)
 			// Check if pillars are already in database
 			if _, ok := tableImageData.TableData["susesaltpillar"]; ok && !options.MetadataOnly {
 				// pillars in database, files must be as well

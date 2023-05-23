@@ -22,7 +22,7 @@ type dataSource struct {
 func GetConnectionString(configFilePath string) string {
 	file, err := os.Open(configFilePath)
 	if err != nil {
-		log.Panic().Err(err).Msg("error loading configuration file")
+		log.Panic().Err(err).Msgf("error loading server configuration file: %v", configFilePath)
 	}
 	defer file.Close()
 
@@ -55,7 +55,7 @@ func GetConnectionString(configFilePath string) string {
 	return fmt.Sprintf("user='%s' password='%s' dbname='%s' host='%s' port='%s' sslmode=disable", dataSource.user, dataSource.password, dataSource.dbname, dataSource.host, dataSource.port)
 }
 
-//GetDBconnection return the database connection
+// GetDBconnection return the database connection
 func GetDBconnection(configFilePath string) *sql.DB {
 	db, err := sql.Open("postgres", GetConnectionString(configFilePath))
 	if err != nil {

@@ -2,6 +2,8 @@ package cmd
 
 import (
 	"fmt"
+	"github.com/spf13/viper"
+	"github.com/uyuni-project/inter-server-sync/utils"
 	"log/syslog"
 	"os"
 	"runtime/pprof"
@@ -24,14 +26,31 @@ func Execute() {
 	cobra.CheckErr(rootCmd.Execute())
 }
 
-//var cfgFile string
+var cfgFile string
 var logLevel string
 var serverConfig string
 var cpuProfile string
 var memProfile string
 
 func init() {
+	cobra.OnInitialize(initConfig)
+
+	rootCmd.PersistentFlags().StringVar(&cfgFile, "config", "", "Location of configuration file")
+	rootCmd.PersistentFlags().String("logLevel", "error", "application log level")
+	rootCmd.PersistentFlags().String("serverConfig", "/etc/rhn/rhn.conf", "Server configuration file")
+	rootCmd.PersistentFlags().String("cpuProfile", "", "cpuProfile export folder location")
+	rootCmd.PersistentFlags().String("memProfile", "", "memProfile export folder location")
+
+	if err := viper.BindPFlags(rootCmd.PersistentFlags()); err != nil {
+		log.Fatal().Err(err).Msg("Failed to bind PFlags")
+	}
+
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
+		logLevel = viper.GetString("logLevel")
+		cpuProfile = viper.GetString("cpuProfile")
+		memProfile = viper.GetString("memProfile")
+		serverConfig = viper.GetString("serverConfig")
+
 		logInit()
 		cpuProfileInit()
 		memProfileDump()
@@ -39,10 +58,16 @@ func init() {
 	rootCmd.PersistentPostRun = func(cmd *cobra.Command, args []string) {
 		cpuProfileTearDown()
 	}
-	rootCmd.PersistentFlags().StringVar(&logLevel, "logLevel", "error", "application log level")
-	rootCmd.PersistentFlags().StringVar(&serverConfig, "serverConfig", "/etc/rhn/rhn.conf", "Server configuration file")
-	rootCmd.PersistentFlags().StringVar(&cpuProfile, "cpuProfile", "", "cpuProfile export folder location")
-	rootCmd.PersistentFlags().StringVar(&memProfile, "memProfile", "", "memProfile export folder location")
+}
+
+func initConfig() {
+	if cfgFile != "" {
+		viper.SetConfigFile(utils.GetAbsPath(cfgFile))
+
+		if err := viper.ReadInConfig(); err != nil {
+			log.Panic().Err(err).Msg("Failed to read config file")
+		}
+	}
 }
 
 func logCallerMarshalFunction(file string, line int) string {

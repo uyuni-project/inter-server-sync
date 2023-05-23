@@ -3,10 +3,9 @@ package entityDumper
 import (
 	"bufio"
 	"compress/gzip"
-	"os"
-
 	"github.com/rs/zerolog/log"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
+	"os"
 )
 
 func DumpAllEntities(options DumperOptions) {

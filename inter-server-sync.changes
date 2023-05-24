@@ -1,3 +1,7 @@
+-------------------------------------------------------------------
+Wed May 24 10:07:35 UTC 2023 - Cédric Bosdonnat <cbosdonnat@suse.com>
+
+- version 0.2.8 
   * Correctly detect product name and product version number
   * Import image channel data only when related software channel is
     available (bsc#1211330)

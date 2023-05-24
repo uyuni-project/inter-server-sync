@@ -17,14 +17,14 @@ import (
 var rootCmd = &cobra.Command{
 	Use:     "inter-server-sync",
 	Short:   "Uyuni Inter Server Sync tool",
-	Version: "0.2.7",
+	Version: "0.2.8",
 }
 
 func Execute() {
 	cobra.CheckErr(rootCmd.Execute())
 }
 
-//var cfgFile string
+// var cfgFile string
 var logLevel string
 var serverConfig string
 var cpuProfile string

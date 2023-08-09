@@ -40,9 +40,9 @@ Source0:        %{name}-%{version}.tar.gz
 Source1:        vendor.tar.gz
 BuildRequires:  golang-packaging
 %if 0%{?rhel}
-BuildRequires:  golang >= 1.16
+BuildRequires:  golang >= 1.18
 %else
-BuildRequires:  golang(API) = 1.16
+BuildRequires:  golang(API) = 1.19
 %endif
 BuildRequires:  rsyslog
 

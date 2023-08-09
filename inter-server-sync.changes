@@ -3,7 +3,7 @@ Wed Aug  9 12:56:27 UTC 2023 - Witek Bedyk <witold.bedyk@suse.com>
 
 - version 0.3.0
   * Require at least Go 1.19 for building due to CVE-2023-29409
-  * Require at least Go 1.18 for building RedHat packages
+  * Require at least Go 1.18 for building Red Hat packages
   * CVE-2023-29409: Restrict RSA keys in certificates to less than
     or equal to 8192 bits to avoid DoSing client/server while
     validating signatures for extremely large RSA keys.

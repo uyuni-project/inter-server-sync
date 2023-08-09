@@ -1,7 +1,7 @@
 #
 # spec file for package uyuni inter server sync
 #
-# Copyright (c) 2022 SUSE LLC
+# Copyright (c) 2023 SUSE LLC
 #
 # All modifications and additions to the file contributed by third parties
 # remain the property of their copyright owners, unless otherwise agreed
@@ -14,6 +14,8 @@
 
 # Please submit bugfixes or comments via https://bugs.opensuse.org/
 #
+
+
 %if 0%{?rhel} == 8
 %global debug_package %{nil}
 %endif
@@ -27,7 +29,6 @@
 %global org             uyuni-project
 %global project         inter-server-sync
 %global provider_prefix %{provider}.%{provider_tld}/%{org}/%{project}
-
 
 Name:           %{project}
 Version:        0.0.0
@@ -46,11 +47,10 @@ BuildRequires:  golang(API) = 1.19
 %endif
 BuildRequires:  rsyslog
 
+Requires:       gzip
 Requires:       logrotate
 Requires:       rsyslog
 Requires:       systemd
-Requires:       gzip
-
 
 %description
 Uyuni inter server sync tool
@@ -59,7 +59,6 @@ Used to export content from one server and import it in a target server.
 %prep
 %autosetup
 tar -zxf %{SOURCE1}
-
 
 %build
 export GOFLAGS=-mod=vendor
@@ -73,7 +72,6 @@ export GOFLAGS=-mod=vendor
 %gofilelist
 
 %define _release_dir  %{_builddir}/%{project}-%{version}/release
-
 
 # Add config files for hub
 install -d -m 0750 %{buildroot}%{_var}/log/hub

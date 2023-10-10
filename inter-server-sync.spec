@@ -43,7 +43,7 @@ BuildRequires:  golang-packaging
 %if 0%{?rhel}
 BuildRequires:  golang >= 1.18
 %else
-BuildRequires:  golang(API) = 1.19
+BuildRequires:  golang(API) >= 1.20
 %endif
 BuildRequires:  rsyslog
 

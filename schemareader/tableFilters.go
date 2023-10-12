@@ -161,6 +161,8 @@ func applyTableFilters(table Table) Table {
 		virtualIndexColumns := []string{"image_info_id", "file"}
 		table.UniqueIndexes[VirtualIndexName] = UniqueIndex{Name: VirtualIndexName, Columns: virtualIndexColumns}
 		table.MainUniqueIndexName = VirtualIndexName
+	case "rhnpackageextratagkey":
+		table.PKSequence = "rhn_package_extra_tags_keys_id_seq"
 	}
 	return table
 }

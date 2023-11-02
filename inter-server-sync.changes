@@ -1,4 +1,8 @@
-* Correct index sequence name for table rhnPackageExtraTagKey
+-------------------------------------------------------------------
+Thu Nov  2 12:01:52 UTC 2023 - Ricardo Mateus <rmateus@suse.com>
+
+- version 0.3.1 
+  * Correct index sequence name for table rhnPackageExtraTagKey
 
 -------------------------------------------------------------------
 Wed Aug  9 12:56:27 UTC 2023 - Witek Bedyk <witold.bedyk@suse.com>

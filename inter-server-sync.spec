@@ -31,8 +31,8 @@
 %global provider_prefix %{provider}.%{provider_tld}/%{org}/%{project}
 
 Name:           %{project}
-Version:        0.0.0
-Release:        0
+Version:        0.3.1
+Release:        1
 Summary:        Export/import data on a uyuni server
 License:        Apache-2.0
 Group:          System/Management
@@ -71,16 +71,14 @@ export GOFLAGS=-mod=vendor
 
 %gofilelist
 
-%define _release_dir  %{_builddir}/%{project}-%{version}/release
-
 # Add config files for hub
 install -d -m 0750 %{buildroot}%{_var}/log/hub
 
 # Add syslog config to redirect logs to /var/log/hub/iss2.log
-install -D -m 0644 %{_release_dir}/hub-iss-syslogs.conf %{buildroot}%{_sysconfdir}/rsyslog.d/hub-iss.conf
+install -D -m 0644 release/hub-iss-syslogs.conf %{buildroot}%{_sysconfdir}/rsyslog.d/hub-iss.conf
 
 #logrotate config
-install -D -m 0644 %{_release_dir}/hub-iss-logrotate.conf %{buildroot}%{_sysconfdir}/logrotate.d/inter-server-sync
+install -D -m 0644 release/hub-iss-logrotate.conf %{buildroot}%{_sysconfdir}/logrotate.d/inter-server-sync
 
 %check
 %if 0%{?rhel}

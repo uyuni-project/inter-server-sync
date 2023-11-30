@@ -40,36 +40,36 @@ Steps to run in locally in development mode:
 
 ### 1. Create tag
 
-- Create a tag with the version number using the format "v0.0.0" and push it to github
+- Install `uyuni-releng-tools` from [systemsmanagement:Uyuni:Utils](https://build.opensuse.org/project/show/systemsmanagement:Uyuni:Utils)
+- Create a tag with the version number using `tito` and push it to github
 ```
-git tag v0.0.0
-git push origin v0.0.0
+tito tag
+git push origin inter-server-sync-x.y.z-1
 ```
 
 ### 2. Create a github release (optional)
 
 - On github create a new version release based on the previous tag
 
-### 3. OBS: project preparetion
+### 3. OBS: project preparation
 
 - Projects names:
     - Uyuni: `systemsmanagement:Uyuni:Master`
     - Head: Devel: `Galaxy:Manager:Head`
-    - Manager 4.2: `Devel:Galaxy:Manager:4.2`
-- Pakcage name: `inter-server-sync`
+    - Manager 4.3: `Devel:Galaxy:Manager:4.3`
+- Package name: `inter-server-sync`
 
-On porject working directory: 
+In the checked out git repo:
 
-1. Adapt the `_services` file to be able to download the correct tag for the version
-2. Run all services: `osc service runall`
-3. Check the changes files is correctly updated
-4. Check spec file was correctly updated with the release version
-5. Add all files: `osc ar`
-6. Remove old version files `tar` and `osinfo` (`osc rm filename`)
-7. Commit everything with `osc commit`
+```
+export OSCAPI=https://api.opensuse.org
+osc -A https://api.opensuse.org branch systemsmanagement:Uyuni:Master
+export OBS_PROJ=home:<your_nick>:branches:systemsmanagement:Uyuni:Master
+build-packages-for-obs && push-packages-to-obs
+```
 
 ### 4. OBS: create submit requests
 
-Uyuni: `osc sr --no-cleanup <your_project> inter-server-sync systemsmanagement:Uyuni:Master`
-Manager Head: `iosc sr --no-cleanup openSUSE.org:<your_project> inter-server-sync Devel:Galaxy:Manager:Head`
+Uyuni: `osc -A https://api.opensuse.org  sr --no-cleanup <your_project> inter-server-sync systemsmanagement:Uyuni:Master`
+Manager Head: `osc -A https://api.suse.de sr --no-cleanup openSUSE.org:<your_project> inter-server-sync Devel:Galaxy:Manager:Head`
 For each maintained SUSE Manager version, one SR in the form: `iosc sr --no-cleanup openSUSE.org:<your_project> inter-server-sync Devel:Galaxy:Manager:X.Y`

@@ -63,7 +63,7 @@ tar -zxf %{SOURCE1}
 %build
 export GOFLAGS=-mod=vendor
 %goprep %{provider_prefix}
-%gobuild ...
+%gobuild -ldflags "-X github.com/uyuni-project/inter-server-sync/cmd.Version=%{version}" ...
 
 %install
 %goinstall

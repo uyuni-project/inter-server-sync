@@ -14,10 +14,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var Version = "0.0.0"
+
 var rootCmd = &cobra.Command{
 	Use:     "inter-server-sync",
 	Short:   "Uyuni Inter Server Sync tool",
-	Version: "0.3.1",
+	Version: Version,
 }
 
 func Execute() {

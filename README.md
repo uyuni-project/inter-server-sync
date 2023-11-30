@@ -38,14 +38,7 @@ Steps to run in locally in development mode:
 
 ## Build and release
 
-### 1. Update cmd version
-
-- Edit file `cmd/root.go` "Version" property to the desire version
-- On project root folder run `osc vc` to update the changes file with the release data
-- Manually update changes file with the release number for the next release
-- commit and push to github
-
-### 2. Create tag
+### 1. Create tag
 
 - Create a tag with the version number using the format "v0.0.0" and push it to github
 ```
@@ -53,11 +46,11 @@ git tag v0.0.0
 git push origin v0.0.0
 ```
 
-### 3. Create a github release (optional)
+### 2. Create a github release (optional)
 
 - On github create a new version release based on the previous tag
 
-### 4. OBS: project preparetion
+### 3. OBS: project preparetion
 
 - Projects names:
     - Uyuni: `systemsmanagement:Uyuni:Master`
@@ -75,7 +68,7 @@ On porject working directory:
 6. Remove old version files `tar` and `osinfo` (`osc rm filename`)
 7. Commit everything with `osc commit`
 
-### 5. OBS: create submit requests
+### 4. OBS: create submit requests
 
 Uyuni: `osc sr --no-cleanup <your_project> inter-server-sync systemsmanagement:Uyuni:Master`
 Manager Head: `iosc sr --no-cleanup openSUSE.org:<your_project> inter-server-sync Devel:Galaxy:Manager:Head`

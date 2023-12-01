@@ -1,3 +1,7 @@
+// SPDX-FileCopyrightText: 2023 SUSE LLC
+//
+// SPDX-License-Identifier: Apache-2.0
+
 package schemareader
 
 import "github.com/uyuni-project/inter-server-sync/sqlUtil"

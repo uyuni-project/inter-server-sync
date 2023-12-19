@@ -97,7 +97,7 @@ rm -f %{buildroot}/usr/lib/debug/%{_bindir}/%{name}-%{version}-*.debug
 
 %defattr(-,root,root)
 %doc README.md
-%license LICENSE
+%license LICENSES
 %{_bindir}/inter-server-sync
 
 %config(noreplace) %{_sysconfdir}/rsyslog.d/hub-iss.conf

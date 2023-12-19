@@ -457,6 +457,20 @@ func formatOnConflict(row []sqlUtil.RowDataStructure, table schemareader.Table) 
 		} else {
 			return "(version, release, epoch, ((evr).type)) WHERE epoch IS NOT NULL DO NOTHING"
 		}
+	case "rhndistchannelmap":
+		//TODO  similar to rhnerrata
+		var orgId interface{} = nil
+		for _, field := range row {
+			if strings.Compare(field.ColumnName, "org_id") == 0 {
+				orgId = field.Value
+				break
+			}
+		}
+		if orgId == nil {
+			constraint = "(release, channel_arch_id) WHERE org_id IS NULL"
+		} else {
+			constraint = "(release, channel_arch_id, org_id) WHERE org_id IS NOT NULL"
+		}
 
 	}
 	columnAssignment := formatColumnAssignment(table)

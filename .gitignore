@@ -4,7 +4,7 @@
 
 .idea/
 rhn.conf
-inter-server-sync
+/inter-server-sync
 vendor.tar.gz
 *.pyc
 __pycache__

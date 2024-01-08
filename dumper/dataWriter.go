@@ -445,6 +445,19 @@ func formatOnConflict(row []sqlUtil.RowDataStructure, table schemareader.Table) 
 		} else {
 			constraint = "(advisory, org_id) WHERE org_id IS NOT NULL"
 		}
+	case "rhnerratacve":
+		var errataId interface{} = nil
+		for _, field := range row {
+			if strings.Compare(field.ColumnName, "errata_id") == 0 {
+				errataId = field.Value
+				break
+			}
+		}
+		if errataId == nil {
+			constraint = "(cve_id) WHERE errata_id IS NULL"
+		} else {
+			constraint = "(cve_id, errata_id) WHERE errata_id IS NOT NULL"
+		}
 	case "rhnpackageevr":
 		var epoch interface{} = nil
 		for _, field := range row {

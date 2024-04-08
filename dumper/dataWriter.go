@@ -7,6 +7,7 @@ package dumper
 import (
 	"bufio"
 	"database/sql"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -380,6 +381,8 @@ func formatField(col sqlUtil.RowDataStructure) string {
 		val = pq.QuoteLiteral(string(pq.FormatTimestamp(col.Value.(time.Time))))
 	case "SQL":
 		val = fmt.Sprintf(`(%s)`, col.Value)
+	case "BYTEA":
+		return fmt.Sprintf(`decode('%s', 'hex')`, hex.EncodeToString(col.Value.([]byte)))
 	default:
 		val = pq.QuoteLiteral(fmt.Sprintf("%s", col.Value))
 	}

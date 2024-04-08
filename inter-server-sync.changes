@@ -1,4 +1,8 @@
-- Correct primary key export for table suseproductsccrepository (bsc#1220169)
+-------------------------------------------------------------------
+Mon Apr 08 10:45:50 WEST 2024 - rmateus@suse.com
+
+- version 0.3.3-1
+  * Correct primary key export for table suseproductsccrepository (bsc#1220169)
 
 -------------------------------------------------------------------
 Mon Jan 08 15:23:19 CET 2024 - michele.bussolotto@suse.com

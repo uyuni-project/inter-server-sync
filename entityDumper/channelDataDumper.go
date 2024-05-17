@@ -233,6 +233,8 @@ func processChannel(db *sql.DB, writer *bufio.Writer, channelLabel string,
 		tableData, printOptions)
 	log.Debug().Msg("finished print table order")
 
+	generateChannelChildLink(db, channelLabel, writer)
+
 	generateCacheCalculation(channelLabel, writer)
 
 	if !options.MetadataOnly {
@@ -241,6 +243,22 @@ func processChannel(db *sql.DB, writer *bufio.Writer, channelLabel string,
 	}
 	log.Debug().Msg("channel export finished")
 
+}
+
+func generateChannelChildLink(db *sql.DB, channelLabel string, writer *bufio.Writer) {
+	childrenChannels := sqlUtil.ExecuteQueryWithResults(db, childChannelSql, channelLabel)
+	childChannelChildLabels := make([]string, 0)
+	for _, cChannel := range childrenChannels {
+		cLabel := fmt.Sprintf("'%v'", cChannel[0].Value)
+		fmt.Println(cLabel)
+		childChannelChildLabels = append(childChannelChildLabels, cLabel)
+	}
+
+	// recreate the relationship to child channels if any
+	if len(childChannelChildLabels) > 0 {
+		updateChildChannels := fmt.Sprintf("update rhnchannel set parent_channel = (select id from rhnchannel where label = '%s') where label in (%s);", channelLabel, strings.Join(childChannelChildLabels, ","))
+		writer.WriteString(updateChildChannels + "\n")
+	}
 }
 
 func generateCacheCalculation(channelLabel string, writer *bufio.Writer) {

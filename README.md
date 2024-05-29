@@ -51,7 +51,7 @@ Steps to run in locally in development mode:
 - Install `uyuni-releng-tools` from [systemsmanagement:Uyuni:Utils](https://build.opensuse.org/project/show/systemsmanagement:Uyuni:Utils)
 - Create a tag with the version number using `tito` and push it to github
 ```
-tito tag
+tito tag --use-release=0
 git push origin inter-server-sync-x.y.z-1
 ```
 
@@ -71,7 +71,7 @@ In the checked out git repo:
 
 ```
 export OSCAPI=https://api.opensuse.org
-osc -A https://api.opensuse.org branch systemsmanagement:Uyuni:Master
+osc -A https://api.opensuse.org branch systemsmanagement:Uyuni:Master inter-server-sync
 export OBS_PROJ=home:<your_nick>:branches:systemsmanagement:Uyuni:Master
 build-packages-for-obs && push-packages-to-obs
 ```
@@ -79,5 +79,7 @@ build-packages-for-obs && push-packages-to-obs
 ### 4. OBS: create submit requests
 
 Uyuni: `osc -A https://api.opensuse.org  sr --no-cleanup <your_project> inter-server-sync systemsmanagement:Uyuni:Master`
+
 Manager Head: `osc -A https://api.suse.de sr --no-cleanup openSUSE.org:<your_project> inter-server-sync Devel:Galaxy:Manager:Head`
+
 For each maintained SUSE Manager version, one SR in the form: `iosc sr --no-cleanup openSUSE.org:<your_project> inter-server-sync Devel:Galaxy:Manager:X.Y`

@@ -383,6 +383,8 @@ func formatField(col sqlUtil.RowDataStructure) string {
 		val = fmt.Sprintf(`(%s)`, col.Value)
 	case "BYTEA":
 		return fmt.Sprintf(`decode('%s', 'hex')`, hex.EncodeToString(col.Value.([]byte)))
+	case "BOOL":
+		return fmt.Sprintf("%t", col.Value)
 	default:
 		val = pq.QuoteLiteral(fmt.Sprintf("%s", col.Value))
 	}

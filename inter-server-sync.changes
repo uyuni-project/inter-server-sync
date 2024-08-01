@@ -1,4 +1,10 @@
 -------------------------------------------------------------------
+Thu Aug 01 15:35:42 WEST 2024 - rmateus@suse.com
+
+- version 0.3.5-0
+  * decode boolean values for export (bsc#1228545)
+
+-------------------------------------------------------------------
 Wed May 29 16:14:39 WEST 2024 - rmateus@suse.com
 
 - version 0.3.4-0

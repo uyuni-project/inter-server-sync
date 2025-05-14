@@ -28,12 +28,18 @@ var importCmd = &cobra.Command{
 var importDir string
 var xmlRpcUser string
 var xmlRpcPassword string
+var skipVerify bool
+var certFile string
+var caFile string
 
 func init() {
 
 	importCmd.Flags().StringVar(&importDir, "importDir", ".", "Location import data from")
 	importCmd.Flags().StringVar(&xmlRpcUser, "xmlRpcUser", "admin", "A username to access the XML-RPC Api")
 	importCmd.Flags().StringVar(&xmlRpcPassword, "xmlRpcPassword", "admin", "A password to access the XML-RPC Api")
+	importCmd.Flags().BoolVar(&skipVerify, "skipVerify", false, "Skip verification of import signature")
+	importCmd.Flags().StringVar(&certFile, "verifyKey", "hubserver.pem", "Public certificate of signign hub server")
+	importCmd.Flags().StringVar(&caFile, "ca", "", "custom CA certificate chain for key validation")
 	importCmd.Args = cobra.NoArgs
 
 	rootCmd.AddCommand(importCmd)
@@ -47,7 +53,13 @@ func runImport(cmd *cobra.Command, args []string) {
 	if fversion != sversion || fproduct != sproduct {
 		log.Panic().Msgf("Wrong version detected. Fileversion = %s ; Serverversion = %s", fversion, sversion)
 	}
-	validateFolder(absImportDir)
+	sqlImportFile := validateFolder(absImportDir)
+	if !skipVerify {
+		if err := utils.ValidateFile(sqlImportFile, certFile, caFile); err != nil {
+			log.Fatal().Msg("Signature check of import file failed!")
+		}
+	}
+
 	runPackageFileSync(absImportDir)
 
 	runImageFileSync(absImportDir, serverConfig)
@@ -71,11 +83,13 @@ func getImportVersionProduct(path string) (string, string) {
 	return version, product
 }
 
-func validateFolder(absImportDir string) {
-	_, err := os.Stat(fmt.Sprintf("%s/sql_statements.sql.gz", absImportDir))
+func validateFolder(absImportDir string) string {
+	out := path.Join(absImportDir, "sql_statements.sql.gz")
+	_, err := os.Stat(out)
 	if err != nil {
 		if os.IsNotExist(err) {
-			_, err = os.Stat(fmt.Sprintf("%s/sql_statements.sql", absImportDir))
+			out = path.Join(absImportDir, "sql_statements.sql")
+			_, err = os.Stat(out)
 			if err != nil {
 				log.Fatal().Err(err).Msg("No usable .sql or .gz file found in import directory")
 			}
@@ -83,6 +97,7 @@ func validateFolder(absImportDir string) {
 			log.Fatal().Err(err)
 		}
 	}
+	return out
 }
 
 func hasConfigChannels(absImportDir string) bool {

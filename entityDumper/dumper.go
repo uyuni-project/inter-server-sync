@@ -8,20 +8,23 @@ import (
 	"bufio"
 	"compress/gzip"
 	"os"
+	"path"
 
 	"github.com/rs/zerolog/log"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
+	"github.com/uyuni-project/inter-server-sync/utils"
 )
 
 func DumpAllEntities(options DumperOptions) {
 	var outputFolderAbs = options.GetOutputFolderAbsPath()
 	validateExportFolder(outputFolderAbs)
 
-	file, err := os.OpenFile(outputFolderAbs+"/sql_statements.sql.gz", os.O_WRONLY|os.O_CREATE, 0600)
+	outFile := path.Join(outputFolderAbs, "/sql_statements.sql.gz")
+	file, err := os.OpenFile(outFile, os.O_WRONLY|os.O_CREATE, 0600)
 	if err != nil {
 		log.Panic().Err(err).Msg("error creating sql file")
 	}
-	defer file.Close()
+	defer closeAndSign(file, options.SignKey)
 
 	gzipFile := gzip.NewWriter(file)
 	defer gzipFile.Close()
@@ -45,4 +48,15 @@ func DumpAllEntities(options DumperOptions) {
 	}
 
 	bufferWriter.WriteString("COMMIT;\n")
+}
+
+func closeAndSign(f *os.File, cert string) error {
+	if err := f.Close(); err != nil {
+		return err
+	}
+	if err := utils.SignFile(f.Name(), cert); err != nil {
+		log.Error().Err(err).Msg("failed to sign export data")
+		return err
+	}
+	return nil
 }

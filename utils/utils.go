@@ -25,7 +25,7 @@ func getDefaultConfigs() []string {
 		"/usr/share/rhn/config-defaults/rhn.conf"}
 }
 
-//ReverseArray reverses the array
+// ReverseArray reverses the array
 func ReverseArray(slice interface{}) {
 	size := reflect.ValueOf(slice).Len()
 	swap := reflect.Swapper(slice)
@@ -195,4 +195,30 @@ func checkError(err error, msg string) {
 	if err != nil {
 		log.Fatal().Err(err).Msg(msg)
 	}
+}
+
+// Sign file filePath by private key cert
+func SignFile(filePath string, key string) error {
+	signature := filePath + ".sha512"
+	log.Info().Msgf("Signing SQL export using %s key", key)
+	cmd := exec.Command("openssl", "pkeyutl", "-sign", "-digest", "sha512", "-inkey", key, "-out", signature, "-rawin", "-in", filePath)
+	return cmd.Run()
+}
+
+// Validate file filePath by public certificate cert
+func ValidateFile(filePath string, cert string, cacert string) error {
+	signature := filePath + ".sha512"
+	log.Info().Msg("Verifying public certificate")
+	certVerifyCmd := []string{"openssl", "verify", cert}
+	if len(cacert) > 0 {
+		certVerifyCmd = append(certVerifyCmd, "-CAfile", cacert)
+	}
+	cmd := exec.Command(certVerifyCmd[0], certVerifyCmd[1:]...)
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	log.Info().Msgf("Verifying SQL import using %s key", cert)
+	cmd = exec.Command("openssl", "pkeyutl", "-verify", "-digest", "sha512", "-inkey", cert, "-certin", "-sigfile", signature, "-rawin", "-in", filePath)
+	return cmd.Run()
 }

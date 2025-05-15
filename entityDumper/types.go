@@ -21,6 +21,7 @@ type DumperOptions struct {
 	OSImages                  bool
 	Orgs                      []uint
 	SignKey                   string
+	PassFile                  string
 }
 
 func (opt *DumperOptions) GetOutputFolderAbsPath() string {

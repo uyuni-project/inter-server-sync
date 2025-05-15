@@ -24,7 +24,7 @@ func DumpAllEntities(options DumperOptions) {
 	if err != nil {
 		log.Panic().Err(err).Msg("error creating sql file")
 	}
-	defer closeAndSign(file, options.SignKey)
+	defer closeAndSign(file, options.SignKey, options.PassFile)
 
 	gzipFile := gzip.NewWriter(file)
 	defer gzipFile.Close()
@@ -50,11 +50,11 @@ func DumpAllEntities(options DumperOptions) {
 	bufferWriter.WriteString("COMMIT;\n")
 }
 
-func closeAndSign(f *os.File, cert string) error {
+func closeAndSign(f *os.File, cert string, passfile string) error {
 	if err := f.Close(); err != nil {
 		return err
 	}
-	if err := utils.SignFile(f.Name(), cert); err != nil {
+	if err := utils.SignFile(f.Name(), cert, passfile); err != nil {
 		log.Error().Err(err).Msg("failed to sign export data")
 		return err
 	}

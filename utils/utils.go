@@ -198,10 +198,15 @@ func checkError(err error, msg string) {
 }
 
 // Sign file filePath by private key cert
-func SignFile(filePath string, key string) error {
+func SignFile(filePath string, key string, passfile string) error {
 	signature := filePath + ".sha512"
 	log.Info().Msgf("Signing SQL export using %s key", key)
-	cmd := exec.Command("openssl", "pkeyutl", "-sign", "-digest", "sha512", "-inkey", key, "-out", signature, "-rawin", "-in", filePath)
+	signCmd := []string{"openssl", "pkeyutl", "-sign", "-digest", "sha512", "-inkey", key, "-out", signature, "-rawin", "-in", filePath}
+	if len(passfile) > 0 {
+		signCmd = append(signCmd, "-passin", "file:"+passfile)
+	}
+	log.Debug().Msgf("Executing: %s", signCmd[:])
+	cmd := exec.Command(signCmd[0], signCmd[1:]...)
 	return cmd.Run()
 }
 
@@ -209,16 +214,21 @@ func SignFile(filePath string, key string) error {
 func ValidateFile(filePath string, cert string, cacert string) error {
 	signature := filePath + ".sha512"
 	log.Info().Msg("Verifying public certificate")
-	certVerifyCmd := []string{"openssl", "verify", cert}
+	verifyCmd := []string{"openssl", "verify"}
 	if len(cacert) > 0 {
-		certVerifyCmd = append(certVerifyCmd, "-CAfile", cacert)
+		verifyCmd = append(verifyCmd, "-CAfile", cacert)
 	}
-	cmd := exec.Command(certVerifyCmd[0], certVerifyCmd[1:]...)
+	// Certificate needs to be the last option
+	verifyCmd = append(verifyCmd, cert)
+	log.Debug().Msgf("Executing: %s", verifyCmd[:])
+	cmd := exec.Command(verifyCmd[0], verifyCmd[1:]...)
 	if err := cmd.Run(); err != nil {
 		return err
 	}
 
 	log.Info().Msgf("Verifying SQL import using %s key", cert)
-	cmd = exec.Command("openssl", "pkeyutl", "-verify", "-digest", "sha512", "-inkey", cert, "-certin", "-sigfile", signature, "-rawin", "-in", filePath)
+	verifyCmd = []string{"openssl", "pkeyutl", "-verify", "-digest", "sha512", "-inkey", cert, "-certin", "-sigfile", signature, "-rawin", "-in", filePath}
+	log.Debug().Msgf("Executing: %s", verifyCmd[:])
+	cmd = exec.Command(verifyCmd[0], verifyCmd[1:]...)
 	return cmd.Run()
 }

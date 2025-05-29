@@ -94,6 +94,7 @@ rm -f %{buildroot}/usr/lib/debug/%{_bindir}/%{name}-%{version}-*.debug
 %endif
 
 %files -f file.lst
+%dir %attr(0750, root, root) %{_var}/log/hub
 
 %defattr(-,root,root)
 %doc README.md

@@ -25,7 +25,7 @@ func getDefaultConfigs() []string {
 		"/usr/share/rhn/config-defaults/rhn.conf"}
 }
 
-//ReverseArray reverses the array
+// ReverseArray reverses the array
 func ReverseArray(slice interface{}) {
 	size := reflect.ValueOf(slice).Len()
 	swap := reflect.Swapper(slice)
@@ -195,4 +195,40 @@ func checkError(err error, msg string) {
 	if err != nil {
 		log.Fatal().Err(err).Msg(msg)
 	}
+}
+
+// Sign file filePath by private key cert
+func SignFile(filePath string, key string, passfile string) error {
+	signature := filePath + ".sha512"
+	log.Info().Msgf("Signing SQL export using %s key", key)
+	signCmd := []string{"openssl", "pkeyutl", "-sign", "-digest", "sha512", "-inkey", key, "-out", signature, "-rawin", "-in", filePath}
+	if len(passfile) > 0 {
+		signCmd = append(signCmd, "-passin", "file:"+passfile)
+	}
+	log.Debug().Msgf("Executing: %s", signCmd[:])
+	cmd := exec.Command(signCmd[0], signCmd[1:]...)
+	return cmd.Run()
+}
+
+// Validate file filePath by public certificate cert
+func ValidateFile(filePath string, cert string, cacert string) error {
+	signature := filePath + ".sha512"
+	log.Info().Msg("Verifying public certificate")
+	verifyCmd := []string{"openssl", "verify"}
+	if len(cacert) > 0 {
+		verifyCmd = append(verifyCmd, "-CAfile", cacert)
+	}
+	// Certificate needs to be the last option
+	verifyCmd = append(verifyCmd, cert)
+	log.Debug().Msgf("Executing: %s", verifyCmd[:])
+	cmd := exec.Command(verifyCmd[0], verifyCmd[1:]...)
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	log.Info().Msgf("Verifying SQL import using %s key", cert)
+	verifyCmd = []string{"openssl", "pkeyutl", "-verify", "-digest", "sha512", "-inkey", cert, "-certin", "-sigfile", signature, "-rawin", "-in", filePath}
+	log.Debug().Msgf("Executing: %s", verifyCmd[:])
+	cmd = exec.Command(verifyCmd[0], verifyCmd[1:]...)
+	return cmd.Run()
 }

@@ -51,6 +51,7 @@ Requires:       gzip
 Requires:       logrotate
 Requires:       rsyslog
 Requires:       systemd
+Requires:       openssl
 
 %description
 Uyuni inter server sync tool

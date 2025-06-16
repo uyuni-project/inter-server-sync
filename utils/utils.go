@@ -201,10 +201,14 @@ func checkError(err error, msg string) {
 func SignFile(filePath string, key string, passfile string) error {
 	signature := filePath + ".sha512"
 	log.Info().Msgf("Signing SQL export using %s key", key)
-	signCmd := []string{"openssl", "pkeyutl", "-sign", "-digest", "sha512", "-inkey", key, "-out", signature, "-rawin", "-in", filePath}
+	signCmd := []string{"openssl", "dgst", "--sha512", "-sign", key, "-out", signature}
+
 	if len(passfile) > 0 {
 		signCmd = append(signCmd, "-passin", "file:"+passfile)
 	}
+
+	signCmd = append(signCmd, filePath)
+
 	log.Debug().Msgf("Executing: %s", signCmd[:])
 	cmd := exec.Command(signCmd[0], signCmd[1:]...)
 	return cmd.Run()
@@ -227,7 +231,22 @@ func ValidateFile(filePath string, cert string, cacert string) error {
 	}
 
 	log.Info().Msgf("Verifying SQL import using %s key", cert)
-	verifyCmd = []string{"openssl", "pkeyutl", "-verify", "-digest", "sha512", "-inkey", cert, "-certin", "-sigfile", signature, "-rawin", "-in", filePath}
+
+	// generate temporary file just with cert pub key
+	pubkey, err := os.CreateTemp("", "pubkey-")
+	if err != nil {
+		return err
+	}
+	defer pubkey.Close()
+	defer os.Remove(pubkey.Name())
+	pubkeyCmd := []string{"openssl", "x509", "-pubkey", "-out", pubkey.Name(), "-in", cert}
+	log.Debug().Msgf("Executing: %s", pubkeyCmd[:])
+	cmd = exec.Command(pubkeyCmd[0], pubkeyCmd[1:]...)
+	if err := cmd.Run(); err != nil {
+		return err
+	}
+
+	verifyCmd = []string{"openssl", "dgst", "--sha512", "-verify", pubkey.Name(), "-signature", signature, filePath}
 	log.Debug().Msgf("Executing: %s", verifyCmd[:])
 	cmd = exec.Command(verifyCmd[0], verifyCmd[1:]...)
 	return cmd.Run()

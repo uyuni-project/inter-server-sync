@@ -5,6 +5,7 @@
 package cmd
 
 import (
+	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -28,6 +29,7 @@ var importCmd = &cobra.Command{
 var importDir string
 var xmlRpcUser string
 var xmlRpcPassword string
+var xmlRpcPasswordFile string
 var skipVerify bool
 var certFile string
 var caFile string
@@ -37,6 +39,7 @@ func init() {
 	importCmd.Flags().StringVar(&importDir, "importDir", ".", "Location import data from")
 	importCmd.Flags().StringVar(&xmlRpcUser, "xmlRpcUser", "admin", "A username to access the XML-RPC Api")
 	importCmd.Flags().StringVar(&xmlRpcPassword, "xmlRpcPassword", "admin", "A password to access the XML-RPC Api")
+	importCmd.Flags().StringVar(&xmlRpcPasswordFile, "xmlRpcPasswordFile", "", "File containing the password to access the XML-RPC Api. If set, it will override the xmlRpcPassword flag.")
 	importCmd.Flags().BoolVar(&skipVerify, "skipVerify", false, "Skip verification of import signature")
 	importCmd.Flags().StringVar(&certFile, "verifyKey", "hubserver.pem", "Public certificate of signign hub server")
 	importCmd.Flags().StringVar(&caFile, "ca", "", "custom CA certificate chain for key validation")
@@ -46,6 +49,12 @@ func init() {
 }
 
 func runImport(cmd *cobra.Command, args []string) {
+	password, err := getXMLRPCPassword(xmlRpcPassword, xmlRpcPasswordFile)
+	if err != nil {
+		log.Fatal().Err(err).Msg(err.Error())
+	}
+	xmlRpcPassword = password
+
 	absImportDir := utils.GetAbsPath(importDir)
 	log.Info().Msg(fmt.Sprintf("starting import from dir %s", absImportDir))
 	fversion, fproduct := getImportVersionProduct(absImportDir)
@@ -265,4 +274,36 @@ func runImportSql(absImportDir string, serverConfig string) {
 	} else {
 		log.Debug().Msg("No configuration channels, NO CALL to xml-rpc API")
 	}
+}
+
+// getXMLRPCPassword retrieves the password. In case of multiple sources, it prioritizes:
+// 1) xmlRpcPasswordFile flag
+// 2) stdin
+// 3) xmlRpcPassword flag
+// Returns trimmed password or xmlRpcPassword
+func getXMLRPCPassword(xmlRpcPassword, xmlRpcPasswordFile string) (string, error) {
+	if xmlRpcPasswordFile != "" {
+		pwFileContent, err := os.ReadFile(xmlRpcPasswordFile)
+		if err != nil {
+			return "", fmt.Errorf("failed to read password file: %w", err)
+		}
+		return strings.TrimSpace(string(pwFileContent)), nil
+	}
+
+	// Check if stdin is piped (not a terminal)
+	fi, err := os.Stdin.Stat()
+	if err != nil {
+		return "", fmt.Errorf("failed to stat stdin: %w", err)
+	}
+	if (fi.Mode() & os.ModeCharDevice) == 0 {
+		reader := bufio.NewReader(os.Stdin)
+		pw, err := reader.ReadString('\n')
+		if err != nil && err != io.EOF {
+			return "", fmt.Errorf("failed to read password from stdin: %w", err)
+		}
+		return strings.TrimSpace(pw), nil
+	}
+
+	// fallback to xmlRpcPassword
+	return strings.TrimSpace(xmlRpcPassword), nil
 }

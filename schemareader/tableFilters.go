@@ -18,8 +18,8 @@ const (
 
 func applyTableFilters(table Table) Table {
 	switch table.Name {
-	case "suseproductsccrepository":
-		table.PKSequence = "suse_prdrepo_id_seq"
+	case "susechanneltemplate":
+		table.PKSequence = "susechanneltemplate_id_seq"
 	case "rhnchecksumtype":
 		table.PKSequence = "rhn_checksum_id_seq"
 	case "rhnchecksum":

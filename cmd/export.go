@@ -27,6 +27,7 @@ var channelWithChildren []string
 var configChannels []string
 var outputDir string
 var metadataOnly bool
+var nochangelog bool
 var startingDate string
 var includeImages bool
 var includeContainers bool
@@ -40,6 +41,7 @@ func init() {
 	exportCmd.Flags().StringSliceVar(&channelWithChildren, "channel-with-children", nil, "Channels to be exported")
 	exportCmd.Flags().StringVar(&outputDir, "outputDir", ".", "Location for generated data")
 	exportCmd.Flags().BoolVar(&metadataOnly, "metadataOnly", false, "export only metadata")
+	exportCmd.Flags().BoolVar(&nochangelog, "noChangelogs", false, "Skip exporting packages changelogs")
 	exportCmd.Flags().StringVar(&startingDate, "packagesOnlyAfter", "", "Only export packages added or modified after the specified date (date format can be 'YYYY-MM-DD' or 'YYYY-MM-DD hh:mm:ss')")
 	exportCmd.Flags().StringSliceVar(&configChannels, "configChannels", nil, "Configuration Channels to be exported")
 	exportCmd.Flags().BoolVar(&includeImages, "images", false, "Export OS images and associated metadata")
@@ -83,6 +85,7 @@ func runExport(cmd *cobra.Command, args []string) {
 		ChannelWithChildrenLabels: channelWithChildren,
 		OutputFolder:              outputDir,
 		MetadataOnly:              metadataOnly,
+		NoChangelogs:              nochangelog,
 		StartingDate:              validatedDate,
 		OSImages:                  includeImages,
 		Containers:                includeContainers,

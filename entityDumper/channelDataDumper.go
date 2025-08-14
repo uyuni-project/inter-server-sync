@@ -69,8 +69,6 @@ func SoftwareChannelTableNames() []string {
 		"rhnerratakeyword", // clean
 		"rhnpackagecapability",
 		"rhnpackagebreaks",
-		"rhnpackagechangelogdata",
-		"rhnpackagechangelogrec",
 		"rhnpackageconflicts",
 		"rhnpackageenhances",
 		"rhnpackageextratag",
@@ -188,7 +186,14 @@ func processAndInsertChannels(db *sql.DB, writer *bufio.Writer, options DumperOp
 	channels := loadChannelsToProcess(db, options)
 	log.Info().Msg(fmt.Sprintf("%d channels to process", len(channels)))
 
-	schemaMetadata := schemareader.ReadTablesSchema(db, SoftwareChannelTableNames())
+	channelTables := SoftwareChannelTableNames()
+	if !options.NoChangelogs {
+		channelTables = append(channelTables,
+			"rhnpackagechangelogdata",
+			"rhnpackagechangelogrec")
+	}
+
+	schemaMetadata := schemareader.ReadTablesSchema(db, channelTables)
 	log.Debug().Msg("channel schema metadata loaded")
 
 	fileChannels, err := os.Create(options.GetOutputFolderAbsPath() + "/exportedChannels.txt")

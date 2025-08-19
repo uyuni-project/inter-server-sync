@@ -1,4 +1,12 @@
 -------------------------------------------------------------------
+Tue Aug 19 17:05:30 CEST 2025 - oholecek@suse.com
+
+- version 0.3.8-0
+  * Rename suseproductsccrepository to susechanneltemplate (bsc#1244648)
+  * Allow skipping changelog export (bsc#1245307)
+  * Add options to specify xmlRpcPassword via file path or stdin
+
+-------------------------------------------------------------------
 Mon Jun 23 18:17:49 CEST 2025 - oholecek@suse.com
 
 - version 0.3.7-0

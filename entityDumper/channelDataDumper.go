@@ -93,7 +93,7 @@ func ProductsTableNames() []string {
 		// product data tables
 		"suseproducts",             // clean
 		"suseproductextension",     // clean
-		"suseproductsccrepository", // clean
+		"susechanneltemplate", // clean
 		"susesccrepository",        // clean
 		"suseupgradepath",          // clean
 		// product data tables

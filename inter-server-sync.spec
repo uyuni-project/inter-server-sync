@@ -31,7 +31,7 @@
 %global provider_prefix %{provider}.%{provider_tld}/%{org}/%{project}
 
 Name:           %{project}
-Version:        0.3.8
+Version:        0.3.9
 Release:        0
 Summary:        Export/import data on a uyuni server
 License:        Apache-2.0

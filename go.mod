@@ -8,6 +8,7 @@ require (
 	github.com/rs/zerolog v1.21.0
 	github.com/spf13/cobra v1.1.3
 	github.com/uyuni-project/xmlrpc-public-methods v0.0.0-20200805144514-2ca831c526d1
+	gopkg.in/natefinch/lumberjack.v2 v2.2.1
 )
 
 require (

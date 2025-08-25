@@ -45,11 +45,8 @@ BuildRequires:  golang >= 1.18
 %else
 BuildRequires:  golang(API) >= 1.20
 %endif
-BuildRequires:  rsyslog
 
 Requires:       gzip
-Requires:       logrotate
-Requires:       rsyslog
 Requires:       systemd
 Requires:       openssl
 
@@ -75,23 +72,10 @@ export GOFLAGS=-mod=vendor
 # Add config files for hub
 install -d -m 0750 %{buildroot}%{_var}/log/hub
 
-# Add syslog config to redirect logs to /var/log/hub/iss2.log
-install -D -m 0644 release/hub-iss-syslogs.conf %{buildroot}%{_sysconfdir}/rsyslog.d/hub-iss.conf
-
-#logrotate config
-install -D -m 0644 release/hub-iss-logrotate.conf %{buildroot}%{_sysconfdir}/logrotate.d/inter-server-sync
-
 %check
 %if 0%{?rhel}
 # Fix OBS debug_package execution.
 rm -f %{buildroot}/usr/lib/debug/%{_bindir}/%{name}-%{version}-*.debug
-%endif
-
-%post
-%if 0%{?rhel}
-%systemd_postun rsyslog.service
-%else
-%service_del_postun rsyslog.service
 %endif
 
 %files -f file.lst
@@ -101,8 +85,5 @@ rm -f %{buildroot}/usr/lib/debug/%{_bindir}/%{name}-%{version}-*.debug
 %doc README.md
 %license LICENSES
 %{_bindir}/inter-server-sync
-
-%config(noreplace) %{_sysconfdir}/rsyslog.d/hub-iss.conf
-%config(noreplace) %{_sysconfdir}/logrotate.d/inter-server-sync
 
 %changelog

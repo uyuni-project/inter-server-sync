@@ -6,8 +6,8 @@ package cmd
 
 import (
 	"fmt"
-	"log/syslog"
 	"os"
+	"path"
 	"runtime/pprof"
 	"strconv"
 	"strings"
@@ -16,6 +16,7 @@ import (
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 var Version = "0.0.0"
@@ -35,6 +36,11 @@ var logLevel string
 var serverConfig string
 var cpuProfile string
 var memProfile string
+
+// The default directory where log files are written.
+const logDir = "/var/log/hub/"
+const logFileName = "iss2.log"
+const globalLogPath = logDir + logFileName
 
 func init() {
 	rootCmd.PersistentPreRun = func(cmd *cobra.Command, args []string) {
@@ -71,12 +77,32 @@ func logCallerMarshalFunction(file string, line int) string {
 	return callerFile + ":" + strconv.Itoa(line)
 }
 
+func getFileWriter() *lumberjack.Logger {
+	logPath := globalLogPath
+	if file, err := os.OpenFile(logPath, os.O_CREATE|os.O_APPEND|os.O_RDWR, 0600); err != nil {
+		homeDir, err := os.UserHomeDir()
+		if err != nil {
+			logPath = path.Join(".", logFileName)
+		} else {
+			logPath = path.Join(homeDir, logFileName)
+		}
+	} else {
+		file.Close()
+	}
+
+	fileLogger := lumberjack.Logger{
+		Filename:   logPath,
+		MaxSize:    10,
+		MaxBackups: 5,
+		MaxAge:     7,
+		Compress:   true,
+	}
+	return &fileLogger
+}
+
 func logInit() {
-	syslogger, err := syslog.New(syslog.LOG_INFO|syslog.LOG_DEBUG|syslog.LOG_WARNING|syslog.LOG_ERR, "inter-server-sync")
-
-	syslogwriter := zerolog.SyslogLevelWriter(syslogger)
-
-	multi := zerolog.MultiLevelWriter(syslogwriter, os.Stdout)
+	fileWriter := getFileWriter()
+	multi := zerolog.MultiLevelWriter(fileWriter, os.Stdout)
 	log.Logger = zerolog.New(multi).With().Timestamp().Caller().Logger()
 	zerolog.CallerMarshalFunc = logCallerMarshalFunction
 	level, err := zerolog.ParseLevel(logLevel)

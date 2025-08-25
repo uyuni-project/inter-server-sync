@@ -1,0 +1,1 @@
+- Write log to a rotated file without rsyslog and logrotate

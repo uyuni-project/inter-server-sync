@@ -14,7 +14,6 @@ import (
 	"github.com/rs/zerolog/log"
 	"github.com/uyuni-project/inter-server-sync/dumper"
 	"github.com/uyuni-project/inter-server-sync/dumper/osImageDumper"
-	"github.com/uyuni-project/inter-server-sync/dumper/pillarDumper"
 	"github.com/uyuni-project/inter-server-sync/schemareader"
 	"github.com/uyuni-project/inter-server-sync/sqlUtil"
 )
@@ -268,13 +267,9 @@ func dumpImageData(db *sql.DB, writer *bufio.Writer, options DumperOptions) {
 		var outputFolderImagesAbs = filepath.Join(outputFolderAbs, "images")
 		ValidateExportFolder(outputFolderImagesAbs)
 		dumpImageStores(db, writer, schemaMetadata, options, "os_image")
-		if dumpOSImageTables(db, writer, schemaMetadata, options, outputFolderImagesAbs) {
-			var outputFolderPillarAbs = filepath.Join(outputFolderAbs, "images", "pillars")
-			ValidateExportFolder(outputFolderPillarAbs)
-			pillarDumper.DumpImagePillars(outputFolderPillarAbs, options.Orgs, options.ServerConfig)
-			if !options.MetadataOnly {
-				osImageDumper.DumpOsImages(outputFolderImagesAbs, options.Orgs)
-			}
+		if dumpOSImageTables(db, writer, schemaMetadata, options, outputFolderImagesAbs) && !options.MetadataOnly {
+			// Pillars are transfered as part of the sql export
+			osImageDumper.DumpOsImages(outputFolderImagesAbs, options.Orgs)
 		}
 		// This is needed for containers to be able to export their respective tables
 		markAsUnexported(schemaMetadata, []string{"suseimagestore", "suseimageprofile"})

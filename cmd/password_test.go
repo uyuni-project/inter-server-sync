@@ -7,28 +7,15 @@ package cmd
 import (
 	"os"
 	"testing"
-)
 
-// create a temp file with a dummy password
-func createTempFile(t *testing.T) string {
-	t.Helper()
-	f, err := os.CreateTemp("", "passwordfile")
-	if err != nil {
-		t.Fatalf("failed to create temp file: %v", err)
-	}
-	_, err = f.WriteString("filepassword\n")
-	if err != nil {
-		t.Fatalf("failed to write to temp file: %v", err)
-	}
-	f.Close()
-	return f.Name()
-}
+	"github.com/uyuni-project/inter-server-sync/tests"
+)
 
 // TestGetXMLRPCPassword tests the getXMLRPCPassword function
 // Checks the priority of password sources: xmlRpcPasswordFile flag, stdin, and xmlRpcPassword flag.
 func TestGetXMLRPCPassword(t *testing.T) {
 	// Create the temp file once
-	tmpFile := createTempFile(t)
+	tmpFile := tests.CreateTempFile(t, "filepassword\n")
 	defer os.Remove(tmpFile)
 
 	tests := []struct {

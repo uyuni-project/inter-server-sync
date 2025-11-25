@@ -98,16 +98,21 @@ func GetCurrentServerVersion(serverConfig string) (string, string) {
 	return version, product
 }
 
-func GetCurrentServerFQDN(serverConfig string) string {
+func GetCurrentServerFQDN(serverConfig string) (string, error) {
 	files := []string{serverConfig}
 	files = append(files, getDefaultConfigs()...)
-	property := []string{"cobbler.host"}
+	property := []string{"java.hostname"}
 	p, err := getProperty(files, property)
 	if err != nil {
-		log.Error().Msgf("FQDN of server not found, images pillar may not be processed correclty")
-		return ""
+		// This still might be 4.3 server, try cobbler.host
+		property = []string{"cobbler.host"}
+		p, err = getProperty(files, property)
+		if err != nil {
+			log.Error().Msgf(", images pillar may not be processed correctly")
+			return "", fmt.Errorf("FQDN of server not found")
+		}
 	}
-	return p
+	return p, nil
 }
 
 func getProperty(filePaths []string, names []string) (string, error) {
@@ -125,7 +130,8 @@ func getProperty(filePaths []string, names []string) (string, error) {
 func ScannerFunc(path string, search string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
-		log.Fatal().Msgf("Couldn't open file: %s", path)
+		log.Error().Msgf("Couldn't open file: %s", path)
+		return "", err
 	}
 	defer f.Close()
 	scanner := bufio.NewScanner(f)

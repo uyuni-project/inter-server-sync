@@ -96,15 +96,14 @@ func runImport(cmd *cobra.Command, args []string) {
 }
 
 func getImportVersionProduct(path string) (string, string) {
-	var versionfile string
-	versionfile = path + "/version.txt"
+	versionfile := path + "/version.txt"
 	version, err := utils.ScannerFunc(versionfile, "version")
 	if err != nil {
 		log.Error().Msg("Version not found.")
 	}
 	product, err := utils.ScannerFunc(versionfile, "product_name")
 	if err != nil {
-		log.Fatal().Msg("Product not found")
+		log.Error().Msg("Product not found")
 	}
 	log.Debug().Msgf("Import Product: %s; Version: %s", product, version)
 	return version, product
@@ -195,20 +194,6 @@ func runImageFileSync(absImportDir string, serverConfig string) {
 	if err != nil {
 		log.Fatal().Err(err).Msg("Error importing image files")
 	}
-
-	pillarImportDir := path.Join(absImportDir, "images", "pillars")
-	err = utils.FolderExists(pillarImportDir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			log.Debug().Msg("No pillar files to import")
-			return
-		} else {
-			log.Fatal().Err(err).Msg("Error reading import folder for pillars")
-		}
-	}
-
-	log.Info().Msg("Copying image pillar files")
-	pillarDumper.ImportImagePillars(pillarImportDir, utils.GetCurrentServerFQDN(serverConfig))
 }
 
 func importSqlFile(absImportDir string) {

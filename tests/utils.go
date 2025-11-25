@@ -9,6 +9,8 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"os"
+	"testing"
 
 	"github.com/DATA-DOG/go-sqlmock"
 )
@@ -112,4 +114,19 @@ func checkErr(err error) {
 	if err != nil {
 		panic(err)
 	}
+}
+
+// create a temp file with a dummy password
+func CreateTempFile(t *testing.T, content string) string {
+	t.Helper()
+	f, err := os.CreateTemp("", "issv2")
+	if err != nil {
+		t.Fatalf("failed to create temp file: %v", err)
+	}
+	_, err = f.WriteString(content)
+	if err != nil {
+		t.Fatalf("failed to write to temp file: %v", err)
+	}
+	f.Close()
+	return f.Name()
 }

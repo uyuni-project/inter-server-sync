@@ -42,7 +42,7 @@ func ExecuteQueryWithResults(db *sql.DB, sql string, scanParameters ...interface
 	rowValues := make([]reflect.Value, len(columnTypes))
 	for i := 0; i < len(columnTypes); i++ {
 		// allocate reflect.Value representing a **T Value
-		rowValues[i] = reflect.New(reflect.PtrTo(columnTypes[i].ScanType()))
+		rowValues[i] = reflect.New(reflect.PointerTo(columnTypes[i].ScanType()))
 	}
 
 	computedValues := make([][]RowDataStructure, 0)

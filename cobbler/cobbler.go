@@ -169,7 +169,7 @@ func createGroupEntry(group Group) error {
 	if exists {
 		action = "edit"
 	}
-	if err := cmd(COBBLER, "profile", action, "--parent", image, "--name", name, "--enable-menu",
+	if err := cmd(COBBLER, "profile", action, "--parent", image, "--name", name, "--enable-menu", "yes",
 		"--kernel-options", group.KernelLine).Run(); err != nil {
 		log.Error().Msgf("Error %sing existing profile %s with parent %s", action, name, image)
 		return err
@@ -265,7 +265,7 @@ func createDistroEntry(image Image) error {
 	if err := command.Run(); err != nil {
 		return err
 	}
-	if err := cmd(COBBLER, "profile", "add", "--distro", nameVR, "--name", nameVR).Run(); err != nil {
+	if err := cmd(COBBLER, "profile", "add", "--distro", nameVR, "--name", nameVR, "--enable-menu", "no").Run(); err != nil {
 		return err
 	}
 	return nil
@@ -307,7 +307,7 @@ func updateDistroProfiles(images []Image) error {
 			if exists {
 				action = "edit"
 			}
-			if err := cmd(COBBLER, "profile", action, "--distro", nameVR, "--name", n).Run(); err != nil {
+			if err := cmd(COBBLER, "profile", action, "--distro", nameVR, "--name", n, "--enable-menu", "no").Run(); err != nil {
 				log.Error().Msgf("Error %sing existing profile %s", action, n)
 				return err
 			}
@@ -326,7 +326,7 @@ func updateDistroProfiles(images []Image) error {
 	if exists {
 		action = "edit"
 	}
-	if err := cmd(COBBLER, "profile", action, "--distro", latestName, "--name", defaultName).Run(); err != nil {
+	if err := cmd(COBBLER, "profile", action, "--distro", latestName, "--name", defaultName, "--enable-menu", "no").Run(); err != nil {
 		log.Error().Msgf("Error %sing existing profile %s", action, defaultName)
 		return err
 	}

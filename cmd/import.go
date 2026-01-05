@@ -15,6 +15,7 @@ import (
 
 	"github.com/rs/zerolog/log"
 	"github.com/spf13/cobra"
+	"github.com/uyuni-project/inter-server-sync/cobbler"
 	"github.com/uyuni-project/inter-server-sync/dumper/pillarDumper"
 	"github.com/uyuni-project/inter-server-sync/utils"
 	"github.com/uyuni-project/inter-server-sync/xmlrpc"
@@ -258,6 +259,13 @@ func runImportSql(absImportDir string, serverConfig string) {
 		}
 	} else {
 		log.Debug().Msg("No configuration channels, NO CALL to xml-rpc API")
+	}
+
+	log.Info().Msg("Recreating cobbler entries if needed")
+	if err := cobbler.RecreateCobblerEntities(serverConfig); err != nil {
+		log.Err(err).Msg("An error occured during recreating cobbler entities")
+	} else {
+		log.Info().Msg("Cobbler entries created")
 	}
 }
 

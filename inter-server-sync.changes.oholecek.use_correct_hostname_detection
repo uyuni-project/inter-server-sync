@@ -1,2 +1,0 @@
-- use correct hostname detection for 5.x servers
-  (bsc#1253322)

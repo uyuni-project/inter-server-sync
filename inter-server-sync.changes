@@ -1,4 +1,14 @@
 -------------------------------------------------------------------
+Tue Jan 06 10:06:13 CET 2026 - oholecek@suse.com
+
+- version 0.3.10-0
+  * Write log to a rotated file without rsyslog and logrotate
+  * Recreate cobbler entries on the import (bsc#1220899)
+  * remove support for 4.2 file based pillars
+  * use correct hostname detection for 5.x servers
+    (bsc#1253322)
+
+-------------------------------------------------------------------
 Fri Aug 22 08:45:41 CEST 2025 - oholecek@suse.com
 
 - version 0.3.9-0

@@ -37,7 +37,9 @@ Summary:        Export/import data on a uyuni server
 License:        Apache-2.0
 Group:          System/Management
 URL:            https://%{provider_prefix}
+#!CreateArchive: %{name}
 Source0:        %{name}-%{version}.tar.gz
+#!CreateArchive: vendor
 Source1:        vendor.tar.gz
 BuildRequires:  golang-packaging
 %if 0%{?rhel}

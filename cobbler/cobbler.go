@@ -279,6 +279,10 @@ func createDistroEntry(image Image) error {
 
 // For each distro name this refreshes distro profile nameV and distro profile N to point to the latest versions
 func updateDistroProfiles(images []Image) error {
+	if len(images) == 0 {
+		log.Debug().Msg("No image to process, skipping")
+		return nil
+	}
 	imageMap := map[string]Image{}
 	var latestImage Image
 	// Get latest versions for each image name

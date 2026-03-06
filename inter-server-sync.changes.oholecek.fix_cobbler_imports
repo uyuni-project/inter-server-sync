@@ -1,0 +1,5 @@
+- Add missing name sanitization for cobbler entries
+  (bsc#1259137)
+- Skip cobbler entries refresh if there are no images
+  (bsc#1257950)
+

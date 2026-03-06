@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"os/exec"
 	"path"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -21,6 +22,11 @@ const (
 	COBBLER         = "/usr/bin/cobbler"
 	OS_STORE_PREFIX = "/srv/www/os-images"
 	DEFAULT_IMAGE   = "DEFAULT_IMAGE"
+)
+
+var (
+	nameRegexp = regexp.MustCompile(`[^a-zA-Z0-9_.-]`)
+	orgRegexp  = regexp.MustCompile(`[^a-zA-Z0-9_-]`)
 )
 
 // For unit testing
@@ -384,6 +390,8 @@ makeCobblerName returns custom saltboot name:
 	name:S:orgid:org
 */
 func makeCobblerName(inname string, org string, orgid string) string {
+	inname = sanitizeName(inname)
+	org = sanitizeOrg(org)
 	return strings.Join([]string{inname, "S", orgid, org}, ":")
 }
 
@@ -398,10 +406,24 @@ func makeCobblerNameVR(name string, version string, revision string, org string,
 		log.Error().Msg("Wrong call to the naming function. This is a bug")
 		return "", ""
 	}
+	name = sanitizeName(name)
+	version = sanitizeName(version)
+	revision = sanitizeName(revision)
+	org = sanitizeOrg(org)
+
 	nameVR := strings.Join([]string{name, version, revision}, "-")
 	nameVR = strings.Join([]string{nameVR, "S", orgid, org}, ":")
 	nameV := strings.Join([]string{name, version}, "-")
 	nameV = strings.Join([]string{nameV, "S", orgid, org}, ":")
 
 	return nameVR, nameV
+}
+
+func sanitizeName(s string) string {
+	s = strings.ReplaceAll(s, " ", "_")
+	return nameRegexp.ReplaceAllString(s, "")
+}
+
+func sanitizeOrg(s string) string {
+	return orgRegexp.ReplaceAllString(s, "")
 }

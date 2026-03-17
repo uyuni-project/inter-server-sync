@@ -1,4 +1,14 @@
 -------------------------------------------------------------------
+Tue Mar 17 13:52:15 CET 2026 - oholecek@suse.com
+
+- version 0.3.11-0
+  * Add missing name sanitization for cobbler entries
+    (bsc#1259137)
+  * Skip cobbler entries refresh if there are no images
+    (bsc#1257950)
+
+
+-------------------------------------------------------------------
 Tue Jan 06 10:06:13 CET 2026 - oholecek@suse.com
 
 - version 0.3.10-0
